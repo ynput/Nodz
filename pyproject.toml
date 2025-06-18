@@ -1,0 +1,9 @@
+[project]
+name = "nodz"
+version = "0.1.0"
+description = "Ynput's fork of Nodz"
+requires-python = ">=3.9"
+dependencies = [
+    "qtpy",
+    "PySide6"
+]

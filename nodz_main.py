@@ -2,7 +2,7 @@ import os
 import re
 import json
 
-from Qt import QtGui, QtCore, QtWidgets
+from qtpy import QtGui, QtCore, QtWidgets, PYSIDE_VERSION, API_NAME
 import nodz_utils as utils
 
 
@@ -80,7 +80,12 @@ class Nodz(QtWidgets.QGraphicsView):
         inFactor = 1.15
         outFactor = 1 / inFactor
 
-        if event.delta() > 0:
+        try:
+            delta = event.delta()
+        except AttributeError:
+            delta = event.angleDelta().y()
+
+        if delta > 0:
             zoomFactor = inFactor
         else:
             zoomFactor = outFactor
@@ -449,9 +454,10 @@ class Nodz(QtWidgets.QGraphicsView):
         config = self.config
         self.setRenderHint(QtGui.QPainter.Antialiasing, config['antialiasing'])
         self.setRenderHint(QtGui.QPainter.TextAntialiasing, config['antialiasing'])
-        self.setRenderHint(QtGui.QPainter.HighQualityAntialiasing, config['antialiasing_boost'])
+        if not PYSIDE_VERSION.startswith("6"):
+            self.setRenderHint(QtGui.QPainter.HighQualityAntialiasing, config['antialiasing_boost'])
+            self.setRenderHint(QtGui.QPainter.NonCosmeticDefaultPen, True)
         self.setRenderHint(QtGui.QPainter.SmoothPixmapTransform, config['smooth_pixmap'])
-        self.setRenderHint(QtGui.QPainter.NonCosmeticDefaultPen, True)
         self.setViewportUpdateMode(QtWidgets.QGraphicsView.FullViewportUpdate)
         self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)

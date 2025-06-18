@@ -1,4 +1,4 @@
-from Qt import QtCore, QtWidgets
+from qtpy import QtCore, QtWidgets
 import nodz_main
 
 try:
