@@ -387,50 +387,13 @@ class Nodz(QtWidgets.QGraphicsView):
         Return the bounding box of the selection.
 
         """
-        bbx_min = None
-        bbx_max = None
-        bby_min = None
-        bby_max = None
-        bbw = 0
-        bbh = 0
+        rect: QtCore.QRectF | None = None
         for item in self.scene().selectedItems():
-            pos = item.scenePos()
-            x = pos.x()
-            y = pos.y()
-            w = x + item.boundingRect().width()
-            h = y + item.boundingRect().height()
-
-            # bbx min
-            if bbx_min is None:
-                bbx_min = x
-            elif x < bbx_min:
-                bbx_min = x
-            # end if
-
-            # bbx max
-            if bbx_max is None:
-                bbx_max = w
-            elif w > bbx_max:
-                bbx_max = w
-            # end if
-
-            # bby min
-            if bby_min is None:
-                bby_min = y
-            elif y < bby_min:
-                bby_min = y
-            # end if
-
-            # bby max
-            if bby_max is None:
-                bby_max = h
-            elif h > bby_max:
-                bby_max = h
-            # end if
-        # end if
-        bbw = bbx_max - bbx_min
-        bbh = bby_max - bby_min
-        return QtCore.QRectF(QtCore.QRect(bbx_min, bby_min, bbw, bbh))
+            if not rect:
+                rect = item.sceneBoundingRect()
+            else:
+                rect = rect.united(item.sceneBoundingRect())
+        return rect if rect else QtCore.QRectF()
 
     def _deleteSelectedNodes(self) -> None:
         """
@@ -550,9 +513,9 @@ class Nodz(QtWidgets.QGraphicsView):
         """
         # Check for name clashes
         if name in self.scene().nodes.keys():
-            nlog.error(f"A node with the same name already exists : {name}")
-            nlog.error("Node creation aborted !")
-            return
+            raise NameError(
+                f"A node with the same name already exists : {name}"
+            )
 
         nodeItem = NodeItem(
             name=name,
@@ -846,9 +809,7 @@ class Nodz(QtWidgets.QGraphicsView):
             self.signal_AttrEdited.emit(node.name, index, index)
 
     # GRAPH
-    def saveGraph(
-        self, filePath: str = "path"
-    ) -> bool | None:  # FIXME: return type
+    def saveGraph(self, filePath: str = "path") -> None:
         """
         Get all the current graph infos and store them in a .json file
         at the given location.
@@ -891,10 +852,8 @@ class Nodz(QtWidgets.QGraphicsView):
         # Save data.
         try:
             utils._saveData(filePath=filePath, data=data)
-        except:
-            nlog.error(f"Invalid path : {filePath}")
-            nlog.error("Save aborted !")
-            return False
+        except BaseException:
+            raise FileNotFoundError(f"Invalid path : {filePath}")
 
         # Emit signal.
         self.signal_GraphSaved.emit()
@@ -912,9 +871,7 @@ class Nodz(QtWidgets.QGraphicsView):
         if os.path.exists(filePath):
             data = utils._loadData(filePath=filePath)
         else:
-            nlog.error(f"Invalid path : {filePath}")
-            nlog.error("Load aborted !")
-            return False
+            raise FileNotFoundError(f"Invalid path : {filePath}")
 
         # Apply nodes data.
         nodesData = data["NODES"]
@@ -1170,7 +1127,11 @@ class NodeScene(QtWidgets.QGraphicsScene):
         for connection in [
             i for i in self.items() if isinstance(i, ConnectionItem)
         ]:
+            if not connection.target:
+                raise RuntimeError("connection.target is invalid")
             connection.target_point = connection.target.center()
+            if not connection.source:
+                raise RuntimeError("connection.source is invalid")
             connection.source_point = connection.source.center()
             connection.updatePath()
 
@@ -1476,8 +1437,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         The bounding rect based on the width and height variables.
 
         """
-        rect = QtCore.QRect(0, 0, self.baseWidth, self.height)
-        rect = QtCore.QRectF(rect)  # FIXME
+        rect = QtCore.QRect(0, 0, self.baseWidth, self.height).toRectF()
         return rect
 
     def shape(self) -> QtGui.QPainterPath:
@@ -1737,7 +1697,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
         self.connections = list()
         self.maxConnections = maxConnections
 
-    def accepts(self, slot_item: PlugItem | SocketItem) -> bool:
+    def accepts(self, slot_item: SlotItem | PlugItem | SocketItem) -> bool:
         """
         Only accepts plug items that belong to other nodes, and only if the max connections count is not reached yet.
 
@@ -1779,7 +1739,10 @@ class SlotItem(QtWidgets.QGraphicsItem):
         """
         if event.button() == QtCore.Qt.LeftButton:
             self.newConnection = ConnectionItem(
-                self.center(), self.mapToScene(event.pos()), self, None
+                self.center().toPoint(),
+                self.mapToScene(event.pos()).toPoint(),
+                self,
+                None,
             )
 
             self.connections.append(self.newConnection)
@@ -1819,6 +1782,8 @@ class SlotItem(QtWidgets.QGraphicsItem):
                 nodzInst.currentHoveredNode = None
 
             # Set connection's end point.
+            if not self.newConnection:
+                raise RuntimeError("newConnection is invalid.")
             self.newConnection.target_point = self.mapToScene(event.pos())
             self.newConnection.updatePath()
         else:
@@ -1835,6 +1800,9 @@ class SlotItem(QtWidgets.QGraphicsItem):
         if event.button() == QtCore.Qt.LeftButton:
             nodzInst.drawingConnection = False
             nodzInst.currentDataType = None
+
+            if not self.newConnection:
+                raise RuntimeError("newConnection is invalid")
 
             target = self.scene().itemAt(
                 event.scenePos().toPoint(), QtGui.QTransform()
@@ -2001,7 +1969,7 @@ class PlugItem(SlotItem):
             * self.parentItem().attrHeight
         )
 
-        rect = QtCore.QRectF(QtCore.QRect(x, y, width, height))
+        rect = QtCore.QRect(x, y, width, height).toRectF()
         return rect
 
     def connect(
@@ -2139,7 +2107,7 @@ class SocketItem(SlotItem):
             * self.parentItem().attrHeight
         )
 
-        rect = QtCore.QRectF(QtCore.QRect(x, y, width, height))
+        rect = QtCore.QRect(x, y, width, height).toRectF()
         return rect
 
     def connect(self, plug_item: PlugItem, connection: ConnectionItem) -> None:
@@ -2206,8 +2174,8 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         self,
         source_point: QtCore.QPoint,
         target_point: QtCore.QPoint,
-        source: PlugItem | SocketItem,
-        target: PlugItem | SocketItem,
+        source: SlotItem,
+        target: SlotItem | None,
     ) -> None:
         """
         Initialize the class.
@@ -2255,6 +2223,8 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         Read the connection style from the configuration file.
 
         """
+        if not self.source:
+            raise RuntimeError("source is invalid")
         config = self.source.scene().views()[0].config
         self.setAcceptHoverEvents(True)
         self.setZValue(-1)
@@ -2292,12 +2262,16 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         d_to_target = (event.pos() - self.target_point).manhattanLength()
         d_to_source = (event.pos() - self.source_point).manhattanLength()
         if d_to_target < d_to_source:
+            if not self.target:
+                raise RuntimeError("Invalid target")
             self.target_point = event.pos()
             self.movable_point = "target_point"
             self.target.disconnect(self)
             self.target = None
             nodzInst.sourceSlot = self.source
         else:
+            if not self.source:
+                raise RuntimeError("Invalid source")
             self.source_point = event.pos()
             self.movable_point = "source_point"
             self.source.disconnect(self)
@@ -2360,6 +2334,8 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
             return
 
         if self.movable_point == "target_point":
+            if not self.source:
+                raise RuntimeError("Invalid source")
             if slot.accepts(self.source):
                 # Plug reconnection.
                 self.target = slot
@@ -2375,6 +2351,8 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
                 self._remove()
 
         else:
+            if not self.target:
+                raise RuntimeError("Invalid target")
             if slot.accepts(self.target):
                 # Socket Reconnection
                 self.source = slot

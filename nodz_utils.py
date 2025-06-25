@@ -1,18 +1,17 @@
-import os
 import json
 import re
 import logging
 from qtpy import QtCore, QtGui
 
 logging.basicConfig(
-    format=f"[%(name)s]  %(levelname)8s  %(msg)s",
+    format="[%(name)s]  %(levelname)8s  %(msg)s",
     level=logging.INFO,
 )
 nlog = logging.getLogger("Nodz")
 
 
 def _convertDataToColor(
-    data: list | None = None, alternate: bool = False, av: int = 20
+    data: list, alternate: bool = False, av: int = 20
 ) -> QtGui.QColor:
     """
     Convert a list of 3 (rgb) or 4(rgba) values from the configuration
@@ -100,12 +99,11 @@ def _createPointerBoundingBox(
     point = pointerPos
 
     mbbPos = point
-    point.setX(point.x() - bbSize / 2)
-    point.setY(point.y() - bbSize / 2)
+    point.setX(int(point.x() - bbSize / 2))
+    point.setY(int(point.y() - bbSize / 2))
 
     size = QtCore.QSize(bbSize, bbSize)
-    bb = QtCore.QRect(mbbPos, size)
-    bb = QtCore.QRectF(bb)
+    bb = QtCore.QRect(mbbPos, size).toRectF()
 
     return bb
 
@@ -148,7 +146,7 @@ def _loadConfig(filePath: str) -> dict:
         fileString = myfile.read()
 
         # remove comments
-        cleanString = re.sub("//.*?\n|/\*.*?\*/", "", fileString, re.S)
+        cleanString = re.sub(r"//.*?\n|/\*.*?\*/", "", fileString, re.S)
 
         data = json.loads(cleanString)
 
