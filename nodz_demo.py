@@ -1,5 +1,6 @@
 from qtpy import QtCore, QtWidgets
 import nodz_main
+from nodz_utils import nlog
 
 try:
     app = QtWidgets.QApplication([])
@@ -21,98 +22,94 @@ nodz.show()
 # Nodes
 @QtCore.Slot(str)
 def on_nodeCreated(nodeName):
-    print("node created : ", nodeName)
+    nlog.info(f"node created : {nodeName}")
 
 
 @QtCore.Slot(str)
 def on_nodeDeleted(nodeName):
-    print("node deleted : ", nodeName)
+    nlog.info(f"node deleted : {nodeName}")
 
 
 @QtCore.Slot(str, str)
 def on_nodeEdited(nodeName, newName):
-    print("node edited : {0}, new name : {1}".format(nodeName, newName))
+    nlog.info(f"node edited : {nodeName}, new name : {newName}")
 
 
 @QtCore.Slot(str)
 def on_nodeSelected(nodesName):
-    print("node selected : ", nodesName)
+    nlog.info(f"node selected : {nodesName}")
 
 
 @QtCore.Slot(str, object)
 def on_nodeMoved(nodeName, nodePos):
-    print("node {0} moved to {1}".format(nodeName, nodePos))
+    nlog.info(f"node {nodeName} moved to {nodePos}")
 
 
 @QtCore.Slot(str)
 def on_nodeDoubleClick(nodeName):
-    print("double click on node : {0}".format(nodeName))
+    nlog.info(f"double click on node : {nodeName}")
 
 
 # Attrs
 @QtCore.Slot(str, int)
 def on_attrCreated(nodeName, attrId):
-    print("attr created : {0} at index : {1}".format(nodeName, attrId))
+    nlog.info(f"attr created : {nodeName} at index : {attrId}")
 
 
 @QtCore.Slot(str, int)
 def on_attrDeleted(nodeName, attrId):
-    print("attr Deleted : {0} at old index : {1}".format(nodeName, attrId))
+    nlog.info(f"attr Deleted : {nodeName} at old index : {attrId}")
 
 
 @QtCore.Slot(str, int, int)
 def on_attrEdited(nodeName, oldId, newId):
-    print(
-        "attr Edited : {0} at old index : {1}, new index : {2}".format(
-            nodeName, oldId, newId
-        )
+    nlog.info(
+        f"attr Edited : {nodeName} at old index : {oldId}, new index : {newId}"
     )
 
 
 # Connections
 @QtCore.Slot(str, str, str, str)
 def on_connected(srcNodeName, srcPlugName, destNodeName, dstSocketName):
-    print(
-        'connected src: "{0}" at "{1}" to dst: "{2}" at "{3}"'.format(
-            srcNodeName, srcPlugName, destNodeName, dstSocketName
-        )
+    nlog.info(
+        f'connected src: "{srcNodeName}" at "{srcPlugName}" to dst: '
+        f'"{destNodeName}" at "{dstSocketName}"'
     )
 
 
 @QtCore.Slot(str, str, str, str)
 def on_disconnected(srcNodeName, srcPlugName, destNodeName, dstSocketName):
-    print(
-        'disconnected src: "{0}" at "{1}" from dst: "{2}" at "{3}"'.format(
-            srcNodeName, srcPlugName, destNodeName, dstSocketName
-        )
+    nlog.info(
+        f'disconnected src: "{srcNodeName}" at "{srcPlugName}" from dst: '
+        f'"{destNodeName}" at "{dstSocketName}"'
     )
 
 
 # Graph
 @QtCore.Slot()
 def on_graphSaved():
-    print("graph saved !")
+    nlog.info("graph saved !")
 
 
 @QtCore.Slot()
 def on_graphLoaded():
-    print("graph loaded !")
+    nlog.info("graph loaded !")
 
 
 @QtCore.Slot()
 def on_graphCleared():
-    print("graph cleared !")
+    nlog.info("graph cleared !")
 
 
 @QtCore.Slot()
 def on_graphEvaluated():
-    print("graph evaluated !")
+    nlog.info("graph evaluated !")
 
 
 # Other
 @QtCore.Slot(object)
 def on_keyPressed(key):
-    print("key pressed : ", key)
+    nlog.info(f"key pressed :  {key}")
 
 
 nodz.signal_NodeCreated.connect(on_nodeCreated)
@@ -366,7 +363,7 @@ nodz.deleteNode(node=nodeC)
 
 
 # Graph
-print(nodz.evaluateGraph())
+nlog.info(nodz.evaluateGraph())
 
 nodz.saveGraph(filePath="Enter your path")
 

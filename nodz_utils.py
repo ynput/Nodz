@@ -1,7 +1,14 @@
 import os
 import json
 import re
+import logging
 from qtpy import QtCore, QtGui
+
+logging.basicConfig(
+    format=f"[%(name)s]  %(levelname)8s  %(msg)s",
+    level=logging.INFO,
+)
+nlog = logging.getLogger("Nodz")
 
 
 def _convertDataToColor(data=None, alternate=False, av=20):
@@ -47,9 +54,9 @@ def _convertDataToColor(data=None, alternate=False, av=20):
 
     # wrong
     else:
-        print("Color from configuration is not recognized : ", data)
-        print("Can only be [R, G, B] or [R, G, B, A]")
-        print("Using default color !")
+        nlog.warning(f"Color from configuration is not recognized : {data}" )
+        nlog.info("Can only be [R, G, B] or [R, G, B, A]")
+        nlog.info("Using default color !")
         color = QtGui.QColor(120, 120, 120)
         if alternate:
             color = QtGui.QColor(120 - av, 120 - av, 120 - av)
@@ -159,7 +166,7 @@ def _saveData(filePath, data):
     f.write(json.dumps(data, sort_keys=True, indent=4, ensure_ascii=False))
     f.close()
 
-    print("Data successfully saved !")
+    nlog.info("Data successfully saved !")
 
 
 def _loadData(filePath):
@@ -175,5 +182,5 @@ def _loadData(filePath):
 
     json_file.close()
 
-    print("Data successfully loaded !")
+    nlog.info("Data successfully loaded !")
     return j_data

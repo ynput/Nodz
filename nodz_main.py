@@ -2,8 +2,9 @@ import os
 import re
 import json
 
-from qtpy import QtGui, QtCore, QtWidgets, PYSIDE_VERSION, API_NAME
+from qtpy import QtGui, QtCore, QtWidgets, PYSIDE_VERSION
 import nodz_utils as utils
+from nodz_utils import nlog
 
 
 defaultConfigPath = os.path.join(
@@ -543,10 +544,8 @@ class Nodz(QtWidgets.QGraphicsView):
         """
         # Check for name clashes
         if name in self.scene().nodes.keys():
-            print(
-                "A node with the same name already exists : {0}".format(name)
-            )
-            print("Node creation aborted !")
+            nlog.error(f"A node with the same name already exists : {name}")
+            nlog.error("Node creation aborted !")
             return
         else:
             nodeItem = NodeItem(
@@ -581,8 +580,8 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         if not node in self.scene().nodes.values():
-            print("Node object does not exist !")
-            print("Node deletion aborted !")
+            nlog.error(f"Node object {node} does not exist !")
+            nlog.error("Node deletion aborted !")
             return
 
         if node in self.scene().nodes.values():
@@ -604,8 +603,8 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         if not node in self.scene().nodes.values():
-            print("Node object does not exist !")
-            print("Node edition aborted !")
+            nlog.error(f"Node object {node} does not exist !")
+            nlog.error("Node edition aborted !")
             return
 
         oldName = node.name
@@ -613,12 +612,10 @@ class Nodz(QtWidgets.QGraphicsView):
         if newName != None:
             # Check for name clashes
             if newName in self.scene().nodes.keys():
-                print(
-                    "A node with the same name already exists : {0}".format(
-                        newName
-                    )
+                nlog.error(
+                    f"A node with the same name already exists : {newName}"
                 )
-                print("Node edition aborted !")
+                nlog.error("Node edition aborted !")
                 return
             else:
                 node.name = newName
@@ -693,17 +690,15 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         if not node in self.scene().nodes.values():
-            print("Node object does not exist !")
-            print("Attribute creation aborted !")
+            nlog.error(f"Node object {node} does not exist !")
+            nlog.error("Attribute creation aborted !")
             return
 
         if name in node.attrs:
-            print(
-                "An attribute with the same name already exists : {0}".format(
-                    name
-                )
+            nlog.error(
+                f"An attribute with the same name already exists : {name}"
             )
-            print("Attribute creation aborted !")
+            nlog.error("Attribute creation aborted !")
             return
 
         node._createAttribute(
@@ -732,8 +727,8 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         if not node in self.scene().nodes.values():
-            print("Node object does not exist !")
-            print("Attribute deletion aborted !")
+            nlog.error(f"Node object {node} does not exist !")
+            nlog.error("Attribute deletion aborted !")
             return
 
         node._deleteAttribute(index)
@@ -759,18 +754,16 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         if not node in self.scene().nodes.values():
-            print("Node object does not exist !")
-            print("Attribute creation aborted !")
+            nlog.error(f"Node object {node} does not exist !")
+            nlog.error("Attribute creation aborted !")
             return
 
         if newName != None:
             if newName in node.attrs:
-                print(
-                    "An attribute with the same name already exists : {0}".format(
-                        newName
-                    )
+                nlog.error(
+                    f"An attribute with the same name already exists : {newName}"
                 )
-                print("Attribute edition aborted !")
+                nlog.error("Attribute edition aborted !")
                 return
             else:
                 oldName = node.attrs[index]
@@ -885,8 +878,8 @@ class Nodz(QtWidgets.QGraphicsView):
         try:
             utils._saveData(filePath=filePath, data=data)
         except:
-            print("Invalid path : {0}".format(filePath))
-            print("Save aborted !")
+            nlog.error(f"Invalid path : {filePath}")
+            nlog.error("Save aborted !")
             return False
 
         # Emit signal.
@@ -905,8 +898,8 @@ class Nodz(QtWidgets.QGraphicsView):
         if os.path.exists(filePath):
             data = utils._loadData(filePath=filePath)
         else:
-            print("Invalid path : {0}".format(filePath))
-            print("Load aborted !")
+            nlog.error(f"Invalid path : {filePath}")
+            nlog.error("Load aborted !")
             return False
 
         # Apply nodes data.
@@ -1320,12 +1313,11 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
         """
         if name in self.attrs:
-            print(
-                "An attribute with the same name already exists on this node : {0}".format(
-                    name
-                )
+            nlog.error(
+                "An attribute with the same name already exists on this "
+                f"node : {name}"
             )
-            print("Attribute creation aborted !")
+            nlog.error("Attribute creation aborted !")
             return
 
         self.attrPreset = preset
