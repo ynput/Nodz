@@ -1,6 +1,6 @@
+from __future__ import annotations
 import os
-import re
-import json
+from typing import Any
 
 from qtpy import QtGui, QtCore, QtWidgets, PYSIDE_VERSION
 import nodz_utils as utils
@@ -45,7 +45,11 @@ class Nodz(QtWidgets.QGraphicsView):
     signal_KeyPressed = QtCore.Signal(object)
     signal_Dropped = QtCore.Signal()
 
-    def __init__(self, parent, configPath=defaultConfigPath):
+    def __init__(
+        self,
+        parent: Any,
+        configPath: str = defaultConfigPath,
+    ):
         """
         Initialize the graphics view.
 
@@ -70,7 +74,7 @@ class Nodz(QtWidgets.QGraphicsView):
         self.currentState = "DEFAULT"
         self.pressedKeys = list()
 
-    def wheelEvent(self, event):
+    def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         """
         Zoom in the view with the mouse wheel.
 
@@ -94,7 +98,7 @@ class Nodz(QtWidgets.QGraphicsView):
         self.scale(zoomFactor, zoomFactor)
         self.currentState = "DEFAULT"
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         """
         Initialize tablet zoom, drag canvas and the selection.
 
@@ -130,7 +134,7 @@ class Nodz(QtWidgets.QGraphicsView):
             is None
         ):
             self.currentState = "SELECTION"
-            self._initRubberband(event.pos())
+            self._initRubberband(event.pos().toPointF())
             self.setInteractive(False)
 
         # Drag Item
@@ -152,7 +156,7 @@ class Nodz(QtWidgets.QGraphicsView):
             and QtCore.Qt.Key_Control in self.pressedKeys
         ):
             self.currentState = "ADD_SELECTION"
-            self._initRubberband(event.pos())
+            self._initRubberband(event.pos().toPointF())
             self.setInteractive(False)
 
         # Subtract selection
@@ -161,7 +165,7 @@ class Nodz(QtWidgets.QGraphicsView):
             and event.modifiers() == QtCore.Qt.ControlModifier
         ):
             self.currentState = "SUBTRACT_SELECTION"
-            self._initRubberband(event.pos())
+            self._initRubberband(event.pos().toPointF())
             self.setInteractive(False)
 
         # Toggle selection
@@ -170,7 +174,7 @@ class Nodz(QtWidgets.QGraphicsView):
             and event.modifiers() == QtCore.Qt.ShiftModifier
         ):
             self.currentState = "TOGGLE_SELECTION"
-            self._initRubberband(event.pos())
+            self._initRubberband(event.pos().toPointF())
             self.setInteractive(False)
 
         else:
@@ -178,7 +182,7 @@ class Nodz(QtWidgets.QGraphicsView):
 
         super(Nodz, self).mousePressEvent(event)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(self, event: QtGui.QMouseEvent) -> None:
         """
         Update tablet zoom, canvas dragging and selection.
 
@@ -240,12 +244,12 @@ class Nodz(QtWidgets.QGraphicsView):
             or self.currentState == "TOGGLE_SELECTION"
         ):
             self.rubberband.setGeometry(
-                QtCore.QRect(self.origin, event.pos()).normalized()
+                QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
 
         super(Nodz, self).mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(self, event: QtGui.QMouseEvent) -> None:
         """
         Apply tablet zoom, dragging and selection.
 
@@ -265,7 +269,7 @@ class Nodz(QtWidgets.QGraphicsView):
         # Selection.
         elif self.currentState == "SELECTION":
             self.rubberband.setGeometry(
-                QtCore.QRect(self.origin, event.pos()).normalized()
+                QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
             painterPath = self._releaseRubberband()
             self.setInteractive(True)
@@ -274,7 +278,7 @@ class Nodz(QtWidgets.QGraphicsView):
         # Add Selection.
         elif self.currentState == "ADD_SELECTION":
             self.rubberband.setGeometry(
-                QtCore.QRect(self.origin, event.pos()).normalized()
+                QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
             painterPath = self._releaseRubberband()
             self.setInteractive(True)
@@ -284,7 +288,7 @@ class Nodz(QtWidgets.QGraphicsView):
         # Subtract Selection.
         elif self.currentState == "SUBTRACT_SELECTION":
             self.rubberband.setGeometry(
-                QtCore.QRect(self.origin, event.pos()).normalized()
+                QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
             painterPath = self._releaseRubberband()
             self.setInteractive(True)
@@ -294,7 +298,7 @@ class Nodz(QtWidgets.QGraphicsView):
         # Toggle Selection
         elif self.currentState == "TOGGLE_SELECTION":
             self.rubberband.setGeometry(
-                QtCore.QRect(self.origin, event.pos()).normalized()
+                QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
             painterPath = self._releaseRubberband()
             self.setInteractive(True)
@@ -308,7 +312,7 @@ class Nodz(QtWidgets.QGraphicsView):
 
         super(Nodz, self).mouseReleaseEvent(event)
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         """
         Save pressed key and apply shortcuts.
 
@@ -332,7 +336,7 @@ class Nodz(QtWidgets.QGraphicsView):
         # Emit signal.
         self.signal_KeyPressed.emit(event.key())
 
-    def keyReleaseEvent(self, event):
+    def keyReleaseEvent(self, event: QtGui.QKeyEvent) -> None:
         """
         Clear the key from the pressed key list.
 
@@ -343,17 +347,19 @@ class Nodz(QtWidgets.QGraphicsView):
         if event.key() in self.pressedKeys:
             self.pressedKeys.remove(event.key())
 
-    def _initRubberband(self, position):
+    def _initRubberband(self, position: QtCore.QPointF) -> None:
         """
         Initialize the rubber band at the given position.
 
         """
         self.rubberBandStart = position
         self.origin = position
-        self.rubberband.setGeometry(QtCore.QRect(self.origin, QtCore.QSize()))
+        self.rubberband.setGeometry(
+            QtCore.QRect(self.origin.toPoint(), QtCore.QSize())
+        )
         self.rubberband.show()
 
-    def _releaseRubberband(self):
+    def _releaseRubberband(self) -> QtGui.QPainterPath:
         """
         Hide the rubber band and return the path.
 
@@ -364,7 +370,7 @@ class Nodz(QtWidgets.QGraphicsView):
         self.rubberband.hide()
         return painterPath
 
-    def _focus(self):
+    def _focus(self) -> None:
         """
         Center on selected nodes or all of them if no active selection.
 
@@ -376,7 +382,7 @@ class Nodz(QtWidgets.QGraphicsView):
             itemsArea = self.scene().itemsBoundingRect()
             self.fitInView(itemsArea, QtCore.Qt.KeepAspectRatio)
 
-    def _getSelectionBoundingbox(self):
+    def _getSelectionBoundingbox(self) -> QtCore.QRectF:
         """
         Return the bounding box of the selection.
 
@@ -426,7 +432,7 @@ class Nodz(QtWidgets.QGraphicsView):
         bbh = bby_max - bby_min
         return QtCore.QRectF(QtCore.QRect(bbx_min, bby_min, bbw, bbh))
 
-    def _deleteSelectedNodes(self):
+    def _deleteSelectedNodes(self) -> None:
         """
         Delete selected nodes.
 
@@ -439,7 +445,7 @@ class Nodz(QtWidgets.QGraphicsView):
         # Emit signal.
         self.signal_NodeDeleted.emit(selected_nodes)
 
-    def _returnSelection(self):
+    def _returnSelection(self) -> None:
         """
         Wrapper to return selected items.
 
@@ -456,7 +462,7 @@ class Nodz(QtWidgets.QGraphicsView):
     # API
     ##################################################################
 
-    def loadConfig(self, filePath):
+    def loadConfig(self, filePath: str) -> None:
         """
         Set a specific configuration for this instance of Nodz.
 
@@ -467,7 +473,7 @@ class Nodz(QtWidgets.QGraphicsView):
         """
         self.config = utils._loadConfig(filePath)
 
-    def initialize(self):
+    def initialize(self) -> None:
         """
         Setup the view's behavior.
 
@@ -515,11 +521,11 @@ class Nodz(QtWidgets.QGraphicsView):
     # NODES
     def createNode(
         self,
-        name="default",
-        preset="node_default",
-        position=None,
-        alternate=True,
-    ):
+        name: str = "default",
+        preset: str = "node_default",
+        position: QtCore.QPointF | None = None,
+        alternate: bool = True,
+    ) -> NodeItem:
         """
         Create a new node with a given name, position and color.
 
@@ -547,31 +553,31 @@ class Nodz(QtWidgets.QGraphicsView):
             nlog.error(f"A node with the same name already exists : {name}")
             nlog.error("Node creation aborted !")
             return
-        else:
-            nodeItem = NodeItem(
-                name=name,
-                alternate=alternate,
-                preset=preset,
-                config=self.config,
-            )
 
-            # Store node in scene.
-            self.scene().nodes[name] = nodeItem
+        nodeItem = NodeItem(
+            name=name,
+            alternate=alternate,
+            preset=preset,
+            config=self.config,
+        )
 
-            if not position:
-                # Get the center of the view.
-                position = self.mapToScene(self.viewport().rect().center())
+        # Store node in scene.
+        self.scene().nodes[name] = nodeItem
 
-            # Set node position.
-            self.scene().addItem(nodeItem)
-            nodeItem.setPos(position - nodeItem.nodeCenter)
+        if not position:
+            # Get the center of the view.
+            position = self.mapToScene(self.viewport().rect().center())
 
-            # Emit signal.
-            self.signal_NodeCreated.emit(name)
+        # Set node position.
+        self.scene().addItem(nodeItem)
+        nodeItem.setPos(position - nodeItem.nodeCenter)
 
-            return nodeItem
+        # Emit signal.
+        self.signal_NodeCreated.emit(name)
 
-    def deleteNode(self, node):
+        return nodeItem
+
+    def deleteNode(self, node: NodeItem) -> None:
         """
         Delete the specified node from the view.
 
@@ -591,7 +597,7 @@ class Nodz(QtWidgets.QGraphicsView):
             # Emit signal.
             self.signal_NodeDeleted.emit([nodeName])
 
-    def editNode(self, node, newName=None):
+    def editNode(self, node, newName: str | None = None) -> None:
         """
         Rename an existing node.
 
@@ -643,16 +649,16 @@ class Nodz(QtWidgets.QGraphicsView):
     # ATTRS
     def createAttribute(
         self,
-        node,
-        name="default",
-        index=-1,
-        preset="attr_default",
-        plug=True,
-        socket=True,
-        dataType=None,
-        plugMaxConnections=-1,
-        socketMaxConnections=1,
-    ):
+        node: NodeItem,
+        name: str = "default",
+        index: int = -1,
+        preset: str = "attr_default",
+        plug: bool = True,
+        socket: bool = True,
+        dataType: Any = None,
+        plugMaxConnections: int = -1,
+        socketMaxConnections: int = 1,
+    ) -> None:
         """
         Create a new attribute with a given name.
 
@@ -715,7 +721,7 @@ class Nodz(QtWidgets.QGraphicsView):
         # Emit signal.
         self.signal_AttrCreated.emit(node.name, index)
 
-    def deleteAttribute(self, node, index):
+    def deleteAttribute(self, node: NodeItem, index: int) -> None:
         """
         Delete the specified attribute.
 
@@ -736,7 +742,13 @@ class Nodz(QtWidgets.QGraphicsView):
         # Emit signal.
         self.signal_AttrDeleted.emit(node.name, index)
 
-    def editAttribute(self, node, index, newName=None, newIndex=None):
+    def editAttribute(
+        self,
+        node: NodeItem,
+        index: int,
+        newName: str | None = None,
+        newIndex: int | None = None,
+    ) -> None:
         """
         Edit the specified attribute.
 
@@ -834,7 +846,9 @@ class Nodz(QtWidgets.QGraphicsView):
             self.signal_AttrEdited.emit(node.name, index, index)
 
     # GRAPH
-    def saveGraph(self, filePath="path"):
+    def saveGraph(
+        self, filePath: str = "path"
+    ) -> bool | None:  # FIXME: return type
         """
         Get all the current graph infos and store them in a .json file
         at the given location.
@@ -885,7 +899,7 @@ class Nodz(QtWidgets.QGraphicsView):
         # Emit signal.
         self.signal_GraphSaved.emit()
 
-    def loadGraph(self, filePath="path"):
+    def loadGraph(self, filePath: str = "path") -> None:
         """
         Get all the stored info from the .json file at the given location
         and recreate the graph as saved.
@@ -918,6 +932,10 @@ class Nodz(QtWidgets.QGraphicsView):
                 position=position,
                 alternate=alternate,
             )
+
+            if node is None:
+                nlog.warning(f"Not loading node {name}.")
+                continue
 
             # Apply attributes data.
             attrsData = nodesData[name]["attributes"]
@@ -969,7 +987,13 @@ class Nodz(QtWidgets.QGraphicsView):
         # Emit signal.
         self.signal_GraphLoaded.emit()
 
-    def createConnection(self, sourceNode, sourceAttr, targetNode, targetAttr):
+    def createConnection(
+        self,
+        sourceNode: str,
+        sourceAttr: str,
+        targetNode: str,
+        targetAttr: str,
+    ) -> ConnectionItem:
         """
         Create a manual connection.
 
@@ -1007,7 +1031,7 @@ class Nodz(QtWidgets.QGraphicsView):
 
         return connection
 
-    def evaluateGraph(self):
+    def evaluateGraph(self) -> list:
         """
         Create a list of connection tuples.
         [("sourceNode.attribute", "TargetNode.attribute"), ...]
@@ -1028,7 +1052,7 @@ class Nodz(QtWidgets.QGraphicsView):
 
         return data
 
-    def clearGraph(self):
+    def clearGraph(self) -> None:
         """
         Clear the graph.
 
@@ -1052,7 +1076,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
     signal_NodeMoved = QtCore.Signal(str, object)
 
-    def __init__(self, parent):
+    def __init__(self, parent) -> None:
         """
         Initialize the class.
 
@@ -1065,7 +1089,10 @@ class NodeScene(QtWidgets.QGraphicsScene):
         # Nodes storage.
         self.nodes = dict()
 
-    def dragEnterEvent(self, event):
+    def dragEnterEvent(
+        self,
+        event: QtWidgets.QGraphicsSceneDragDropEvent,
+    ) -> None:
         """
         Make the dragging of nodes into the scene possible.
 
@@ -1073,7 +1100,10 @@ class NodeScene(QtWidgets.QGraphicsScene):
         event.setDropAction(QtCore.Qt.MoveAction)
         event.accept()
 
-    def dragMoveEvent(self, event):
+    def dragMoveEvent(
+        self,
+        event: QtWidgets.QGraphicsSceneDragDropEvent,
+    ) -> None:
         """
         Make the dragging of nodes into the scene possible.
 
@@ -1081,7 +1111,10 @@ class NodeScene(QtWidgets.QGraphicsScene):
         event.setDropAction(QtCore.Qt.MoveAction)
         event.accept()
 
-    def dropEvent(self, event):
+    def dropEvent(
+        self,
+        event: QtWidgets.QGraphicsSceneDragDropEvent,
+    ) -> None:
         """
         Create a node from the dropped item.
 
@@ -1091,7 +1124,11 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         event.accept()
 
-    def drawBackground(self, painter, rect):
+    def drawBackground(
+        self,
+        painter: QtGui.QPainter,
+        rect: QtCore.QRect | QtCore.QRectF,
+    ) -> None:
         """
         Draw a grid in the background.
 
@@ -1125,7 +1162,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
             painter.setPen(self.pen)
             painter.drawLines(lines)
 
-    def updateScene(self):
+    def updateScene(self) -> None:
         """
         Update the connections position.
 
@@ -1144,7 +1181,9 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
     """
 
-    def __init__(self, name, alternate, preset, config):
+    def __init__(
+        self, name: str, alternate: bool, preset: str, config: dict
+    ) -> None:
         """
         Initialize the class.
 
@@ -1184,7 +1223,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         self._createStyle(config)
 
     @property
-    def height(self):
+    def height(self) -> int:
         """
         Increment the final height of the node every time an attribute
         is created.
@@ -1201,7 +1240,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
             return self.baseHeight
 
     @property
-    def pen(self):
+    def pen(self) -> QtGui.QPen:
         """
         Return the pen based on the selection state of the node.
 
@@ -1211,7 +1250,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         else:
             return self._pen
 
-    def _createStyle(self, config):
+    def _createStyle(self, config: dict) -> None:
         """
         Read the node style from the configuration file.
 
@@ -1275,15 +1314,15 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
     def _createAttribute(
         self,
-        name,
-        index,
-        preset,
-        plug,
-        socket,
-        dataType,
-        plugMaxConnections,
-        socketMaxConnections,
-    ):
+        name: str,
+        index: int,
+        preset: str,
+        plug: bool,
+        socket: bool,
+        dataType: Any,
+        plugMaxConnections: int,
+        socketMaxConnections: int,
+    ) -> None:
         """
         Create an attribute by expanding the node, adding a label and
         connection items.
@@ -1370,7 +1409,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         # Update node height.
         self.update()
 
-    def _deleteAttribute(self, index):
+    def _deleteAttribute(self, index: int) -> None:
         """
         Remove an attribute by reducing the node, removing the label
         and the connection items.
@@ -1407,7 +1446,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
         self.update()
 
-    def _remove(self):
+    def _remove(self) -> None:
         """
         Remove this node instance from the scene.
 
@@ -1432,16 +1471,16 @@ class NodeItem(QtWidgets.QGraphicsItem):
         scene.removeItem(self)
         scene.update()
 
-    def boundingRect(self):
+    def boundingRect(self) -> QtCore.QRectF:
         """
         The bounding rect based on the width and height variables.
 
         """
         rect = QtCore.QRect(0, 0, self.baseWidth, self.height)
-        rect = QtCore.QRectF(rect)
+        rect = QtCore.QRectF(rect)  # FIXME
         return rect
 
-    def shape(self):
+    def shape(self) -> QtGui.QPainterPath:
         """
         The shape of the item.
 
@@ -1450,7 +1489,12 @@ class NodeItem(QtWidgets.QGraphicsItem):
         path.addRect(self.boundingRect())
         return path
 
-    def paint(self, painter, option, widget):
+    def paint(
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionGraphicsItem,
+        widget: QtWidgets.QWidget | None = None,
+    ) -> None:
         """
         Paint the node and attributes.
 
@@ -1545,7 +1589,9 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
             offset += self.attrHeight
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(
+        self, event: QtWidgets.QGraphicsSceneMouseEvent
+    ) -> None:
         """
         Keep the selected node on top of the others.
 
@@ -1562,7 +1608,9 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
         super(NodeItem, self).mousePressEvent(event)
 
-    def mouseDoubleClickEvent(self, event):
+    def mouseDoubleClickEvent(
+        self, event: QtWidgets.QGraphicsSceneMouseEvent
+    ) -> None:
         """
         Emit a signal.
 
@@ -1570,7 +1618,9 @@ class NodeItem(QtWidgets.QGraphicsItem):
         super(NodeItem, self).mouseDoubleClickEvent(event)
         self.scene().parent().signal_NodeDoubleClicked.emit(self.name)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(
+        self, event: QtWidgets.QGraphicsSceneMouseEvent
+    ) -> None:
         """
         .
 
@@ -1601,7 +1651,9 @@ class NodeItem(QtWidgets.QGraphicsItem):
                 self.scene().updateScene()
                 super(NodeItem, self).mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(
+        self, event: QtWidgets.QGraphicsSceneMouseEvent
+    ) -> None:
         """
         .
 
@@ -1610,7 +1662,9 @@ class NodeItem(QtWidgets.QGraphicsItem):
         self.scene().signal_NodeMoved.emit(self.name, self.pos())
         super(NodeItem, self).mouseReleaseEvent(event)
 
-    def hoverLeaveEvent(self, event):
+    def hoverLeaveEvent(
+        self, event: QtWidgets.QGraphicsSceneHoverEvent
+    ) -> None:
         """
         .
 
@@ -1631,8 +1685,14 @@ class SlotItem(QtWidgets.QGraphicsItem):
     """
 
     def __init__(
-        self, parent, attribute, preset, index, dataType, maxConnections
-    ):
+        self,
+        parent: QtWidgets.QGraphicsItem,
+        attribute: str,
+        preset: str,
+        index: int,
+        dataType: Any,
+        maxConnections: int,
+    ) -> None:
         """
         Initialize the class.
 
@@ -1677,7 +1737,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
         self.connections = list()
         self.maxConnections = maxConnections
 
-    def accepts(self, slot_item):
+    def accepts(self, slot_item: PlugItem | SocketItem) -> bool:
         """
         Only accepts plug items that belong to other nodes, and only if the max connections count is not reached yet.
 
@@ -1710,7 +1770,9 @@ class SlotItem(QtWidgets.QGraphicsItem):
         # otherwize, all fine.
         return True
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(
+        self, event: QtWidgets.QGraphicsSceneMouseEvent
+    ) -> None:
         """
         Start the connection process.
 
@@ -1730,7 +1792,9 @@ class SlotItem(QtWidgets.QGraphicsItem):
         else:
             super(SlotItem, self).mousePressEvent(event)
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(
+        self, event: QtWidgets.QGraphicsSceneMouseEvent
+    ) -> None:
         """
         Update the new connection's end point position.
 
@@ -1760,7 +1824,9 @@ class SlotItem(QtWidgets.QGraphicsItem):
         else:
             super(SlotItem, self).mouseMoveEvent(event)
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(
+        self, event: QtWidgets.QGraphicsSceneMouseEvent
+    ) -> None:
         """
         Apply the connection if target_slot is valid.
 
@@ -1797,7 +1863,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
 
         nodzInst.currentHoveredNode = None
 
-    def shape(self):
+    def shape(self) -> QtGui.QPainterPath:
         """
         The shape of the Slot is a circle.
 
@@ -1806,7 +1872,12 @@ class SlotItem(QtWidgets.QGraphicsItem):
         path.addRect(self.boundingRect())
         return path
 
-    def paint(self, painter, option, widget):
+    def paint(
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionGraphicsItem,
+        widget: QtWidgets.QWidget | None = None,
+    ) -> None:
         """
         Paint the Slot.
 
@@ -1840,7 +1911,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
 
         painter.drawEllipse(self.boundingRect())
 
-    def center(self):
+    def center(self) -> QtCore.QPointF:
         """
         Return The center of the Slot.
 
@@ -1860,8 +1931,14 @@ class PlugItem(SlotItem):
     """
 
     def __init__(
-        self, parent, attribute, index, preset, dataType, maxConnections
-    ):
+        self,
+        parent: QtWidgets.QGraphicsItem,
+        attribute: str,
+        index: int,
+        preset: str,
+        dataType: Any,
+        maxConnections: int,
+    ) -> None:
         """
         Initialize the class.
 
@@ -1893,7 +1970,7 @@ class PlugItem(SlotItem):
         # Methods.
         self._createStyle(parent)
 
-    def _createStyle(self, parent):
+    def _createStyle(self, parent: QtWidgets.QGraphicsItem) -> None:
         """
         Read the attribute style from the configuration file.
 
@@ -1905,7 +1982,7 @@ class PlugItem(SlotItem):
             utils._convertDataToColor(config[self.preset]["plug"])
         )
 
-    def boundingRect(self):
+    def boundingRect(self) -> QtCore.QRectF:
         """
         The bounding rect based on the width and height variables.
 
@@ -1927,7 +2004,9 @@ class PlugItem(SlotItem):
         rect = QtCore.QRectF(QtCore.QRect(x, y, width, height))
         return rect
 
-    def connect(self, socket_item, connection):
+    def connect(
+        self, socket_item: SocketItem, connection: ConnectionItem
+    ) -> None:
         """
         Connect to the given socket_item.
 
@@ -1962,7 +2041,7 @@ class PlugItem(SlotItem):
             connection.socketAttr,
         )
 
-    def disconnect(self, connection):
+    def disconnect(self, connection: ConnectionItem) -> None:
         """
         Disconnect the given connection from this plug item.
 
@@ -1990,8 +2069,14 @@ class SocketItem(SlotItem):
     """
 
     def __init__(
-        self, parent, attribute, index, preset, dataType, maxConnections
-    ):
+        self,
+        parent: QtWidgets.QGraphicsItem,
+        attribute: str,
+        index: int,
+        preset: str,
+        dataType: Any,
+        maxConnections: int,
+    ) -> None:
         """
         Initialize the socket.
 
@@ -2023,7 +2108,7 @@ class SocketItem(SlotItem):
         # Methods.
         self._createStyle(parent)
 
-    def _createStyle(self, parent):
+    def _createStyle(self, parent: QtWidgets.QGraphicsItem) -> None:
         """
         Read the attribute style from the configuration file.
 
@@ -2035,7 +2120,7 @@ class SocketItem(SlotItem):
             utils._convertDataToColor(config[self.preset]["socket"])
         )
 
-    def boundingRect(self):
+    def boundingRect(self) -> QtCore.QRectF:
         """
         The bounding rect based on the width and height variables.
 
@@ -2057,7 +2142,7 @@ class SocketItem(SlotItem):
         rect = QtCore.QRectF(QtCore.QRect(x, y, width, height))
         return rect
 
-    def connect(self, plug_item, connection):
+    def connect(self, plug_item: PlugItem, connection: ConnectionItem) -> None:
         """
         Connect to the given plug item.
 
@@ -2090,7 +2175,7 @@ class SocketItem(SlotItem):
             connection.socketAttr,
         )
 
-    def disconnect(self, connection):
+    def disconnect(self, connection: ConnectionItem) -> None:
         """
         Disconnect the given connection from this socket item.
 
@@ -2117,7 +2202,13 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
 
     """
 
-    def __init__(self, source_point, target_point, source, target):
+    def __init__(
+        self,
+        source_point: QtCore.QPoint,
+        target_point: QtCore.QPoint,
+        source: PlugItem | SocketItem,
+        target: PlugItem | SocketItem,
+    ) -> None:
         """
         Initialize the class.
 
@@ -2159,7 +2250,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         # Methods.
         self._createStyle()
 
-    def _createStyle(self):
+    def _createStyle(self) -> None:
         """
         Read the connection style from the configuration file.
 
@@ -2173,7 +2264,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         )
         self._pen.setWidth(config["connection_width"])
 
-    def _outputConnectionData(self):
+    def _outputConnectionData(self) -> tuple[str, str]:
         """
         .
 
@@ -2183,7 +2274,9 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
             "{0}.{1}".format(self.socketNode, self.socketAttr),
         )
 
-    def mousePressEvent(self, event):
+    def mousePressEvent(
+        self, event: QtWidgets.QGraphicsSceneMouseEvent
+    ) -> None:
         """
         Snap the Connection to the mouse.
 
@@ -2213,7 +2306,9 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
 
         self.updatePath()
 
-    def mouseMoveEvent(self, event):
+    def mouseMoveEvent(
+        self, event: QtWidgets.QGraphicsSceneMouseEvent
+    ) -> None:
         """
         Move the Connection with the mouse.
 
@@ -2244,7 +2339,9 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
 
         self.updatePath()
 
-    def mouseReleaseEvent(self, event):
+    def mouseReleaseEvent(
+        self, event: QtWidgets.QGraphicsSceneMouseEvent
+    ) -> None:
         """
         Create a Connection if possible, otherwise delete it.
 
@@ -2292,7 +2389,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
             else:
                 self._remove()
 
-    def _remove(self):
+    def _remove(self) -> None:
         """
         Remove this Connection from the scene.
 
@@ -2306,7 +2403,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         scene.removeItem(self)
         scene.update()
 
-    def updatePath(self):
+    def updatePath(self) -> None:
         """
         Update the path.
 

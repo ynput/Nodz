@@ -11,7 +11,9 @@ logging.basicConfig(
 nlog = logging.getLogger("Nodz")
 
 
-def _convertDataToColor(data=None, alternate=False, av=20):
+def _convertDataToColor(
+    data: list | None = None, alternate: bool = False, av: int = 20
+) -> QtGui.QColor:
     """
     Convert a list of 3 (rgb) or 4(rgba) values from the configuration
     file into a QColor.
@@ -54,7 +56,7 @@ def _convertDataToColor(data=None, alternate=False, av=20):
 
     # wrong
     else:
-        nlog.warning(f"Color from configuration is not recognized : {data}" )
+        nlog.warning(f"Color from configuration is not recognized : {data}")
         nlog.info("Can only be [R, G, B] or [R, G, B, A]")
         nlog.info("Using default color !")
         color = QtGui.QColor(120, 120, 120)
@@ -63,7 +65,7 @@ def _convertDataToColor(data=None, alternate=False, av=20):
         return color
 
 
-def _generateAlternateColorMultiplier(color, av):
+def _generateAlternateColorMultiplier(color: QtGui.QColor, av: int) -> float:
     """
     Generate a multiplier based on the input color lighness to increase
     the alternate value for dark color or reduce it for bright colors.
@@ -81,7 +83,9 @@ def _generateAlternateColorMultiplier(color, av):
     return mult
 
 
-def _createPointerBoundingBox(pointerPos, bbSize):
+def _createPointerBoundingBox(
+    pointerPos: QtCore.QPoint, bbSize: int
+) -> QtCore.QRectF:
     """
     generate a bounding box around the pointer.
 
@@ -106,7 +110,7 @@ def _createPointerBoundingBox(pointerPos, bbSize):
     return bb
 
 
-def _swapListIndices(inputList, oldIndex, newIndex):
+def _swapListIndices(inputList: list, oldIndex: int, newIndex: int) -> None:
     """
     Simply swap 2 indices in a the specified list.
 
@@ -132,7 +136,7 @@ def _swapListIndices(inputList, oldIndex, newIndex):
 
 
 # IO
-def _loadConfig(filePath):
+def _loadConfig(filePath: str) -> dict:
     """
     Read the configuration file and strips out comments.
 
@@ -151,7 +155,7 @@ def _loadConfig(filePath):
     return data
 
 
-def _saveData(filePath, data):
+def _saveData(filePath: str, data: dict) -> None:
     """
     save data as a .json file
 
@@ -169,7 +173,7 @@ def _saveData(filePath, data):
     nlog.info("Data successfully saved !")
 
 
-def _loadData(filePath):
+def _loadData(filePath: str) -> dict:
     """
     load data from a .json file.
 
