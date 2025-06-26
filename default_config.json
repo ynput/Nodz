@@ -7,7 +7,12 @@
     "antialiasing_boost": true,
     "smooth_pixmap": true,
 
+    // Viewport focus margins
     "viewport_margins": 10,
+
+    // nodes spacing when automatically laid out.
+    "horizontal_node_spacing": 75,
+    "vertical_node_spacing": 35,
 
     "node_font": "Arial",
     "node_font_size": 12,

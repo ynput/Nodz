@@ -392,6 +392,9 @@ class Nodz(QtWidgets.QGraphicsView):
         if event.key() == QtCore.Qt.Key.Key_A:
             self._frame_all()
 
+        if event.key() == QtCore.Qt.Key.Key_L:
+            self._layout_graph()
+
         if event.key() == QtCore.Qt.Key.Key_S:
             self._nodeSnap = True
 
@@ -454,6 +457,90 @@ class Nodz(QtWidgets.QGraphicsView):
         vp_margins = self.config["viewport_margins"]
         itemsArea.adjust(-vp_margins, -vp_margins - 10, vp_margins, vp_margins)
         self.fitInView(itemsArea, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+
+    def _center_graph_in_scene(self):
+        # Center the graph in the scene
+        scene_center = self.scene().sceneRect().center()
+        graph_center = self.scene().itemsBoundingRect().center()
+        offset = scene_center - graph_center
+        for node in self.scene_nodes.values():
+            node.setPos(node.pos() + offset)
+        self.nodz_scene.updateScene()
+
+    def _layout_graph(self):
+        """Organize nodes in the graph according to their connections."""
+        # Configuration
+        h_spacing = self.config["horizontal_node_spacing"]
+        v_spacing = self.config["vertical_node_spacing"]
+
+        node_names = list(self.scene_nodes.keys())
+
+        # Find root nodes (nodes without incoming connections)
+        root_nodes = [
+            node
+            for node_name in node_names
+            for node in (self.scene_nodes[node_name],)
+            if all(len(plug.connections) == 0 for plug in node.plugs.values())
+        ]
+        nlog.debug(f"_layout_graph: root_nodes: {[n.name for n in root_nodes]}")
+
+        # Initialize graph layout data
+        graph_depth = [
+            [(root_nodes[0], root_nodes[0].baseWidth, root_nodes[0].height)]
+        ]
+        scene_height = graph_depth[0][0][
+            2
+        ]  # Initial height is the root node's height
+
+        level = 0
+        while level >= 0:
+            has_connections = False
+            lheight = 0
+
+            for node, _, hgt in graph_depth[level]:
+                lheight += hgt + v_spacing
+
+                for attr, socket in node.sockets.items():
+                    if attr not in node.attrs:
+                        continue
+
+                    for connection in socket.connections:
+                        has_connections = True
+                        src_node = connection.plugItem.parentItem()
+                        if len(graph_depth) <= level + 1:
+                            graph_depth.append([])
+                        graph_depth[level + 1].append(
+                            (src_node, src_node.baseWidth, src_node.height)
+                        )
+
+            scene_height = max(scene_height, lheight)
+            level = level + 1 if has_connections else -1
+
+        nlog.debug(f"_layout_graph: graph_depth = {graph_depth}")
+
+        # Position nodes from bottom to top
+        start_pos = h_spacing
+        ymax = 0
+        positioned_nodes = []
+
+        for i, lst in enumerate(reversed(graph_depth)):
+            xpos = start_pos + i * (root_nodes[0].baseWidth + h_spacing)
+            ypos = v_spacing
+
+            for node, _, hgt in lst:
+                if node not in positioned_nodes:
+                    pos = QtCore.QPointF(xpos, ypos)
+                    ypos += hgt + v_spacing
+                    node.setPos(pos)
+                    positioned_nodes.append(node)
+            ymax = max(ymax, ypos)
+
+        for i, node in enumerate(root_nodes[1:]):
+            xpos = start_pos + i * (root_nodes[0].baseWidth + h_spacing)
+            node.setPos(xpos, ymax)
+
+        self.nodz_scene.updateScene()
+        self._center_graph_in_scene()
 
     def _getSelectionBoundingbox(self) -> QtCore.QRectF:
         """

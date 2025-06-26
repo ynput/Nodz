@@ -337,6 +337,62 @@ nodz.createAttribute(
     dataType=int,
 )
 
+# Node D
+nodeD = nodz.createNode(name="nodeD", preset="node_preset_1")
+
+nodz.createAttribute(
+    node=nodeD,
+    name="Dattr1",
+    index=-1,
+    preset="attr_preset_3",
+    plug=False,
+    socket=True,
+    dataType=str,
+)
+
+nodz.createAttribute(
+    node=nodeD,
+    name="Dattr2",
+    index=-1,
+    preset="attr_preset_3",
+    plug=True,
+    socket=False,
+    dataType=int,
+)
+
+# Node E
+nodeE = nodz.createNode(name="nodeE", preset="node_preset_1")
+
+nodz.createAttribute(
+    node=nodeE,
+    name="Eattr1",
+    index=-1,
+    preset="attr_preset_1",
+    plug=True,
+    socket=False,
+    dataType=str,
+)
+
+nodz.createAttribute(
+    node=nodeE,
+    name="Eattr2",
+    index=-1,
+    preset="attr_preset_2",
+    plug=False,
+    socket=True,
+    dataType=str,
+)
+
+nodz.createAttribute(
+    node=nodeE,
+    name="Eattr3",
+    index=-1,
+    preset="attr_preset_2",
+    plug=False,
+    socket=True,
+    dataType=int,
+)
+
 
 # Please note that this is a local test so once the graph is cleared
 # and reloaded, all the local variables are not valid anymore, which
@@ -346,6 +402,7 @@ nodz.createAttribute(
 # Connection creation
 nodz.createConnection("nodeB", "Battr2", "nodeA", "Aattr3")
 nodz.createConnection("nodeB", "Battr1", "nodeA", "Aattr4")
+nodz.createConnection("nodeD", "Dattr2", "nodeA", "Aattr6")
 
 # Attributes Edition
 nodz.editAttribute(node=nodeC, index=0, newName=None, newIndex=-1)
@@ -371,6 +428,7 @@ nodz.clearGraph()
 
 nodz.loadGraph(filePath="Enter your path")
 
+nodz._layout_graph()
 
 if app:
     # command line stand alone test... run our own event loop
