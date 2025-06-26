@@ -7,6 +7,8 @@
     "antialiasing_boost": true,
     "smooth_pixmap": true,
 
+    "viewport_margins": 10,
+
     "node_font": "Arial",
     "node_font_size": 12,
     "attr_font": "Arial",

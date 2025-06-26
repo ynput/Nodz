@@ -436,14 +436,11 @@ class Nodz(QtWidgets.QGraphicsView):
         """
         if self.scene().selectedItems():
             itemsArea = self._getSelectionBoundingbox()
-            self.fitInView(
-                itemsArea, QtCore.Qt.AspectRatioMode.KeepAspectRatio
-            )
         else:
             itemsArea = self.scene().itemsBoundingRect()
-            self.fitInView(
-                itemsArea, QtCore.Qt.AspectRatioMode.KeepAspectRatio
-            )
+        vp_margins = self.config["viewport_margins"]
+        itemsArea.adjust(-vp_margins, -vp_margins - 10, vp_margins, vp_margins)
+        self.fitInView(itemsArea, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
     def _getSelectionBoundingbox(self) -> QtCore.QRectF:
         """
