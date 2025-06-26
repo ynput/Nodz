@@ -21,29 +21,32 @@ class Nodz(QtWidgets.QGraphicsView):
 
     """
 
-    signal_NodeCreated = QtCore.Signal(object)
-    signal_NodeDeleted = QtCore.Signal(object)
-    signal_NodeEdited = QtCore.Signal(object, object)
-    signal_NodeSelected = QtCore.Signal(object)
-    signal_NodeMoved = QtCore.Signal(str, object)
-    signal_NodeDoubleClicked = QtCore.Signal(str)
+    # FIXME: Somehow QtCore.Signal is flagged by pylance as
+    # not exported by qtpy.QtCore...
 
-    signal_AttrCreated = QtCore.Signal(object, object)
-    signal_AttrDeleted = QtCore.Signal(object, object)
-    signal_AttrEdited = QtCore.Signal(object, object, object)
+    signal_NodeCreated = QtCore.Signal(object)  # type: ignore (qtpy)
+    signal_NodeDeleted = QtCore.Signal(object)  # type: ignore (qtpy)
+    signal_NodeEdited = QtCore.Signal(object, object)  # type: ignore (qtpy)
+    signal_NodeSelected = QtCore.Signal(object)  # type: ignore (qtpy)
+    signal_NodeMoved = QtCore.Signal(str, object)  # type: ignore (qtpy)
+    signal_NodeDoubleClicked = QtCore.Signal(str)  # type: ignore (qtpy)
 
-    signal_PlugConnected = QtCore.Signal(object, object, object, object)
-    signal_PlugDisconnected = QtCore.Signal(object, object, object, object)
-    signal_SocketConnected = QtCore.Signal(object, object, object, object)
-    signal_SocketDisconnected = QtCore.Signal(object, object, object, object)
+    signal_AttrCreated = QtCore.Signal(object, object)  # type: ignore (qtpy)
+    signal_AttrDeleted = QtCore.Signal(object, object)  # type: ignore (qtpy)
+    signal_AttrEdited = QtCore.Signal(object, object, object)  # type: ignore (qtpy)
 
-    signal_GraphSaved = QtCore.Signal()
-    signal_GraphLoaded = QtCore.Signal()
-    signal_GraphCleared = QtCore.Signal()
-    signal_GraphEvaluated = QtCore.Signal()
+    signal_PlugConnected = QtCore.Signal(object, object, object, object)  # type: ignore (qtpy)
+    signal_PlugDisconnected = QtCore.Signal(object, object, object, object)  # type: ignore (qtpy)
+    signal_SocketConnected = QtCore.Signal(object, object, object, object)  # type: ignore (qtpy)
+    signal_SocketDisconnected = QtCore.Signal(object, object, object, object)  # type: ignore (qtpy)
 
-    signal_KeyPressed = QtCore.Signal(object)
-    signal_Dropped = QtCore.Signal()
+    signal_GraphSaved = QtCore.Signal()  # type: ignore (qtpy)
+    signal_GraphLoaded = QtCore.Signal()  # type: ignore (qtpy)
+    signal_GraphCleared = QtCore.Signal()  # type: ignore (qtpy)
+    signal_GraphEvaluated = QtCore.Signal()  # type: ignore (qtpy)
+
+    signal_KeyPressed = QtCore.Signal(object)  # type: ignore (qtpy)
+    signal_Dropped = QtCore.Signal()  # type: ignore (qtpy)
 
     def __init__(
         self,
