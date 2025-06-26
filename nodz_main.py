@@ -129,6 +129,30 @@ class Nodz(QtWidgets.QGraphicsView):
                 "Scene hasn't been setup yet ! Run Nodz.Initialize() first."
             )
 
+    def drawForeground(
+        self, painter: QtGui.QPainter, rect: QtCore.QRectF | QtCore.QRect
+    ) -> None:
+        """
+        draw help with available keyboard shortcuts.
+        """
+        h_str = (
+            "Keyboard Shortcuts:   "
+            "L: organize graph    A: Frame graph    F: Frame selection    "
+            "S-down: Snap to grid"
+        )
+        vp_bottom_left = self.viewport().rect().bottomLeft()
+        painter.resetTransform()
+        h_pen = QtGui.QPen()
+        h_pen.setColor(QtGui.QColor(255, 255, 255, 96))
+        painter.setPen(h_pen)
+        hrect = painter.fontMetrics().boundingRect(h_str)
+        painter.drawText(
+            QtCore.QPointF(
+                vp_bottom_left.x() + 20, vp_bottom_left.y() - hrect.height()
+            ),
+            h_str,
+        )
+
     def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         """
         Zoom in the view with the mouse wheel.
@@ -482,7 +506,9 @@ class Nodz(QtWidgets.QGraphicsView):
             for node in (self.scene_nodes[node_name],)
             if all(len(plug.connections) == 0 for plug in node.plugs.values())
         ]
-        nlog.debug(f"_layout_graph: root_nodes: {[n.name for n in root_nodes]}")
+        nlog.debug(
+            f"_layout_graph: root_nodes: {[n.name for n in root_nodes]}"
+        )
 
         # Initialize graph layout data
         graph_depth = [
