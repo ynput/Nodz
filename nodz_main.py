@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 from typing import Any
-from enum import Enum, auto
+from enum import Enum
 from qtpy import QtGui, QtCore, QtWidgets
 import nodz_utils as utils
 from nodz_utils import nlog
