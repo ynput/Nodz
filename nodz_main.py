@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 from typing import Any
-
+from enum import Enum, auto
 from qtpy import QtGui, QtCore, QtWidgets
 import nodz_utils as utils
 from nodz_utils import nlog
@@ -30,6 +30,17 @@ def _nodz_scene(cls) -> NodeScene:
         return scene
     else:
         raise TypeError(f"Unexpected scene type: {scene}")
+
+
+class ViewState(Enum):
+    DEFAULT = 0
+    SELECTION = 1
+    ADD_SELECTION = 2
+    SUBTRACT_SELECTION = 3
+    TOGGLE_SELECTION = 4
+    ZOOM_VIEW = 5
+    DRAG_VIEW = 6
+    DRAG_ITEM = 7
 
 
 class Nodz(QtWidgets.QGraphicsView):
@@ -93,7 +104,7 @@ class Nodz(QtWidgets.QGraphicsView):
         self.sourceSlot: SlotItem | None = None
 
         # Display options.
-        self.currentState = "DEFAULT"
+        self.currentState = ViewState.DEFAULT
         self.pressedKeys = list()
 
     @property
@@ -123,7 +134,7 @@ class Nodz(QtWidgets.QGraphicsView):
         Zoom in the view with the mouse wheel.
 
         """
-        self.currentState = "ZOOM_VIEW"
+        self.currentState = ViewState.ZOOM_VIEW
         self.setTransformationAnchor(
             QtWidgets.QGraphicsView.ViewportAnchor.AnchorUnderMouse
         )
@@ -139,7 +150,7 @@ class Nodz(QtWidgets.QGraphicsView):
             zoomFactor = outFactor
 
         self.scale(zoomFactor, zoomFactor)
-        self.currentState = "DEFAULT"
+        self.currentState = ViewState.DEFAULT
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         """
@@ -151,7 +162,7 @@ class Nodz(QtWidgets.QGraphicsView):
             event.button() == QtCore.Qt.MouseButton.RightButton
             and event.modifiers() == QtCore.Qt.KeyboardModifier.AltModifier
         ):
-            self.currentState = "ZOOM_VIEW"
+            self.currentState = ViewState.ZOOM_VIEW
             self.initMousePos = event.pos()
             self.zoomInitialPos = event.pos()
             self.initMouse = QtGui.QCursor.pos()
@@ -162,7 +173,7 @@ class Nodz(QtWidgets.QGraphicsView):
             event.button() == QtCore.Qt.MouseButton.MiddleButton
             and event.modifiers() == QtCore.Qt.KeyboardModifier.AltModifier
         ):
-            self.currentState = "DRAG_VIEW"
+            self.currentState = ViewState.DRAG_VIEW
             self.prevPos = event.pos()
             self.setCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
             self.setInteractive(False)
@@ -176,7 +187,7 @@ class Nodz(QtWidgets.QGraphicsView):
             )
             is None
         ):
-            self.currentState = "SELECTION"
+            self.currentState = ViewState.SELECTION
             self._initRubberband(event.pos().toPointF())
             self.setInteractive(False)
 
@@ -189,7 +200,7 @@ class Nodz(QtWidgets.QGraphicsView):
             )
             is not None
         ):
-            self.currentState = "DRAG_ITEM"
+            self.currentState = ViewState.DRAG_ITEM
             self.setInteractive(True)
 
         # Add selection
@@ -198,7 +209,7 @@ class Nodz(QtWidgets.QGraphicsView):
             and QtCore.Qt.Key.Key_Shift in self.pressedKeys
             and QtCore.Qt.Key.Key_Control in self.pressedKeys
         ):
-            self.currentState = "ADD_SELECTION"
+            self.currentState = ViewState.ADD_SELECTION
             self._initRubberband(event.pos().toPointF())
             self.setInteractive(False)
 
@@ -207,7 +218,7 @@ class Nodz(QtWidgets.QGraphicsView):
             event.button() == QtCore.Qt.MouseButton.LeftButton
             and event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier
         ):
-            self.currentState = "SUBTRACT_SELECTION"
+            self.currentState = ViewState.SUBTRACT_SELECTION
             self._initRubberband(event.pos().toPointF())
             self.setInteractive(False)
 
@@ -216,12 +227,12 @@ class Nodz(QtWidgets.QGraphicsView):
             event.button() == QtCore.Qt.MouseButton.LeftButton
             and event.modifiers() == QtCore.Qt.KeyboardModifier.ShiftModifier
         ):
-            self.currentState = "TOGGLE_SELECTION"
+            self.currentState = ViewState.TOGGLE_SELECTION
             self._initRubberband(event.pos().toPointF())
             self.setInteractive(False)
 
         else:
-            self.currentState = "DEFAULT"
+            self.currentState = ViewState.DEFAULT
 
         super(Nodz, self).mousePressEvent(event)
 
@@ -231,7 +242,7 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         # Zoom.
-        if self.currentState == "ZOOM_VIEW":
+        if self.currentState == ViewState.ZOOM_VIEW:
             offset = self.zoomInitialPos.x() - event.pos().x()
 
             if offset > self.previousMouseOffset:
@@ -271,7 +282,7 @@ class Nodz(QtWidgets.QGraphicsView):
             self.translate(diff.x(), diff.y())
 
         # Drag canvas.
-        elif self.currentState == "DRAG_VIEW":
+        elif self.currentState == ViewState.DRAG_VIEW:
             offset = self.prevPos - event.pos()
             self.prevPos = event.pos()
             self.verticalScrollBar().setValue(
@@ -283,10 +294,10 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # RuberBand selection.
         elif (
-            self.currentState == "SELECTION"
-            or self.currentState == "ADD_SELECTION"
-            or self.currentState == "SUBTRACT_SELECTION"
-            or self.currentState == "TOGGLE_SELECTION"
+            self.currentState == ViewState.SELECTION
+            or self.currentState == ViewState.ADD_SELECTION
+            or self.currentState == ViewState.SUBTRACT_SELECTION
+            or self.currentState == ViewState.TOGGLE_SELECTION
         ):
             self.rubberband.setGeometry(
                 QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
@@ -300,19 +311,19 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         # Zoom the View.
-        if self.currentState == ".ZOOM_VIEW":
+        if self.currentState == ViewState.ZOOM_VIEW:
             self.offset = 0
             self.zoomDirection = 0
             self.zoomIncr = 0
             self.setInteractive(True)
 
         # Drag View.
-        elif self.currentState == "DRAG_VIEW":
+        elif self.currentState == ViewState.DRAG_VIEW:
             self.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
             self.setInteractive(True)
 
         # Selection.
-        elif self.currentState == "SELECTION":
+        elif self.currentState == ViewState.SELECTION:
             self.rubberband.setGeometry(
                 QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
@@ -321,7 +332,7 @@ class Nodz(QtWidgets.QGraphicsView):
             self.scene().setSelectionArea(painterPath)
 
         # Add Selection.
-        elif self.currentState == "ADD_SELECTION":
+        elif self.currentState == ViewState.ADD_SELECTION:
             self.rubberband.setGeometry(
                 QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
@@ -331,7 +342,7 @@ class Nodz(QtWidgets.QGraphicsView):
                 item.setSelected(True)
 
         # Subtract Selection.
-        elif self.currentState == "SUBTRACT_SELECTION":
+        elif self.currentState == ViewState.SUBTRACT_SELECTION:
             self.rubberband.setGeometry(
                 QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
@@ -341,7 +352,7 @@ class Nodz(QtWidgets.QGraphicsView):
                 item.setSelected(False)
 
         # Toggle Selection
-        elif self.currentState == "TOGGLE_SELECTION":
+        elif self.currentState == ViewState.TOGGLE_SELECTION:
             self.rubberband.setGeometry(
                 QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
@@ -353,7 +364,7 @@ class Nodz(QtWidgets.QGraphicsView):
                 else:
                     item.setSelected(True)
 
-        self.currentState = "DEFAULT"
+        self.currentState = ViewState.DEFAULT
 
         super(Nodz, self).mouseReleaseEvent(event)
 
