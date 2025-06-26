@@ -389,6 +389,9 @@ class Nodz(QtWidgets.QGraphicsView):
         if event.key() == QtCore.Qt.Key.Key_F:
             self._focus()
 
+        if event.key() == QtCore.Qt.Key.Key_A:
+            self._frame_all()
+
         if event.key() == QtCore.Qt.Key.Key_S:
             self._nodeSnap = True
 
@@ -438,6 +441,16 @@ class Nodz(QtWidgets.QGraphicsView):
             itemsArea = self._getSelectionBoundingbox()
         else:
             itemsArea = self.scene().itemsBoundingRect()
+        vp_margins = self.config["viewport_margins"]
+        itemsArea.adjust(-vp_margins, -vp_margins - 10, vp_margins, vp_margins)
+        self.fitInView(itemsArea, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+
+    def _frame_all(self) -> None:
+        """
+        Frame the whole scene, irrespective of the current selection.
+
+        """
+        itemsArea = self.scene().itemsBoundingRect()
         vp_margins = self.config["viewport_margins"]
         itemsArea.adjust(-vp_margins, -vp_margins - 10, vp_margins, vp_margins)
         self.fitInView(itemsArea, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
