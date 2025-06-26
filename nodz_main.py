@@ -80,7 +80,9 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         self.currentState = "ZOOM_VIEW"
-        self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
+        self.setTransformationAnchor(
+            QtWidgets.QGraphicsView.ViewportAnchor.AnchorUnderMouse
+        )
 
         inFactor = 1.15
         outFactor = 1 / inFactor
@@ -105,8 +107,8 @@ class Nodz(QtWidgets.QGraphicsView):
         """
         # Tablet zoom
         if (
-            event.button() == QtCore.Qt.RightButton
-            and event.modifiers() == QtCore.Qt.AltModifier
+            event.button() == QtCore.Qt.MouseButton.RightButton
+            and event.modifiers() == QtCore.Qt.KeyboardModifier.AltModifier
         ):
             self.currentState = "ZOOM_VIEW"
             self.initMousePos = event.pos()
@@ -116,18 +118,18 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # Drag view
         elif (
-            event.button() == QtCore.Qt.MiddleButton
-            and event.modifiers() == QtCore.Qt.AltModifier
+            event.button() == QtCore.Qt.MouseButton.MiddleButton
+            and event.modifiers() == QtCore.Qt.KeyboardModifier.AltModifier
         ):
             self.currentState = "DRAG_VIEW"
             self.prevPos = event.pos()
-            self.setCursor(QtCore.Qt.ClosedHandCursor)
+            self.setCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
             self.setInteractive(False)
 
         # Rubber band selection
         elif (
-            event.button() == QtCore.Qt.LeftButton
-            and event.modifiers() == QtCore.Qt.NoModifier
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and event.modifiers() == QtCore.Qt.KeyboardModifier.NoModifier
             and self.scene().itemAt(
                 self.mapToScene(event.pos()), QtGui.QTransform()
             )
@@ -139,8 +141,8 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # Drag Item
         elif (
-            event.button() == QtCore.Qt.LeftButton
-            and event.modifiers() == QtCore.Qt.NoModifier
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and event.modifiers() == QtCore.Qt.KeyboardModifier.NoModifier
             and self.scene().itemAt(
                 self.mapToScene(event.pos()), QtGui.QTransform()
             )
@@ -151,9 +153,9 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # Add selection
         elif (
-            event.button() == QtCore.Qt.LeftButton
-            and QtCore.Qt.Key_Shift in self.pressedKeys
-            and QtCore.Qt.Key_Control in self.pressedKeys
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and QtCore.Qt.Key.Key_Shift in self.pressedKeys
+            and QtCore.Qt.Key.Key_Control in self.pressedKeys
         ):
             self.currentState = "ADD_SELECTION"
             self._initRubberband(event.pos().toPointF())
@@ -161,8 +163,8 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # Subtract selection
         elif (
-            event.button() == QtCore.Qt.LeftButton
-            and event.modifiers() == QtCore.Qt.ControlModifier
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier
         ):
             self.currentState = "SUBTRACT_SELECTION"
             self._initRubberband(event.pos().toPointF())
@@ -170,8 +172,8 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # Toggle selection
         elif (
-            event.button() == QtCore.Qt.LeftButton
-            and event.modifiers() == QtCore.Qt.ShiftModifier
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and event.modifiers() == QtCore.Qt.KeyboardModifier.ShiftModifier
         ):
             self.currentState = "TOGGLE_SELECTION"
             self._initRubberband(event.pos().toPointF())
@@ -216,13 +218,15 @@ class Nodz(QtWidgets.QGraphicsView):
             # Perform zoom and re-center on initial click position.
             pBefore = self.mapToScene(self.initMousePos)
             self.setTransformationAnchor(
-                QtWidgets.QGraphicsView.AnchorViewCenter
+                QtWidgets.QGraphicsView.ViewportAnchor.AnchorViewCenter
             )
             self.scale(zoomFactor, zoomFactor)
             pAfter = self.mapToScene(self.initMousePos)
             diff = pAfter - pBefore
 
-            self.setTransformationAnchor(QtWidgets.QGraphicsView.NoAnchor)
+            self.setTransformationAnchor(
+                QtWidgets.QGraphicsView.ViewportAnchor.NoAnchor
+            )
             self.translate(diff.x(), diff.y())
 
         # Drag canvas.
@@ -263,7 +267,7 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # Drag View.
         elif self.currentState == "DRAG_VIEW":
-            self.setCursor(QtCore.Qt.ArrowCursor)
+            self.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
             self.setInteractive(True)
 
         # Selection.
@@ -324,13 +328,16 @@ class Nodz(QtWidgets.QGraphicsView):
         if event.key() not in self.pressedKeys:
             self.pressedKeys.append(event.key())
 
-        if event.key() in (QtCore.Qt.Key_Delete, QtCore.Qt.Key_Backspace):
+        if event.key() in (
+            QtCore.Qt.Key.Key_Delete,
+            QtCore.Qt.Key.Key_Backspace,
+        ):
             self._deleteSelectedNodes()
 
-        if event.key() == QtCore.Qt.Key_F:
+        if event.key() == QtCore.Qt.Key.Key_F:
             self._focus()
 
-        if event.key() == QtCore.Qt.Key_S:
+        if event.key() == QtCore.Qt.Key.Key_S:
             self._nodeSnap = True
 
         # Emit signal.
@@ -341,7 +348,7 @@ class Nodz(QtWidgets.QGraphicsView):
         Clear the key from the pressed key list.
 
         """
-        if event.key() == QtCore.Qt.Key_S:
+        if event.key() == QtCore.Qt.Key.Key_S:
             self._nodeSnap = False
 
         if event.key() in self.pressedKeys:
@@ -377,10 +384,14 @@ class Nodz(QtWidgets.QGraphicsView):
         """
         if self.scene().selectedItems():
             itemsArea = self._getSelectionBoundingbox()
-            self.fitInView(itemsArea, QtCore.Qt.KeepAspectRatio)
+            self.fitInView(
+                itemsArea, QtCore.Qt.AspectRatioMode.KeepAspectRatio
+            )
         else:
             itemsArea = self.scene().itemsBoundingRect()
-            self.fitInView(itemsArea, QtCore.Qt.KeepAspectRatio)
+            self.fitInView(
+                itemsArea, QtCore.Qt.AspectRatioMode.KeepAspectRatio
+            )
 
     def _getSelectionBoundingbox(self) -> QtCore.QRectF:
         """
@@ -443,25 +454,30 @@ class Nodz(QtWidgets.QGraphicsView):
         """
         # Setup view.
         config = self.config
-        self.setRenderHint(QtGui.QPainter.Antialiasing, config["antialiasing"])
         self.setRenderHint(
-            QtGui.QPainter.TextAntialiasing, config["antialiasing"]
+            QtGui.QPainter.RenderHint.Antialiasing, config["antialiasing"]
         )
-        if not PYSIDE_VERSION.startswith("6"):
-            self.setRenderHint(
-                QtGui.QPainter.HighQualityAntialiasing,
-                config["antialiasing_boost"],
-            )
-            self.setRenderHint(QtGui.QPainter.NonCosmeticDefaultPen, True)
         self.setRenderHint(
-            QtGui.QPainter.SmoothPixmapTransform, config["smooth_pixmap"]
+            QtGui.QPainter.RenderHint.TextAntialiasing, config["antialiasing"]
         )
-        self.setViewportUpdateMode(QtWidgets.QGraphicsView.FullViewportUpdate)
-        self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
-        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.setRenderHint(
+            QtGui.QPainter.RenderHint.SmoothPixmapTransform,
+            config["smooth_pixmap"],
+        )
+        self.setViewportUpdateMode(
+            QtWidgets.QGraphicsView.ViewportUpdateMode.FullViewportUpdate
+        )
+        self.setTransformationAnchor(
+            QtWidgets.QGraphicsView.ViewportAnchor.AnchorUnderMouse
+        )
+        self.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         self.rubberband = QtWidgets.QRubberBand(
-            QtWidgets.QRubberBand.Rectangle, self
+            QtWidgets.QRubberBand.Shape.Rectangle, self
         )
 
         # Setup scene.
@@ -1054,7 +1070,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         Make the dragging of nodes into the scene possible.
 
         """
-        event.setDropAction(QtCore.Qt.MoveAction)
+        event.setDropAction(QtCore.Qt.DropAction.MoveAction)
         event.accept()
 
     def dragMoveEvent(
@@ -1065,7 +1081,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         Make the dragging of nodes into the scene possible.
 
         """
-        event.setDropAction(QtCore.Qt.MoveAction)
+        event.setDropAction(QtCore.Qt.DropAction.MoveAction)
         event.accept()
 
     def dropEvent(
@@ -1093,7 +1109,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         config = self.parent().config
 
         self._brush = QtGui.QBrush()
-        self._brush.setStyle(QtCore.Qt.SolidPattern)
+        self._brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
         self._brush.setColor(utils._convertDataToColor(config["bg_color"]))
 
         painter.fillRect(rect, self._brush)
@@ -1217,8 +1233,8 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
         """
         self.setAcceptHoverEvents(True)
-        self.setFlag(QtWidgets.QGraphicsItem.ItemIsMovable)
-        self.setFlag(QtWidgets.QGraphicsItem.ItemIsSelectable)
+        self.setFlag(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
+        self.setFlag(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
 
         # Dimensions.
         self.baseWidth = config["node_width"]
@@ -1232,46 +1248,50 @@ class NodeItem(QtWidgets.QGraphicsItem):
         self.nodeCenter.setY(self.height / 2.0)
 
         self._brush = QtGui.QBrush()
-        self._brush.setStyle(QtCore.Qt.SolidPattern)
+        self._brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
         self._brush.setColor(
             utils._convertDataToColor(config[self.nodePreset]["bg"])
         )
 
         self._pen = QtGui.QPen()
-        self._pen.setStyle(QtCore.Qt.SolidLine)
+        self._pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
         self._pen.setWidth(self.border)
         self._pen.setColor(
             utils._convertDataToColor(config[self.nodePreset]["border"])
         )
 
         self._penSel = QtGui.QPen()
-        self._penSel.setStyle(QtCore.Qt.SolidLine)
+        self._penSel.setStyle(QtCore.Qt.PenStyle.SolidLine)
         self._penSel.setWidth(self.border)
         self._penSel.setColor(
             utils._convertDataToColor(config[self.nodePreset]["border_sel"])
         )
 
         self._textPen = QtGui.QPen()
-        self._textPen.setStyle(QtCore.Qt.SolidLine)
+        self._textPen.setStyle(QtCore.Qt.PenStyle.SolidLine)
         self._textPen.setColor(
             utils._convertDataToColor(config[self.nodePreset]["text"])
         )
 
         self._nodeTextFont = QtGui.QFont(
-            config["node_font"], config["node_font_size"], QtGui.QFont.Bold
+            config["node_font"],
+            config["node_font_size"],
+            QtGui.QFont.Weight.Bold,
         )
         self._attrTextFont = QtGui.QFont(
-            config["attr_font"], config["attr_font_size"], QtGui.QFont.Normal
+            config["attr_font"],
+            config["attr_font_size"],
+            QtGui.QFont.Weight.Normal,
         )
 
         self._attrBrush = QtGui.QBrush()
-        self._attrBrush.setStyle(QtCore.Qt.SolidPattern)
+        self._attrBrush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
 
         self._attrBrushAlt = QtGui.QBrush()
-        self._attrBrushAlt.setStyle(QtCore.Qt.SolidPattern)
+        self._attrBrushAlt.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
 
         self._attrPen = QtGui.QPen()
-        self._attrPen.setStyle(QtCore.Qt.SolidLine)
+        self._attrPen.setStyle(QtCore.Qt.PenStyle.SolidLine)
 
     def _createAttribute(
         self,
@@ -1477,7 +1497,9 @@ class NodeItem(QtWidgets.QGraphicsItem):
         margin = (text_width - self.baseWidth) * 0.5
         textRect = QtCore.QRect(-margin, -text_height, text_width, text_height)
 
-        painter.drawText(textRect, QtCore.Qt.AlignCenter, self.name)
+        painter.drawText(
+            textRect, QtCore.Qt.AlignmentFlag.AlignCenter, self.name
+        )
 
         # Attributes.
         offset = 0
@@ -1545,7 +1567,9 @@ class NodeItem(QtWidgets.QGraphicsItem):
                 rect.width() - 2 * self.radius,
                 rect.height(),
             )
-            painter.drawText(textRect, QtCore.Qt.AlignVCenter, name)
+            painter.drawText(
+                textRect, QtCore.Qt.AlignmentFlag.AlignVCenter, name
+            )
 
             offset += self.attrHeight
 
@@ -1686,10 +1710,10 @@ class SlotItem(QtWidgets.QGraphicsItem):
 
         # Style.
         self.brush = QtGui.QBrush()
-        self.brush.setStyle(QtCore.Qt.SolidPattern)
+        self.brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
 
         self.pen = QtGui.QPen()
-        self.pen.setStyle(QtCore.Qt.SolidLine)
+        self.pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
 
         # Connections storage.
         self.connected_slots = list()
@@ -1737,7 +1761,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
         Start the connection process.
 
         """
-        if event.button() == QtCore.Qt.LeftButton:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
             self.newConnection = ConnectionItem(
                 self.center().toPoint(),
                 self.mapToScene(event.pos()).toPoint(),
@@ -1797,7 +1821,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
 
         """
         nodzInst = self.scene().views()[0]
-        if event.button() == QtCore.Qt.LeftButton:
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
             nodzInst.drawingConnection = False
             nodzInst.currentDataType = None
 
@@ -1871,7 +1895,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
                     )
                 else:
                     _penValid = QtGui.QPen()
-                    _penValid.setStyle(QtCore.Qt.SolidLine)
+                    _penValid.setStyle(QtCore.Qt.PenStyle.SolidLine)
                     _penValid.setWidth(2)
                     _penValid.setColor(QtGui.QColor(255, 255, 255, 255))
                     painter.setPen(_penValid)
@@ -1945,7 +1969,7 @@ class PlugItem(SlotItem):
         """
         config = parent.scene().views()[0].config
         self.brush = QtGui.QBrush()
-        self.brush.setStyle(QtCore.Qt.SolidPattern)
+        self.brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
         self.brush.setColor(
             utils._convertDataToColor(config[self.preset]["plug"])
         )
@@ -2083,7 +2107,7 @@ class SocketItem(SlotItem):
         """
         config = parent.scene().views()[0].config
         self.brush = QtGui.QBrush()
-        self.brush.setStyle(QtCore.Qt.SolidPattern)
+        self.brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
         self.brush.setColor(
             utils._convertDataToColor(config[self.preset]["socket"])
         )
