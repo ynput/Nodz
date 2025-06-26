@@ -7,7 +7,7 @@ import nodz_utils as utils
 from nodz_utils import nlog
 
 
-defaultConfigPath = os.path.join(
+DEFAULT_CONFIG_PATH = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), "default_config.json"
 )
 
@@ -71,7 +71,7 @@ class Nodz(QtWidgets.QGraphicsView):
     def __init__(
         self,
         parent: Any,
-        configPath: str = defaultConfigPath,
+        configPath: str = DEFAULT_CONFIG_PATH,
     ):
         """
         Initialize the graphics view.
