@@ -624,7 +624,7 @@ class Nodz(QtWidgets.QGraphicsView):
                          use.
 
         """
-        self.config = utils._loadConfig(filePath)
+        self.config = utils._load_config(filePath)
 
     def initialize(self) -> None:
         """
@@ -960,7 +960,7 @@ class Nodz(QtWidgets.QGraphicsView):
             node.attrs[index] = newName
 
         if isinstance(newIndex, int):
-            utils._swapListIndices(node.attrs, index, newIndex)
+            utils._swap_list_indices(node.attrs, index, newIndex)
 
             # Refresh connections.
             for plug in node.plugs.values():
@@ -1044,7 +1044,7 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # Save data.
         try:
-            utils._saveData(filePath=filePath, data=data)
+            utils._save_data(file_path=filePath, data=data)
         except BaseException:
             raise FileNotFoundError(f"Invalid path : {filePath}")
 
@@ -1062,7 +1062,7 @@ class Nodz(QtWidgets.QGraphicsView):
         """
         # Load data.
         if os.path.exists(filePath):
-            data = utils._loadData(filePath=filePath)
+            data = utils._load_data(file_path=filePath)
         else:
             raise FileNotFoundError(f"Invalid path : {filePath}")
 
@@ -1300,7 +1300,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         self._brush = QtGui.QBrush()
         self._brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
-        self._brush.setColor(utils._convertDataToColor(config["bg_color"]))
+        self._brush.setColor(utils._convert_data_to_color(config["bg_color"]))
 
         painter.fillRect(rect, self._brush)
 
@@ -1320,7 +1320,9 @@ class NodeScene(QtWidgets.QGraphicsScene):
                 u += self.gridSize
 
             self.pen = QtGui.QPen()
-            self.pen.setColor(utils._convertDataToColor(config["grid_color"]))
+            self.pen.setColor(
+                utils._convert_data_to_color(config["grid_color"])
+            )
             self.pen.setWidth(0)
             painter.setPen(self.pen)
             painter.drawLines(lines)
@@ -1451,27 +1453,27 @@ class NodeItem(QtWidgets.QGraphicsItem):
         self._brush = QtGui.QBrush()
         self._brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
         self._brush.setColor(
-            utils._convertDataToColor(config[self.nodePreset]["bg"])
+            utils._convert_data_to_color(config[self.nodePreset]["bg"])
         )
 
         self._pen = QtGui.QPen()
         self._pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
         self._pen.setWidth(self.border)
         self._pen.setColor(
-            utils._convertDataToColor(config[self.nodePreset]["border"])
+            utils._convert_data_to_color(config[self.nodePreset]["border"])
         )
 
         self._penSel = QtGui.QPen()
         self._penSel.setStyle(QtCore.Qt.PenStyle.SolidLine)
         self._penSel.setWidth(self.border)
         self._penSel.setColor(
-            utils._convertDataToColor(config[self.nodePreset]["border_sel"])
+            utils._convert_data_to_color(config[self.nodePreset]["border_sel"])
         )
 
         self._textPen = QtGui.QPen()
         self._textPen.setStyle(QtCore.Qt.PenStyle.SolidLine)
         self._textPen.setColor(
-            utils._convertDataToColor(config[self.nodePreset]["text"])
+            utils._convert_data_to_color(config[self.nodePreset]["text"])
         )
 
         self._nodeTextFont = QtGui.QFont(
@@ -1723,16 +1725,16 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
             # Attribute base.
             self._attrBrush.setColor(
-                utils._convertDataToColor(config[preset]["bg"])
+                utils._convert_data_to_color(config[preset]["bg"])
             )
             if self.alternate:
                 self._attrBrushAlt.setColor(
-                    utils._convertDataToColor(
+                    utils._convert_data_to_color(
                         config[preset]["bg"], True, config["alternate_value"]
                     )
                 )
 
-            self._attrPen.setColor(utils._convertDataToColor([0, 0, 0, 0]))
+            self._attrPen.setColor(utils._convert_data_to_color([0, 0, 0, 0]))
             painter.setPen(self._attrPen)
             painter.setBrush(self._attrBrush)
             if (offset / self.attrHeight) % 2:
@@ -1741,7 +1743,9 @@ class NodeItem(QtWidgets.QGraphicsItem):
             painter.drawRect(rect)
 
             # Attribute label.
-            painter.setPen(utils._convertDataToColor(config[preset]["text"]))
+            painter.setPen(
+                utils._convert_data_to_color(config[preset]["text"])
+            )
             painter.setFont(self._attrTextFont)
 
             # Search non-connectable attributes.
@@ -1759,7 +1763,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
                     ):
                         # Set non-connectable attributes color.
                         painter.setPen(
-                            utils._convertDataToColor(
+                            utils._convert_data_to_color(
                                 config["non_connectable_color"]
                             )
                         )
@@ -2004,7 +2008,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
         nodzInst = self.nodz_instance
         config = nodzInst.config
         if nodzInst.drawingConnection:
-            mbb = utils._createPointerBoundingBox(
+            mbb = utils._create_pointer_bounding_box(
                 pointerPos=event.scenePos().toPoint(),
                 bbSize=config["mouse_bounding_box"],
             )
@@ -2096,7 +2100,9 @@ class SlotItem(QtWidgets.QGraphicsItem):
         if nodzInst.drawingConnection:
             if self.parentItem() == nodzInst.currentHoveredNode:
                 painter.setBrush(
-                    utils._convertDataToColor(config["non_connectable_color"])
+                    utils._convert_data_to_color(
+                        config["non_connectable_color"]
+                    )
                 )
                 if not nodzInst.sourceSlot:
                     raise TypeError("Invalid sourceSlot")
@@ -2105,7 +2111,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
                     and self.dataType != nodzInst.sourceSlot.dataType
                 ):
                     painter.setBrush(
-                        utils._convertDataToColor(
+                        utils._convert_data_to_color(
                             config["non_connectable_color"]
                         )
                     )
@@ -2187,7 +2193,7 @@ class PlugItem(SlotItem):
         self.brush = QtGui.QBrush()
         self.brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
         self.brush.setColor(
-            utils._convertDataToColor(config[self.preset]["plug"])
+            utils._convert_data_to_color(config[self.preset]["plug"])
         )
 
     def boundingRect(self) -> QtCore.QRectF:
@@ -2321,7 +2327,7 @@ class SocketItem(SlotItem):
         self.brush = QtGui.QBrush()
         self.brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
         self.brush.setColor(
-            utils._convertDataToColor(config[self.preset]["socket"])
+            utils._convert_data_to_color(config[self.preset]["socket"])
         )
 
     def boundingRect(self) -> QtCore.QRectF:
@@ -2465,7 +2471,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         self.setZValue(-1)
 
         self._pen = QtGui.QPen(
-            utils._convertDataToColor(config["connection_color"])
+            utils._convert_data_to_color(config["connection_color"])
         )
         self._pen.setWidth(config["connection_width"])
 
@@ -2525,7 +2531,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         nodzInst = self.nodz_instance
         config = nodzInst.config
 
-        mbb = utils._createPointerBoundingBox(
+        mbb = utils._create_pointer_bounding_box(
             pointerPos=event.scenePos().toPoint(),
             bbSize=config["mouse_bounding_box"],
         )

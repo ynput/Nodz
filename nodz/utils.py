@@ -10,7 +10,7 @@ logging.basicConfig(
 nlog = logging.getLogger("Nodz")
 
 
-def _convertDataToColor(
+def _convert_data_to_color(
     data: list, alternate: bool = False, av: int = 20
 ) -> QtGui.QColor:
     """
@@ -31,7 +31,7 @@ def _convertDataToColor(
     if len(data) == 3:
         color = QtGui.QColor(data[0], data[1], data[2])
         if alternate:
-            mult = _generateAlternateColorMultiplier(color, av)
+            mult = _generate_alternate_color_multiplier(color, av)
 
             color = QtGui.QColor(
                 max(0, data[0] - (av * mult)),
@@ -44,7 +44,7 @@ def _convertDataToColor(
     elif len(data) == 4:
         color = QtGui.QColor(data[0], data[1], data[2], data[3])
         if alternate:
-            mult = _generateAlternateColorMultiplier(color, av)
+            mult = _generate_alternate_color_multiplier(color, av)
             color = QtGui.QColor(
                 max(0, data[0] - (av * mult)),
                 max(0, data[1] - (av * mult)),
@@ -64,7 +64,9 @@ def _convertDataToColor(
         return color
 
 
-def _generateAlternateColorMultiplier(color: QtGui.QColor, av: int) -> float:
+def _generate_alternate_color_multiplier(
+    color: QtGui.QColor, av: int
+) -> float:
     """
     Generate a multiplier based on the input color lighness to increase
     the alternate value for dark color or reduce it for bright colors.
@@ -82,7 +84,7 @@ def _generateAlternateColorMultiplier(color: QtGui.QColor, av: int) -> float:
     return mult
 
 
-def _createPointerBoundingBox(
+def _create_pointer_bounding_box(
     pointerPos: QtCore.QPoint, bbSize: int
 ) -> QtCore.QRectF:
     """
@@ -98,17 +100,19 @@ def _createPointerBoundingBox(
     # Create pointer's bounding box.
     point = pointerPos
 
-    mbbPos = point
+    mbb_pos = point
     point.setX(int(point.x() - bbSize / 2))
     point.setY(int(point.y() - bbSize / 2))
 
     size = QtCore.QSize(bbSize, bbSize)
-    bb = QtCore.QRect(mbbPos, size).toRectF()
+    bb = QtCore.QRect(mbb_pos, size).toRectF()
 
     return bb
 
 
-def _swapListIndices(inputList: list, oldIndex: int, newIndex: int) -> None:
+def _swap_list_indices(
+    input_list: list, old_index: int, new_index: int
+) -> None:
     """
     Simply swap 2 indices in a the specified list.
 
@@ -122,19 +126,19 @@ def _swapListIndices(inputList: list, oldIndex: int, newIndex: int) -> None:
     :type  newIndex: Int.
 
     """
-    if oldIndex == -1:
-        oldIndex = len(inputList) - 1
+    if old_index == -1:
+        old_index = len(input_list) - 1
 
-    if newIndex == -1:
-        newIndex = len(inputList)
+    if new_index == -1:
+        new_index = len(input_list)
 
-    value = inputList[oldIndex]
-    inputList.pop(oldIndex)
-    inputList.insert(newIndex, value)
+    value = input_list[old_index]
+    input_list.pop(old_index)
+    input_list.insert(new_index, value)
 
 
 # IO
-def _loadConfig(filePath: str) -> dict:
+def _load_config(file_path: str) -> dict:
     """
     Read the configuration file and strips out comments.
 
@@ -142,18 +146,18 @@ def _loadConfig(filePath: str) -> dict:
     :type  filePath: Str.
 
     """
-    with open(filePath, "r") as myfile:
-        fileString = myfile.read()
+    with open(file_path, "r") as myfile:
+        file_string = myfile.read()
 
         # remove comments
-        cleanString = re.sub(r"//.*?\n|/\*.*?\*/", "", fileString, re.S)
+        clean_string = re.sub(r"//.*?\n|/\*.*?\*/", "", file_string, re.S)
 
-        data = json.loads(cleanString)
+        data = json.loads(clean_string)
 
     return data
 
 
-def _saveData(filePath: str, data: dict) -> None:
+def _save_data(file_path: str, data: dict) -> None:
     """
     save data as a .json file
 
@@ -164,14 +168,14 @@ def _saveData(filePath: str, data: dict) -> None:
     :type  data: Dict or List.
 
     """
-    f = open(filePath, "w")
+    f = open(file_path, "w")
     f.write(json.dumps(data, sort_keys=True, indent=4, ensure_ascii=False))
     f.close()
 
     nlog.info("Data successfully saved !")
 
 
-def _loadData(filePath: str) -> dict:
+def _load_data(file_path: str) -> dict:
     """
     load data from a .json file.
 
@@ -179,7 +183,7 @@ def _loadData(filePath: str) -> dict:
     :type  filePath: Str.
 
     """
-    with open(filePath) as json_file:
+    with open(file_path) as json_file:
         j_data = json.load(json_file)
 
     json_file.close()
