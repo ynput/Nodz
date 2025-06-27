@@ -1,6 +1,6 @@
 from qtpy import QtCore, QtWidgets
-import nodz_main
-from nodz_utils import nlog
+import nodz.nodz_main as nodz_main
+from nodz.nodz_utils import nlog
 
 try:
     app = QtWidgets.QApplication([])
