@@ -1,6 +1,6 @@
 from qtpy import QtCore, QtWidgets
-import nodz.nodz_main as nodz_main
-from nodz.nodz_utils import nlog
+import nodz.core as core
+from nodz.utils import nlog
 
 try:
     app = QtWidgets.QApplication([])
@@ -8,7 +8,7 @@ except:
     # I guess we're running somewhere that already has a QApp created
     app = None
 
-nodz = nodz_main.Nodz(None)
+nodz = core.Nodz(None)
 # nodz.loadConfig(filePath='')
 nodz.initialize()
 nodz.show()

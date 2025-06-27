@@ -3,8 +3,8 @@ import os
 from typing import Any
 from enum import Enum
 from qtpy import QtGui, QtCore, QtWidgets
-import nodz.nodz_utils as utils
-from nodz.nodz_utils import nlog
+import nodz.utils as utils
+from nodz.utils import nlog
 
 
 DEFAULT_CONFIG_PATH = os.path.join(
