@@ -494,6 +494,8 @@ class Nodz(QtWidgets.QGraphicsView):
         items_area.adjust(
             -vp_margins, -vp_margins - 10, vp_margins, vp_margins
         )
+        # make sure the scene is big enough to contain all nodes.
+        self.scene().setSceneRect(self.scene().sceneRect().united(items_area))
         self.fitInView(items_area, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
     def _frame_all(self) -> None:
@@ -505,6 +507,8 @@ class Nodz(QtWidgets.QGraphicsView):
         items_area.adjust(
             -vp_margins, -vp_margins - 10, vp_margins, vp_margins
         )
+        # make sure the scene is big enough to contain all nodes.
+        self.scene().setSceneRect(self.scene().sceneRect().united(items_area))
         self.fitInView(items_area, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
     def _center_graph_in_scene(self):
