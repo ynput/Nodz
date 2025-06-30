@@ -85,26 +85,26 @@ def _generate_alternate_color_multiplier(
 
 
 def _create_pointer_bounding_box(
-    pointerPos: QtCore.QPoint, bbSize: int
+    pointer_pos: QtCore.QPoint, bb_size: int
 ) -> QtCore.QRectF:
     """
     generate a bounding box around the pointer.
 
-    :param pointerPos: Pointer position.
-    :type  pointerPos: QPoint.
+    :param pointer_pos: Pointer position.
+    :type  pointer_pos: QPoint.
 
-    :param bbSize: Width and Height of the bounding box.
-    :type  bbSize: Int.
+    :param bb_size: Width and Height of the bounding box.
+    :type  bb_size: Int.
 
     """
     # Create pointer's bounding box.
-    point = pointerPos
+    point = pointer_pos
 
     mbb_pos = point
-    point.setX(int(point.x() - bbSize / 2))
-    point.setY(int(point.y() - bbSize / 2))
+    point.setX(int(point.x() - bb_size / 2))
+    point.setY(int(point.y() - bb_size / 2))
 
-    size = QtCore.QSize(bbSize, bbSize)
+    size = QtCore.QSize(bb_size, bb_size)
     bb = QtCore.QRect(mbb_pos, size).toRectF()
 
     return bb
@@ -116,14 +116,14 @@ def _swap_list_indices(
     """
     Simply swap 2 indices in a the specified list.
 
-    :param inputList: List that contains the elements to swap.
-    :type  inputList: List.
+    :param input_list: List that contains the elements to swap.
+    :type  input_list: List.
 
-    :param oldIndex: Index of the element to move.
-    :type  oldIndex: Int.
+    :param old_index: Index of the element to move.
+    :type  old_index: Int.
 
-    :param newIndex: Destination index of the element.
-    :type  newIndex: Int.
+    :param new_index: Destination index of the element.
+    :type  new_index: Int.
 
     """
     if old_index == -1:
@@ -142,8 +142,8 @@ def _load_config(file_path: str) -> dict:
     """
     Read the configuration file and strips out comments.
 
-    :param filePath: File path.
-    :type  filePath: Str.
+    :param file_path: File path.
+    :type  file_path: Str.
 
     """
     with open(file_path, "r") as myfile:
@@ -161,8 +161,8 @@ def _save_data(file_path: str, data: dict) -> None:
     """
     save data as a .json file
 
-    :param filePath: Path of the .json file.
-    :type  filePath: Str.
+    :param file_path: Path of the .json file.
+    :type  file_path: Str.
 
     :param data: Data you want to save.
     :type  data: Dict or List.
@@ -179,8 +179,8 @@ def _load_data(file_path: str) -> dict:
     """
     load data from a .json file.
 
-    :param filePath: Path of the .json file.
-    :type  filePath: Str.
+    :param file_path: Path of the .json file.
+    :type  file_path: Str.
 
     """
     with open(file_path) as json_file:

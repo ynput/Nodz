@@ -141,256 +141,256 @@ nodz.signal_KeyPressed.connect(on_keyPressed)
 ######################################################################
 
 # Node A
-nodeA = nodz.createNode(name="nodeA", preset="node_preset_1", position=None)
+nodeA = nodz.create_node(name="nodeA", preset="node_preset_1", position=None)
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeA,
     name="Aattr1",
     index=-1,
     preset="attr_preset_1",
     plug=True,
     socket=False,
-    dataType=str,
+    data_type=str,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeA,
     name="Aattr2",
     index=-1,
     preset="attr_preset_1",
     plug=False,
     socket=False,
-    dataType=int,
+    data_type=int,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeA,
     name="Aattr3",
     index=-1,
     preset="attr_preset_2",
     plug=True,
     socket=True,
-    dataType=int,
+    data_type=int,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeA,
     name="Aattr4",
     index=-1,
     preset="attr_preset_2",
     plug=True,
     socket=True,
-    dataType=str,
+    data_type=str,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeA,
     name="Aattr5",
     index=-1,
     preset="attr_preset_3",
     plug=True,
     socket=True,
-    dataType=int,
-    plugMaxConnections=1,
-    socketMaxConnections=-1,
+    data_type=int,
+    plug_max_connections=1,
+    socket_max_connections=-1,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeA,
     name="Aattr6",
     index=-1,
     preset="attr_preset_3",
     plug=True,
     socket=True,
-    dataType=int,
-    plugMaxConnections=1,
-    socketMaxConnections=-1,
+    data_type=int,
+    plug_max_connections=1,
+    socket_max_connections=-1,
 )
 
 
 # Node B
-nodeB = nodz.createNode(name="nodeB", preset="node_preset_1")
+nodeB = nodz.create_node(name="nodeB", preset="node_preset_1")
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeB,
     name="Battr1",
     index=-1,
     preset="attr_preset_1",
     plug=True,
     socket=False,
-    dataType=str,
+    data_type=str,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeB,
     name="Battr2",
     index=-1,
     preset="attr_preset_1",
     plug=True,
     socket=False,
-    dataType=int,
+    data_type=int,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeB,
     name="Battr3",
     index=-1,
     preset="attr_preset_2",
     plug=True,
     socket=False,
-    dataType=int,
+    data_type=int,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeB,
     name="Battr4",
     index=-1,
     preset="attr_preset_3",
     plug=True,
     socket=False,
-    dataType=int,
-    plugMaxConnections=1,
-    socketMaxConnections=-1,
+    data_type=int,
+    plug_max_connections=1,
+    socket_max_connections=-1,
 )
 
 
 # Node C
-nodeC = nodz.createNode(name="nodeC", preset="node_preset_1")
+nodeC = nodz.create_node(name="nodeC", preset="node_preset_1")
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeC,
     name="Cattr1",
     index=-1,
     preset="attr_preset_1",
     plug=False,
     socket=True,
-    dataType=str,
+    data_type=str,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeC,
     name="Cattr2",
     index=-1,
     preset="attr_preset_1",
     plug=True,
     socket=False,
-    dataType=int,
+    data_type=int,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeC,
     name="Cattr3",
     index=-1,
     preset="attr_preset_1",
     plug=True,
     socket=False,
-    dataType=str,
+    data_type=str,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeC,
     name="Cattr4",
     index=-1,
     preset="attr_preset_2",
     plug=False,
     socket=True,
-    dataType=str,
+    data_type=str,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeC,
     name="Cattr5",
     index=-1,
     preset="attr_preset_2",
     plug=False,
     socket=True,
-    dataType=int,
+    data_type=int,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeC,
     name="Cattr6",
     index=-1,
     preset="attr_preset_3",
     plug=True,
     socket=False,
-    dataType=str,
+    data_type=str,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeC,
     name="Cattr7",
     index=-1,
     preset="attr_preset_3",
     plug=True,
     socket=False,
-    dataType=str,
+    data_type=str,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeC,
     name="Cattr8",
     index=-1,
     preset="attr_preset_3",
     plug=True,
     socket=False,
-    dataType=int,
+    data_type=int,
 )
 
 # Node D
-nodeD = nodz.createNode(name="nodeD", preset="node_preset_1")
+nodeD = nodz.create_node(name="nodeD", preset="node_preset_1")
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeD,
     name="Dattr1",
     index=-1,
     preset="attr_preset_3",
     plug=False,
     socket=True,
-    dataType=str,
+    data_type=str,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeD,
     name="Dattr2",
     index=-1,
     preset="attr_preset_3",
     plug=True,
     socket=False,
-    dataType=int,
+    data_type=int,
 )
 
 # Node E
-nodeE = nodz.createNode(name="nodeE", preset="node_preset_1")
+nodeE = nodz.create_node(name="nodeE", preset="node_preset_1")
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeE,
     name="Eattr1",
     index=-1,
     preset="attr_preset_1",
     plug=True,
     socket=False,
-    dataType=str,
+    data_type=str,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeE,
     name="Eattr2",
     index=-1,
     preset="attr_preset_2",
     plug=False,
     socket=True,
-    dataType=str,
+    data_type=str,
 )
 
-nodz.createAttribute(
+nodz.create_attribute(
     node=nodeE,
     name="Eattr3",
     index=-1,
     preset="attr_preset_2",
     plug=False,
     socket=True,
-    dataType=int,
+    data_type=int,
 )
 
 
@@ -400,33 +400,33 @@ nodz.createAttribute(
 # clearing/evaluating will.
 
 # Connection creation
-nodz.createConnection("nodeB", "Battr2", "nodeA", "Aattr3")
-nodz.createConnection("nodeB", "Battr1", "nodeA", "Aattr4")
-nodz.createConnection("nodeD", "Dattr2", "nodeA", "Aattr6")
+nodz.create_connection("nodeB", "Battr2", "nodeA", "Aattr3")
+nodz.create_connection("nodeB", "Battr1", "nodeA", "Aattr4")
+nodz.create_connection("nodeD", "Dattr2", "nodeA", "Aattr6")
 
 # Attributes Edition
-nodz.editAttribute(node=nodeC, index=0, newName=None, newIndex=-1)
-nodz.editAttribute(node=nodeC, index=-1, newName="NewAttrName", newIndex=None)
+nodz.edit_attribute(node=nodeC, index=0, new_name=None, new_index=-1)
+nodz.edit_attribute(node=nodeC, index=-1, new_name="NewAttrName", new_index=None)
 
 # Attributes Deletion
-nodz.deleteAttribute(node=nodeC, index=-1)
+nodz.delete_attribute(node=nodeC, index=-1)
 
 
 # Nodes Edition
-nodz.editNode(node=nodeC, newName="newNodeName")
+nodz.edit_node(node=nodeC, new_name="newNodeName")
 
 # Nodes Deletion
-nodz.deleteNode(node=nodeC)
+nodz.delete_node(node=nodeC)
 
 
 # Graph
-nlog.info(nodz.evaluateGraph())
+nlog.info(nodz.evaluate_graph())
 
-nodz.saveGraph(filePath="Enter your path")
+nodz.save_graph(file_path="Enter your path")
 
-nodz.clearGraph()
+nodz.clear_graph()
 
-nodz.loadGraph(filePath="Enter your path")
+nodz.load_graph(file_path="Enter your path")
 
 nodz._layout_graph()
 

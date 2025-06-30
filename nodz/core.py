@@ -82,7 +82,7 @@ class Nodz(QtWidgets.QGraphicsView):
     def __init__(
         self,
         parent: Any,
-        configPath: str = DEFAULT_CONFIG_PATH,
+        config_path: str = DEFAULT_CONFIG_PATH,
     ):
         """
         Initialize the graphics view.
@@ -91,21 +91,21 @@ class Nodz(QtWidgets.QGraphicsView):
         super(Nodz, self).__init__(parent)
 
         # Load nodz configuration.
-        self.loadConfig(configPath)
+        self.load_config(config_path)
 
         # General data.
-        self.gridVisToggle = True
-        self.gridSnapToggle = False
-        self._nodeSnap = False
+        self.grid_vis_toggle = True
+        self.grid_snap_toggle = False
+        self._node_snap = False
 
         # Connections data.
-        self.drawingConnection = False
-        self.currentHoveredNode: NodeItem | None = None
-        self.sourceSlot: SlotItem | None = None
+        self.drawing_connection = False
+        self.current_hovered_node: NodeItem | None = None
+        self.source_slot: SlotItem | None = None
 
         # Display options.
-        self.currentState = ViewState.DEFAULT
-        self.pressedKeys = list()
+        self.current_state = ViewState.DEFAULT
+        self.pressed_keys = list()
 
     @property
     def nodz_scene(self) -> NodeScene:
@@ -145,10 +145,10 @@ class Nodz(QtWidgets.QGraphicsView):
         h_pen = QtGui.QPen()
         h_pen.setColor(QtGui.QColor(255, 255, 255, 96))
         painter.setPen(h_pen)
-        hrect = painter.fontMetrics().boundingRect(h_str)
+        h_rect = painter.fontMetrics().boundingRect(h_str)
         painter.drawText(
             QtCore.QPointF(
-                vp_bottom_left.x() + 20, vp_bottom_left.y() - hrect.height()
+                vp_bottom_left.x() + 20, vp_bottom_left.y() - h_rect.height()
             ),
             h_str,
         )
@@ -158,23 +158,23 @@ class Nodz(QtWidgets.QGraphicsView):
         Zoom in the view with the mouse wheel.
 
         """
-        self.currentState = ViewState.ZOOM_VIEW
+        self.current_state = ViewState.ZOOM_VIEW
         self.setTransformationAnchor(
             QtWidgets.QGraphicsView.ViewportAnchor.AnchorUnderMouse
         )
 
-        inFactor = 1.15
-        outFactor = 1 / inFactor
+        in_factor = 1.15
+        out_factor = 1 / in_factor
 
         delta = event.angleDelta().y()
 
         if delta > 0:
-            zoomFactor = inFactor
+            zoom_factor = in_factor
         else:
-            zoomFactor = outFactor
+            zoom_factor = out_factor
 
-        self.scale(zoomFactor, zoomFactor)
-        self.currentState = ViewState.DEFAULT
+        self.scale(zoom_factor, zoom_factor)
+        self.current_state = ViewState.DEFAULT
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         """
@@ -186,10 +186,10 @@ class Nodz(QtWidgets.QGraphicsView):
             event.button() == QtCore.Qt.MouseButton.RightButton
             and event.modifiers() == QtCore.Qt.KeyboardModifier.AltModifier
         ):
-            self.currentState = ViewState.ZOOM_VIEW
-            self.initMousePos = event.pos()
-            self.zoomInitialPos = event.pos()
-            self.initMouse = QtGui.QCursor.pos()
+            self.current_state = ViewState.ZOOM_VIEW
+            self.init_mouse_pos = event.pos()
+            self.zoom_initial_pos = event.pos()
+            self.init_mouse = QtGui.QCursor.pos()  # FIXME: unused ?
             self.setInteractive(False)
 
         # Drag view
@@ -197,8 +197,8 @@ class Nodz(QtWidgets.QGraphicsView):
             event.button() == QtCore.Qt.MouseButton.MiddleButton
             and event.modifiers() == QtCore.Qt.KeyboardModifier.AltModifier
         ):
-            self.currentState = ViewState.DRAG_VIEW
-            self.prevPos = event.pos()
+            self.current_state = ViewState.DRAG_VIEW
+            self.prev_pos = event.pos()
             self.setCursor(QtCore.Qt.CursorShape.ClosedHandCursor)
             self.setInteractive(False)
 
@@ -211,8 +211,8 @@ class Nodz(QtWidgets.QGraphicsView):
             )
             is None
         ):
-            self.currentState = ViewState.SELECTION
-            self._initRubberband(event.pos().toPointF())
+            self.current_state = ViewState.SELECTION
+            self._init_rubberband(event.pos().toPointF())
             self.setInteractive(False)
 
         # Drag Item
@@ -224,17 +224,17 @@ class Nodz(QtWidgets.QGraphicsView):
             )
             is not None
         ):
-            self.currentState = ViewState.DRAG_ITEM
+            self.current_state = ViewState.DRAG_ITEM
             self.setInteractive(True)
 
         # Add selection
         elif (
             event.button() == QtCore.Qt.MouseButton.LeftButton
-            and QtCore.Qt.Key.Key_Shift in self.pressedKeys
-            and QtCore.Qt.Key.Key_Control in self.pressedKeys
+            and QtCore.Qt.Key.Key_Shift in self.pressed_keys
+            and QtCore.Qt.Key.Key_Control in self.pressed_keys
         ):
-            self.currentState = ViewState.ADD_SELECTION
-            self._initRubberband(event.pos().toPointF())
+            self.current_state = ViewState.ADD_SELECTION
+            self._init_rubberband(event.pos().toPointF())
             self.setInteractive(False)
 
         # Subtract selection
@@ -242,8 +242,8 @@ class Nodz(QtWidgets.QGraphicsView):
             event.button() == QtCore.Qt.MouseButton.LeftButton
             and event.modifiers() == QtCore.Qt.KeyboardModifier.ControlModifier
         ):
-            self.currentState = ViewState.SUBTRACT_SELECTION
-            self._initRubberband(event.pos().toPointF())
+            self.current_state = ViewState.SUBTRACT_SELECTION
+            self._init_rubberband(event.pos().toPointF())
             self.setInteractive(False)
 
         # Toggle selection
@@ -251,12 +251,12 @@ class Nodz(QtWidgets.QGraphicsView):
             event.button() == QtCore.Qt.MouseButton.LeftButton
             and event.modifiers() == QtCore.Qt.KeyboardModifier.ShiftModifier
         ):
-            self.currentState = ViewState.TOGGLE_SELECTION
-            self._initRubberband(event.pos().toPointF())
+            self.current_state = ViewState.TOGGLE_SELECTION
+            self._init_rubberband(event.pos().toPointF())
             self.setInteractive(False)
 
         else:
-            self.currentState = ViewState.DEFAULT
+            self.current_state = ViewState.DEFAULT
 
         super(Nodz, self).mousePressEvent(event)
 
@@ -266,39 +266,39 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         # Zoom.
-        if self.currentState == ViewState.ZOOM_VIEW:
-            offset = self.zoomInitialPos.x() - event.pos().x()
+        if self.current_state == ViewState.ZOOM_VIEW:
+            offset = self.zoom_initial_pos.x() - event.pos().x()
 
-            if offset > self.previousMouseOffset:
-                self.previousMouseOffset = offset
-                self.zoomDirection = -1
-                self.zoomIncr -= 1
+            if offset > self.previous_mouse_offset:
+                self.previous_mouse_offset = offset
+                self.zoom_direction = -1
+                self.zoom_incr -= 1
 
-            elif offset == self.previousMouseOffset:
-                self.previousMouseOffset = offset
-                if self.zoomDirection == -1:
-                    self.zoomDirection = -1
+            elif offset == self.previous_mouse_offset:
+                self.previous_mouse_offset = offset
+                if self.zoom_direction == -1:
+                    self.zoom_direction = -1
                 else:
-                    self.zoomDirection = 1
+                    self.zoom_direction = 1
 
             else:
-                self.previousMouseOffset = offset
-                self.zoomDirection = 1
-                self.zoomIncr += 1
+                self.previous_mouse_offset = offset
+                self.zoom_direction = 1
+                self.zoom_incr += 1
 
-            if self.zoomDirection == 1:
-                zoomFactor = 1.03
+            if self.zoom_direction == 1:
+                zoom_factor = 1.03
             else:
-                zoomFactor = 1 / 1.03
+                zoom_factor = 1 / 1.03
 
             # Perform zoom and re-center on initial click position.
-            pBefore = self.mapToScene(self.initMousePos)
+            p_before = self.mapToScene(self.init_mouse_pos)
             self.setTransformationAnchor(
                 QtWidgets.QGraphicsView.ViewportAnchor.AnchorViewCenter
             )
-            self.scale(zoomFactor, zoomFactor)
-            pAfter = self.mapToScene(self.initMousePos)
-            diff = pAfter - pBefore
+            self.scale(zoom_factor, zoom_factor)
+            p_after = self.mapToScene(self.init_mouse_pos)
+            diff = p_after - p_before
 
             self.setTransformationAnchor(
                 QtWidgets.QGraphicsView.ViewportAnchor.NoAnchor
@@ -306,9 +306,9 @@ class Nodz(QtWidgets.QGraphicsView):
             self.translate(diff.x(), diff.y())
 
         # Drag canvas.
-        elif self.currentState == ViewState.DRAG_VIEW:
-            offset = self.prevPos - event.pos()
-            self.prevPos = event.pos()
+        elif self.current_state == ViewState.DRAG_VIEW:
+            offset = self.prev_pos - event.pos()
+            self.prev_pos = event.pos()
             self.verticalScrollBar().setValue(
                 self.verticalScrollBar().value() + offset.y()
             )
@@ -318,10 +318,10 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # RuberBand selection.
         elif (
-            self.currentState == ViewState.SELECTION
-            or self.currentState == ViewState.ADD_SELECTION
-            or self.currentState == ViewState.SUBTRACT_SELECTION
-            or self.currentState == ViewState.TOGGLE_SELECTION
+            self.current_state == ViewState.SELECTION
+            or self.current_state == ViewState.ADD_SELECTION
+            or self.current_state == ViewState.SUBTRACT_SELECTION
+            or self.current_state == ViewState.TOGGLE_SELECTION
         ):
             self.rubberband.setGeometry(
                 QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
@@ -335,60 +335,60 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         # Zoom the View.
-        if self.currentState == ViewState.ZOOM_VIEW:
+        if self.current_state == ViewState.ZOOM_VIEW:
             self.offset = 0
-            self.zoomDirection = 0
-            self.zoomIncr = 0
+            self.zoom_direction = 0
+            self.zoom_incr = 0
             self.setInteractive(True)
 
         # Drag View.
-        elif self.currentState == ViewState.DRAG_VIEW:
+        elif self.current_state == ViewState.DRAG_VIEW:
             self.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
             self.setInteractive(True)
 
         # Selection.
-        elif self.currentState == ViewState.SELECTION:
+        elif self.current_state == ViewState.SELECTION:
             self.rubberband.setGeometry(
                 QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
-            painterPath = self._releaseRubberband()
+            painter_path = self._releaseRubberband()
             self.setInteractive(True)
-            self.scene().setSelectionArea(painterPath)
+            self.scene().setSelectionArea(painter_path)
 
         # Add Selection.
-        elif self.currentState == ViewState.ADD_SELECTION:
+        elif self.current_state == ViewState.ADD_SELECTION:
             self.rubberband.setGeometry(
                 QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
-            painterPath = self._releaseRubberband()
+            painter_path = self._releaseRubberband()
             self.setInteractive(True)
-            for item in self.scene().items(painterPath):
+            for item in self.scene().items(painter_path):
                 item.setSelected(True)
 
         # Subtract Selection.
-        elif self.currentState == ViewState.SUBTRACT_SELECTION:
+        elif self.current_state == ViewState.SUBTRACT_SELECTION:
             self.rubberband.setGeometry(
                 QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
-            painterPath = self._releaseRubberband()
+            painter_path = self._releaseRubberband()
             self.setInteractive(True)
-            for item in self.scene().items(painterPath):
+            for item in self.scene().items(painter_path):
                 item.setSelected(False)
 
         # Toggle Selection
-        elif self.currentState == ViewState.TOGGLE_SELECTION:
+        elif self.current_state == ViewState.TOGGLE_SELECTION:
             self.rubberband.setGeometry(
                 QtCore.QRect(self.origin.toPoint(), event.pos()).normalized()
             )
-            painterPath = self._releaseRubberband()
+            painter_path = self._releaseRubberband()
             self.setInteractive(True)
-            for item in self.scene().items(painterPath):
+            for item in self.scene().items(painter_path):
                 if item.isSelected():
                     item.setSelected(False)
                 else:
                     item.setSelected(True)
 
-        self.currentState = ViewState.DEFAULT
+        self.current_state = ViewState.DEFAULT
 
         super(Nodz, self).mouseReleaseEvent(event)
 
@@ -401,14 +401,14 @@ class Nodz(QtWidgets.QGraphicsView):
         F - Focus view on the selection
 
         """
-        if event.key() not in self.pressedKeys:
-            self.pressedKeys.append(event.key())
+        if event.key() not in self.pressed_keys:
+            self.pressed_keys.append(event.key())
 
         if event.key() in (
             QtCore.Qt.Key.Key_Delete,
             QtCore.Qt.Key.Key_Backspace,
         ):
-            self._deleteSelectedNodes()
+            self._delete_selected_nodes()
 
         if event.key() == QtCore.Qt.Key.Key_F:
             self._focus()
@@ -420,7 +420,7 @@ class Nodz(QtWidgets.QGraphicsView):
             self._layout_graph()
 
         if event.key() == QtCore.Qt.Key.Key_S:
-            self._nodeSnap = True
+            self._node_snap = True
 
         # Emit signal.
         self.signal_KeyPressed.emit(event.key())
@@ -431,17 +431,17 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         if event.key() == QtCore.Qt.Key.Key_S:
-            self._nodeSnap = False
+            self._node_snap = False
 
-        if event.key() in self.pressedKeys:
-            self.pressedKeys.remove(event.key())
+        if event.key() in self.pressed_keys:
+            self.pressed_keys.remove(event.key())
 
-    def _initRubberband(self, position: QtCore.QPointF) -> None:
+    def _init_rubberband(self, position: QtCore.QPointF) -> None:
         """
         Initialize the rubber band at the given position.
 
         """
-        self.rubberBandStart = position
+        self.rubberband_start = position  # FIXME: unused ?
         self.origin = position
         self.rubberband.setGeometry(
             QtCore.QRect(self.origin.toPoint(), QtCore.QSize())
@@ -453,11 +453,11 @@ class Nodz(QtWidgets.QGraphicsView):
         Hide the rubber band and return the path.
 
         """
-        painterPath = QtGui.QPainterPath()
+        painter_path = QtGui.QPainterPath()
         rect = self.mapToScene(self.rubberband.geometry())
-        painterPath.addPolygon(rect)
+        painter_path.addPolygon(rect)
         self.rubberband.hide()
-        return painterPath
+        return painter_path
 
     def _focus(self) -> None:
         """
@@ -465,22 +465,26 @@ class Nodz(QtWidgets.QGraphicsView):
 
         """
         if self.scene().selectedItems():
-            itemsArea = self._getSelectionBoundingbox()
+            items_area = self._get_selection_boundingbox()
         else:
-            itemsArea = self.scene().itemsBoundingRect()
+            items_area = self.scene().itemsBoundingRect()
         vp_margins = self.config["viewport_margins"]
-        itemsArea.adjust(-vp_margins, -vp_margins - 10, vp_margins, vp_margins)
-        self.fitInView(itemsArea, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+        items_area.adjust(
+            -vp_margins, -vp_margins - 10, vp_margins, vp_margins
+        )
+        self.fitInView(items_area, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
     def _frame_all(self) -> None:
         """
         Frame the whole scene, irrespective of the current selection.
 
         """
-        itemsArea = self.scene().itemsBoundingRect()
+        items_area = self.scene().itemsBoundingRect()
         vp_margins = self.config["viewport_margins"]
-        itemsArea.adjust(-vp_margins, -vp_margins - 10, vp_margins, vp_margins)
-        self.fitInView(itemsArea, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+        items_area.adjust(
+            -vp_margins, -vp_margins - 10, vp_margins, vp_margins
+        )
+        self.fitInView(items_area, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
 
     def _center_graph_in_scene(self):
         # Center the graph in the scene
@@ -489,7 +493,7 @@ class Nodz(QtWidgets.QGraphicsView):
         offset = scene_center - graph_center
         for node in self.scene_nodes.values():
             node.setPos(node.pos() + offset)
-        self.nodz_scene.updateScene()
+        self.nodz_scene.update_scene()
 
     def _layout_graph(self):
         """Organize nodes in the graph according to their connections."""
@@ -512,7 +516,7 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # Initialize graph layout data
         graph_depth = [
-            [(root_nodes[0], root_nodes[0].baseWidth, root_nodes[0].height)]
+            [(root_nodes[0], root_nodes[0].base_width, root_nodes[0].height)]
         ]
         scene_height = graph_depth[0][0][
             2
@@ -532,11 +536,11 @@ class Nodz(QtWidgets.QGraphicsView):
 
                     for connection in socket.connections:
                         has_connections = True
-                        src_node = connection.plugItem.parentItem()
+                        src_node = connection.plug_item.parentItem()
                         if len(graph_depth) <= level + 1:
                             graph_depth.append([])
                         graph_depth[level + 1].append(
-                            (src_node, src_node.baseWidth, src_node.height)
+                            (src_node, src_node.base_width, src_node.height)
                         )
 
             scene_height = max(scene_height, lheight)
@@ -550,7 +554,7 @@ class Nodz(QtWidgets.QGraphicsView):
         positioned_nodes = []
 
         for i, lst in enumerate(reversed(graph_depth)):
-            xpos = start_pos + i * (root_nodes[0].baseWidth + h_spacing)
+            xpos = start_pos + i * (root_nodes[0].base_width + h_spacing)
             ypos = v_spacing
 
             for node, _, hgt in lst:
@@ -562,13 +566,13 @@ class Nodz(QtWidgets.QGraphicsView):
             ymax = max(ymax, ypos)
 
         for i, node in enumerate(root_nodes[1:]):
-            xpos = start_pos + i * (root_nodes[0].baseWidth + h_spacing)
+            xpos = start_pos + i * (root_nodes[0].base_width + h_spacing)
             node.setPos(xpos, ymax)
 
-        self.nodz_scene.updateScene()
+        self.nodz_scene.update_scene()
         self._center_graph_in_scene()
 
-    def _getSelectionBoundingbox(self) -> QtCore.QRectF:
+    def _get_selection_boundingbox(self) -> QtCore.QRectF:
         """
         Return the bounding box of the selection.
 
@@ -581,7 +585,7 @@ class Nodz(QtWidgets.QGraphicsView):
                 rect = rect.united(item.sceneBoundingRect())
         return rect if rect else QtCore.QRectF()
 
-    def _deleteSelectedNodes(self) -> None:
+    def _delete_selected_nodes(self) -> None:
         """
         Delete selected nodes.
 
@@ -596,7 +600,7 @@ class Nodz(QtWidgets.QGraphicsView):
         # Emit signal.
         self.signal_NodeDeleted.emit(selected_nodes)
 
-    def _returnSelection(self) -> None:
+    def _return_selection(self) -> None:
         """
         Wrapper to return selected items.
 
@@ -615,16 +619,16 @@ class Nodz(QtWidgets.QGraphicsView):
     # API
     ##################################################################
 
-    def loadConfig(self, filePath: str) -> None:
+    def load_config(self, file_path: str) -> None:
         """
         Set a specific configuration for this instance of Nodz.
 
-        :type  filePath: str.
-        :param filePath: The path to the config file that you want to
+        :type  file_path: str.
+        :param file_path: The path to the config file that you want to
                          use.
 
         """
-        self.config = utils._load_config(filePath)
+        self.config = utils._load_config(file_path)
 
     def initialize(self) -> None:
         """
@@ -661,23 +665,23 @@ class Nodz(QtWidgets.QGraphicsView):
 
         # Setup scene.
         scene = NodeScene(self)
-        sceneWidth = config["scene_width"]
-        sceneHeight = config["scene_height"]
-        scene.setSceneRect(0, 0, sceneWidth, sceneHeight)
+        scene_width = config["scene_width"]
+        scene_height = config["scene_height"]
+        scene.setSceneRect(0, 0, scene_width, scene_height)
         self.setScene(scene)
         # Connect scene node moved signal
         scene.signal_NodeMoved.connect(self.signal_NodeMoved)
 
         # Tablet zoom.
-        self.previousMouseOffset = 0
-        self.zoomDirection = 0
-        self.zoomIncr = 0
+        self.previous_mouse_offset = 0
+        self.zoom_direction = 0
+        self.zoom_incr = 0
 
         # Connect signals.
-        self.scene().selectionChanged.connect(self._returnSelection)
+        self.scene().selectionChanged.connect(self._return_selection)
 
     # NODES
-    def createNode(
+    def create_node(
         self,
         name: str = "default",
         preset: str = "node_default",
@@ -712,7 +716,7 @@ class Nodz(QtWidgets.QGraphicsView):
                 f"A node with the same name already exists : {name}"
             )
 
-        nodeItem = NodeItem(
+        node_item = NodeItem(
             name=name,
             alternate=alternate,
             preset=preset,
@@ -720,22 +724,22 @@ class Nodz(QtWidgets.QGraphicsView):
         )
 
         # Store node in scene.
-        self.scene_nodes[name] = nodeItem
+        self.scene_nodes[name] = node_item
 
         if not position:
             # Get the center of the view.
             position = self.mapToScene(self.viewport().rect().center())
 
         # Set node position.
-        self.scene().addItem(nodeItem)
-        nodeItem.setPos(position - nodeItem.nodeCenter)
+        self.scene().addItem(node_item)
+        node_item.setPos(position - node_item.node_center)
 
         # Emit signal.
         self.signal_NodeCreated.emit(name)
 
-        return nodeItem
+        return node_item
 
-    def deleteNode(self, node: NodeItem) -> None:
+    def delete_node(self, node: NodeItem) -> None:
         """
         Delete the specified node from the view.
 
@@ -749,21 +753,21 @@ class Nodz(QtWidgets.QGraphicsView):
             return
 
         if node in self.scene_nodes.values():
-            nodeName = node.name
+            node_name = node.name
             node._remove()
 
             # Emit signal.
-            self.signal_NodeDeleted.emit([nodeName])
+            self.signal_NodeDeleted.emit([node_name])
 
-    def editNode(self, node, newName: str | None = None) -> None:
+    def edit_node(self, node, new_name: str | None = None) -> None:
         """
         Rename an existing node.
 
         :type  node: class.
         :param node: The node instance that you want to delete.
 
-        :type  newName: str.
-        :param newName: The new name for the given node.
+        :type  new_name: str.
+        :param new_name: The new name for the given node.
 
         """
         if node not in self.scene_nodes.values():
@@ -771,41 +775,41 @@ class Nodz(QtWidgets.QGraphicsView):
             nlog.error("Node edition aborted !")
             return
 
-        oldName = node.name
+        old_name = node.name
 
-        if newName is not None:
+        if new_name is not None:
             # Check for name clashes
-            if newName in self.scene_nodes.keys():
+            if new_name in self.scene_nodes.keys():
                 nlog.error(
-                    f"A node with the same name already exists : {newName}"
+                    f"A node with the same name already exists : {new_name}"
                 )
                 nlog.error("Node edition aborted !")
                 return
             else:
-                node.name = newName
+                node.name = new_name
 
         # Replace node data.
-        self.scene_nodes[newName] = self.scene_nodes[oldName]
-        self.scene_nodes.pop(oldName)
+        self.scene_nodes[new_name] = self.scene_nodes[old_name]
+        self.scene_nodes.pop(old_name)
 
         # Store new node name in the connections
         if node.sockets:
             for socket in node.sockets.values():
                 for connection in socket.connections:
-                    connection.socketNode = newName
+                    connection.socketNode = new_name
 
         if node.plugs:
             for plug in node.plugs.values():
                 for connection in plug.connections:
-                    connection.plugNode = newName
+                    connection.plugNode = new_name
 
         node.update()
 
         # Emit signal.
-        self.signal_NodeEdited.emit(oldName, newName)
+        self.signal_NodeEdited.emit(old_name, new_name)
 
     # ATTRS
-    def createAttribute(
+    def create_attribute(
         self,
         node: NodeItem,
         name: str = "default",
@@ -813,9 +817,9 @@ class Nodz(QtWidgets.QGraphicsView):
         preset: str = "attr_default",
         plug: bool = True,
         socket: bool = True,
-        dataType: Any = None,
-        plugMaxConnections: int = -1,
-        socketMaxConnections: int = 1,
+        data_type: Any = None,
+        plug_max_connections: int = -1,
+        socket_max_connections: int = 1,
     ) -> None:
         """
         Create a new attribute with a given name.
@@ -841,16 +845,16 @@ class Nodz(QtWidgets.QGraphicsView):
         :param socket: Whether or not this attribute can receive
                        connections.
 
-        :type  dataType: type.
-        :param dataType: Type of the data represented by this attribute
+        :type  data_type: type.
+        :param data_type: Type of the data represented by this attribute
                          in order to highlight attributes of the same
                          type while performing a connection.
 
-        :type  plugMaxConnections: int.
-        :param plugMaxConnections: The maximum connections that the plug can have (-1 for infinite).
+        :type  plug_max_connections: int.
+        :param plug_max_connections: The maximum connections that the plug can have (-1 for infinite).
 
-        :type  socketMaxConnections: int.
-        :param socketMaxConnections: The maximum connections that the socket can have (-1 for infinite).
+        :type  socket_max_connections: int.
+        :param socket_max_connections: The maximum connections that the socket can have (-1 for infinite).
 
         """
         if node not in self.scene_nodes.values():
@@ -865,21 +869,21 @@ class Nodz(QtWidgets.QGraphicsView):
             nlog.error("Attribute creation aborted !")
             return
 
-        node._createAttribute(
+        node._create_attribute(
             name=name,
             index=index,
             preset=preset,
             plug=plug,
             socket=socket,
-            dataType=dataType,
-            plugMaxConnections=plugMaxConnections,
-            socketMaxConnections=socketMaxConnections,
+            data_type=data_type,
+            plug_max_connections=plug_max_connections,
+            socket_max_connections=socket_max_connections,
         )
 
         # Emit signal.
         self.signal_AttrCreated.emit(node.name, index)
 
-    def deleteAttribute(self, node: NodeItem, index: int) -> None:
+    def delete_attribute(self, node: NodeItem, index: int) -> None:
         """
         Delete the specified attribute.
 
@@ -895,17 +899,17 @@ class Nodz(QtWidgets.QGraphicsView):
             nlog.error("Attribute deletion aborted !")
             return
 
-        node._deleteAttribute(index)
+        node._delete_attribute(index)
 
         # Emit signal.
         self.signal_AttrDeleted.emit(node.name, index)
 
-    def editAttribute(
+    def edit_attribute(
         self,
         node: NodeItem,
         index: int,
-        newName: str | None = None,
-        newIndex: int | None = None,
+        new_name: str | None = None,
+        new_index: int | None = None,
     ) -> None:
         """
         Edit the specified attribute.
@@ -916,11 +920,11 @@ class Nodz(QtWidgets.QGraphicsView):
         :type  index: int.
         :param index: The index of the attribute in the node.
 
-        :type  newName: str.
-        :param newName: The new name for the given attribute.
+        :type  new_name: str.
+        :param new_name: The new name for the given attribute.
 
-        :type  newIndex: int.
-        :param newIndex: The index for the given attribute.
+        :type  new_index: int.
+        :param new_index: The index for the given attribute.
 
         """
         if node not in self.scene_nodes.values():
@@ -928,39 +932,39 @@ class Nodz(QtWidgets.QGraphicsView):
             nlog.error("Attribute creation aborted !")
             return
 
-        if newName is not None:
-            if newName in node.attrs:
+        if new_name is not None:
+            if new_name in node.attrs:
                 nlog.error(
-                    f"An attribute with the same name already exists : {newName}"
+                    f"An attribute with the same name already exists : {new_name}"
                 )
                 nlog.error("Attribute edition aborted !")
                 return
             else:
-                oldName = node.attrs[index]
+                old_name = node.attrs[index]
 
             # Rename in the slot item(s).
-            if node.attrsData[oldName]["plug"]:
-                node.plugs[oldName].attribute = newName
-                node.plugs[newName] = node.plugs[oldName]
-                node.plugs.pop(oldName)
-                for connection in node.plugs[newName].connections:
-                    connection.plugAttr = newName
+            if node.attrs_data[old_name]["plug"]:
+                node.plugs[old_name].attribute = new_name
+                node.plugs[new_name] = node.plugs[old_name]
+                node.plugs.pop(old_name)
+                for connection in node.plugs[new_name].connections:
+                    connection.plugAttr = new_name
 
-            if node.attrsData[oldName]["socket"]:
-                node.sockets[oldName].attribute = newName
-                node.sockets[newName] = node.sockets[oldName]
-                node.sockets.pop(oldName)
-                for connection in node.sockets[newName].connections:
-                    connection.socketAttr = newName
+            if node.attrs_data[old_name]["socket"]:
+                node.sockets[old_name].attribute = new_name
+                node.sockets[new_name] = node.sockets[old_name]
+                node.sockets.pop(old_name)
+                for connection in node.sockets[new_name].connections:
+                    connection.socketAttr = new_name
 
             # Replace attribute data.
-            node.attrsData[oldName]["name"] = newName
-            node.attrsData[newName] = node.attrsData[oldName]
-            node.attrsData.pop(oldName)
-            node.attrs[index] = newName
+            node.attrs_data[old_name]["name"] = new_name
+            node.attrs_data[new_name] = node.attrs_data[old_name]
+            node.attrs_data.pop(old_name)
+            node.attrs[index] = new_name
 
-        if isinstance(newIndex, int):
-            utils._swap_list_indices(node.attrs, index, newIndex)
+        if isinstance(new_index, int):
+            utils._swap_list_indices(node.attrs, index, new_index)
 
             # Refresh connections.
             for plug in node.plugs.values():
@@ -973,8 +977,8 @@ class Nodz(QtWidgets.QGraphicsView):
                         else:
                             connection.target = plug
                             connection.target_point = plug.center()
-                        if newName:
-                            connection.plugAttr = newName
+                        if new_name:
+                            connection.plugAttr = new_name
                         connection.updatePath()
 
             for socket in node.sockets.values():
@@ -987,8 +991,8 @@ class Nodz(QtWidgets.QGraphicsView):
                         else:
                             connection.target = socket
                             connection.target_point = socket.center()
-                        if newName:
-                            connection.socketAttr = newName
+                        if new_name:
+                            connection.socketAttr = new_name
                         connection.updatePath()
 
             self.scene().update()
@@ -996,19 +1000,19 @@ class Nodz(QtWidgets.QGraphicsView):
         node.update()
 
         # Emit signal.
-        if newIndex:
-            self.signal_AttrEdited.emit(node.name, index, newIndex)
+        if new_index:
+            self.signal_AttrEdited.emit(node.name, index, new_index)
         else:
             self.signal_AttrEdited.emit(node.name, index, index)
 
     # GRAPH
-    def saveGraph(self, filePath: str = "path") -> None:
+    def save_graph(self, file_path: str = "path") -> None:
         """
         Get all the current graph infos and store them in a .json file
         at the given location.
 
-        :type  filePath: str.
-        :param filePath: The path where you want to save your graph at.
+        :type  file_path: str.
+        :param file_path: The path where you want to save your graph at.
 
         """
         data = dict()
@@ -1018,65 +1022,65 @@ class Nodz(QtWidgets.QGraphicsView):
 
         nodes = self.scene_nodes.keys()
         for node in nodes:
-            nodeInst = self.scene_nodes[node]
-            preset = nodeInst.nodePreset
-            nodeAlternate = nodeInst.alternate
+            node_inst = self.scene_nodes[node]
+            preset = node_inst.node_preset
+            node_alternate = node_inst.alternate
 
             data["NODES"][node] = {
                 "preset": preset,
-                "position": [nodeInst.pos().x(), nodeInst.pos().y()],
-                "alternate": nodeAlternate,
+                "position": [node_inst.pos().x(), node_inst.pos().y()],
+                "alternate": node_alternate,
                 "attributes": [],
             }
 
-            attrs = nodeInst.attrs
+            attrs = node_inst.attrs
             for attr in attrs:
-                attrData = nodeInst.attrsData[attr]
+                attr_data = node_inst.attrs_data[attr]
 
-                # serialize dataType if needed.
-                if isinstance(attrData["dataType"], type):
-                    attrData["dataType"] = str(attrData["dataType"])
+                # serialize data_type if needed.
+                if isinstance(attr_data["dataType"], type):
+                    attr_data["dataType"] = str(attr_data["dataType"])
 
-                data["NODES"][node]["attributes"].append(attrData)
+                data["NODES"][node]["attributes"].append(attr_data)
 
         # Store connections data.
-        data["CONNECTIONS"] = self.evaluateGraph()
+        data["CONNECTIONS"] = self.evaluate_graph()
 
         # Save data.
         try:
-            utils._save_data(file_path=filePath, data=data)
+            utils._save_data(file_path=file_path, data=data)
         except BaseException:
-            raise FileNotFoundError(f"Invalid path : {filePath}")
+            raise FileNotFoundError(f"Invalid path : {file_path}")
 
         # Emit signal.
         self.signal_GraphSaved.emit()
 
-    def loadGraph(self, filePath: str = "path") -> None:
+    def load_graph(self, file_path: str = "path") -> None:
         """
         Get all the stored info from the .json file at the given location
         and recreate the graph as saved.
 
-        :type  filePath: str.
-        :param filePath: The path where you want to load your graph from.
+        :type  file_path: str.
+        :param file_path: The path where you want to load your graph from.
 
         """
         # Load data.
-        if os.path.exists(filePath):
-            data = utils._load_data(file_path=filePath)
+        if os.path.exists(file_path):
+            data = utils._load_data(file_path=file_path)
         else:
-            raise FileNotFoundError(f"Invalid path : {filePath}")
+            raise FileNotFoundError(f"Invalid path : {file_path}")
 
         # Apply nodes data.
-        nodesData = data["NODES"]
-        nodesName = nodesData.keys()
+        nodes_data = data["NODES"]
+        nodes_name = nodes_data.keys()
 
-        for name in nodesName:
-            preset = nodesData[name]["preset"]
-            position = nodesData[name]["position"]
+        for name in nodes_name:
+            preset = nodes_data[name]["preset"]
+            position = nodes_data[name]["position"]
             position = QtCore.QPointF(position[0], position[1])
-            alternate = nodesData[name]["alternate"]
+            alternate = nodes_data[name]["alternate"]
 
-            node = self.createNode(
+            node = self.create_node(
                 name=name,
                 preset=preset,
                 position=position,
@@ -1088,48 +1092,48 @@ class Nodz(QtWidgets.QGraphicsView):
                 continue
 
             # Apply attributes data.
-            attrsData = nodesData[name]["attributes"]
+            attrs_data = nodes_data[name]["attributes"]
 
-            for attrData in attrsData:
-                index = attrsData.index(attrData)
-                name = attrData["name"]
-                plug = attrData["plug"]
-                socket = attrData["socket"]
-                preset = attrData["preset"]
-                dataType = attrData["dataType"]
-                plugMaxConnections = attrData["plugMaxConnections"]
-                socketMaxConnections = attrData["socketMaxConnections"]
+            for attr_data in attrs_data:
+                index = attrs_data.index(attr_data)
+                name = attr_data["name"]
+                plug = attr_data["plug"]
+                socket = attr_data["socket"]
+                preset = attr_data["preset"]
+                data_type = attr_data["dataType"]
+                plug_max_connections = attr_data["plugMaxConnections"]
+                socket_max_connections = attr_data["socketMaxConnections"]
 
                 # un-serialize data type if needed
-                if isinstance(dataType, str) and dataType.find("<") == 0:
-                    dataType = eval(str(dataType.split("'")[1]))
+                if isinstance(data_type, str) and data_type.find("<") == 0:
+                    data_type = eval(str(data_type.split("'")[1]))
 
-                self.createAttribute(
+                self.create_attribute(
                     node=node,
                     name=name,
                     index=index,
                     preset=preset,
                     plug=plug,
                     socket=socket,
-                    dataType=dataType,
-                    plugMaxConnections=plugMaxConnections,
-                    socketMaxConnections=socketMaxConnections,
+                    data_type=data_type,
+                    plug_max_connections=plug_max_connections,
+                    socket_max_connections=socket_max_connections,
                 )
 
         # Apply connections data.
-        connectionsData = data["CONNECTIONS"]
+        connections_data = data["CONNECTIONS"]
 
-        for connection in connectionsData:
+        for connection in connections_data:
             source = connection[0]
-            sourceNode = source.split(".")[0]
-            sourceAttr = source.split(".")[1]
+            source_node = source.split(".")[0]
+            source_attr = source.split(".")[1]
 
             target = connection[1]
-            targetNode = target.split(".")[0]
-            targetAttr = target.split(".")[1]
+            target_node = target.split(".")[0]
+            target_attr = target.split(".")[1]
 
-            self.createConnection(
-                sourceNode, sourceAttr, targetNode, targetAttr
+            self.create_connection(
+                source_node, source_attr, target_node, target_attr
             )
 
         self.scene().update()
@@ -1137,51 +1141,51 @@ class Nodz(QtWidgets.QGraphicsView):
         # Emit signal.
         self.signal_GraphLoaded.emit()
 
-    def createConnection(
+    def create_connection(
         self,
-        sourceNode: str,
-        sourceAttr: str,
-        targetNode: str,
-        targetAttr: str,
+        source_node: str,
+        source_attr: str,
+        target_node: str,
+        target_attr: str,
     ) -> ConnectionItem:
         """
         Create a manual connection.
 
-        :type  sourceNode: str.
-        :param sourceNode: Node that emits the connection.
+        :type  source_node: str.
+        :param source_node: Node that emits the connection.
 
-        :type  sourceAttr: str.
-        :param sourceAttr: Attribute that emits the connection.
+        :type  source_attr: str.
+        :param source_attr: Attribute that emits the connection.
 
-        :type  targetNode: str.
-        :param targetNode: Node that receives the connection.
+        :type  target_node: str.
+        :param target_node: Node that receives the connection.
 
-        :type  targetAttr: str.
-        :param targetAttr: Attribute that receives the connection.
+        :type  target_attr: str.
+        :param target_attr: Attribute that receives the connection.
 
         """
-        plug = self.scene_nodes[sourceNode].plugs[sourceAttr]
-        socket = self.scene_nodes[targetNode].sockets[targetAttr]
+        plug = self.scene_nodes[source_node].plugs[source_attr]
+        socket = self.scene_nodes[target_node].sockets[target_attr]
 
         connection = ConnectionItem(
             plug.center(), socket.center(), plug, socket
         )
 
-        connection.plugNode = plug.parentItem().name
-        connection.plugAttr = plug.attribute
-        connection.socketNode = socket.parentItem().name
-        connection.socketAttr = socket.attribute
+        connection.plug_node = plug.parentItem().name
+        connection.plug_attr = plug.attribute
+        connection.socket_node = socket.parentItem().name
+        connection.socket_attr = socket.attribute
 
         plug.connect(socket, connection)
         socket.connect(plug, connection)
 
-        connection.updatePath()
+        connection.update_path()
 
         self.scene().addItem(connection)
 
         return connection
 
-    def evaluateGraph(self) -> list:
+    def evaluate_graph(self) -> list:
         """
         Create a list of connection tuples.
         [("sourceNode.attribute", "TargetNode.attribute"), ...]
@@ -1195,14 +1199,14 @@ class Nodz(QtWidgets.QGraphicsView):
             if isinstance(item, ConnectionItem):
                 connection = item
 
-                data.append(connection._outputConnectionData())
+                data.append(connection._output_connection_data())
 
         # Emit Signal
         self.signal_GraphEvaluated.emit()
 
         return data
 
-    def clearGraph(self) -> None:
+    def clear_graph(self) -> None:
         """
         Clear the graph.
 
@@ -1234,7 +1238,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         super(NodeScene, self).__init__(parent)
 
         # General.
-        self.gridSize = parent.config["grid_size"]
+        self.grid_size = parent.config["grid_size"]
 
         # Nodes storage.
         self.nodes = dict()
@@ -1304,20 +1308,20 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         painter.fillRect(rect, self._brush)
 
-        if self.nodz_instance.gridVisToggle:
-            leftLine = rect.left() - rect.left() % self.gridSize
-            topLine = rect.top() - rect.top() % self.gridSize
+        if self.nodz_instance.grid_vis_toggle:
+            left_line = rect.left() - rect.left() % self.grid_size
+            top_line = rect.top() - rect.top() % self.grid_size
             lines = list()
 
-            i = int(leftLine)
+            i = int(left_line)
             while i < int(rect.right()):
                 lines.append(QtCore.QLineF(i, rect.top(), i, rect.bottom()))
-                i += self.gridSize
+                i += self.grid_size
 
-            u = int(topLine)
+            u = int(top_line)
             while u < int(rect.bottom()):
                 lines.append(QtCore.QLineF(rect.left(), u, rect.right(), u))
-                u += self.gridSize
+                u += self.grid_size
 
             self.pen = QtGui.QPen()
             self.pen.setColor(
@@ -1327,7 +1331,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
             painter.setPen(self.pen)
             painter.drawLines(lines)
 
-    def updateScene(self) -> None:
+    def update_scene(self) -> None:
         """
         Update the connections position.
 
@@ -1341,7 +1345,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
             if not connection.source:
                 raise RuntimeError("connection.source is invalid")
             connection.source_point = connection.source.center()
-            connection.updatePath()
+            connection.update_path()
 
 
 class NodeItem(QtWidgets.QGraphicsItem):
@@ -1376,19 +1380,19 @@ class NodeItem(QtWidgets.QGraphicsItem):
         # Storage
         self.name = name
         self.alternate = alternate
-        self.nodePreset = preset
-        self.attrPreset = None
+        self.node_preset = preset
+        self.attr_preset = None
 
         # Attributes storage.
         self.attrs = list()
-        self.attrsData = dict()
-        self.attrCount = 0
+        self.attrs_data = dict()
+        self.attr_count = 0
 
         self.plugs = dict()
         self.sockets = dict()
 
         # Methods.
-        self._createStyle(config)
+        self._create_style(config)
 
     @property
     def nodz_instance(self) -> Nodz:
@@ -1409,15 +1413,15 @@ class NodeItem(QtWidgets.QGraphicsItem):
         is created.
 
         """
-        if self.attrCount > 0:
+        if self.attr_count > 0:
             return (
-                self.baseHeight
-                + self.attrHeight * self.attrCount
+                self.base_height
+                + self.attr_height * self.attr_count
                 + self.border
                 + 0.5 * self.radius
             )
         else:
-            return self.baseHeight
+            return self.base_height
 
     @property
     def pen(self) -> QtGui.QPen:
@@ -1426,11 +1430,11 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
         """
         if self.isSelected():
-            return self._penSel
+            return self._pen_sel
         else:
             return self._pen
 
-    def _createStyle(self, config: dict) -> None:
+    def _create_style(self, config: dict) -> None:
         """
         Read the node style from the configuration file.
 
@@ -1440,72 +1444,74 @@ class NodeItem(QtWidgets.QGraphicsItem):
         self.setFlag(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
 
         # Dimensions.
-        self.baseWidth = config["node_width"]
-        self.baseHeight = config["node_height"]
-        self.attrHeight = config["node_attr_height"]
+        self.base_width = config["node_width"]
+        self.base_height = config["node_height"]
+        self.attr_height = config["node_attr_height"]
         self.border = config["node_border"]
         self.radius = config["node_radius"]
 
-        self.nodeCenter = QtCore.QPointF()
-        self.nodeCenter.setX(self.baseWidth / 2.0)
-        self.nodeCenter.setY(self.height / 2.0)
+        self.node_center = QtCore.QPointF()
+        self.node_center.setX(self.base_width / 2.0)
+        self.node_center.setY(self.height / 2.0)
 
         self._brush = QtGui.QBrush()
         self._brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
         self._brush.setColor(
-            utils._convert_data_to_color(config[self.nodePreset]["bg"])
+            utils._convert_data_to_color(config[self.node_preset]["bg"])
         )
 
         self._pen = QtGui.QPen()
         self._pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
         self._pen.setWidth(self.border)
         self._pen.setColor(
-            utils._convert_data_to_color(config[self.nodePreset]["border"])
+            utils._convert_data_to_color(config[self.node_preset]["border"])
         )
 
-        self._penSel = QtGui.QPen()
-        self._penSel.setStyle(QtCore.Qt.PenStyle.SolidLine)
-        self._penSel.setWidth(self.border)
-        self._penSel.setColor(
-            utils._convert_data_to_color(config[self.nodePreset]["border_sel"])
+        self._pen_sel = QtGui.QPen()
+        self._pen_sel.setStyle(QtCore.Qt.PenStyle.SolidLine)
+        self._pen_sel.setWidth(self.border)
+        self._pen_sel.setColor(
+            utils._convert_data_to_color(
+                config[self.node_preset]["border_sel"]
+            )
         )
 
-        self._textPen = QtGui.QPen()
-        self._textPen.setStyle(QtCore.Qt.PenStyle.SolidLine)
-        self._textPen.setColor(
-            utils._convert_data_to_color(config[self.nodePreset]["text"])
+        self._text_pen = QtGui.QPen()
+        self._text_pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
+        self._text_pen.setColor(
+            utils._convert_data_to_color(config[self.node_preset]["text"])
         )
 
-        self._nodeTextFont = QtGui.QFont(
+        self._node_text_font = QtGui.QFont(
             config["node_font"],
             config["node_font_size"],
             QtGui.QFont.Weight.Bold,
         )
-        self._attrTextFont = QtGui.QFont(
+        self._attr_text_font = QtGui.QFont(
             config["attr_font"],
             config["attr_font_size"],
             QtGui.QFont.Weight.Normal,
         )
 
-        self._attrBrush = QtGui.QBrush()
-        self._attrBrush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
+        self._attr_brush = QtGui.QBrush()
+        self._attr_brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
 
-        self._attrBrushAlt = QtGui.QBrush()
-        self._attrBrushAlt.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
+        self._attr_brush_alt = QtGui.QBrush()
+        self._attr_brush_alt.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
 
-        self._attrPen = QtGui.QPen()
-        self._attrPen.setStyle(QtCore.Qt.PenStyle.SolidLine)
+        self._attr_pen = QtGui.QPen()
+        self._attr_pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
 
-    def _createAttribute(
+    def _create_attribute(
         self,
         name: str,
         index: int,
         preset: str,
         plug: bool,
         socket: bool,
-        dataType: Any,
-        plugMaxConnections: int,
-        socketMaxConnections: int,
+        data_type: Any,
+        plug_max_connections: int,
+        socket_max_connections: int,
     ) -> None:
         """
         Create an attribute by expanding the node, adding a label and
@@ -1529,8 +1535,8 @@ class NodeItem(QtWidgets.QGraphicsItem):
         :param socket: Whether or not this attribute can receive
                        connections.
 
-        :type  dataType: type.
-        :param dataType: Type of the data represented by this attribute
+        :type  data_type: type.
+        :param data_type: Type of the data represented by this attribute
                          in order to highlight attributes of the same
                          type while performing a connection.
 
@@ -1543,57 +1549,57 @@ class NodeItem(QtWidgets.QGraphicsItem):
             nlog.error("Attribute creation aborted !")
             return
 
-        self.attrPreset = preset
+        self.attr_preset = preset
 
         # Create a plug connection item.
         if plug:
-            plugInst = PlugItem(
+            plug_inst = PlugItem(
                 parent=self,
                 attribute=name,
-                index=self.attrCount,
+                index=self.attr_count,
                 preset=preset,
-                dataType=dataType,
-                maxConnections=plugMaxConnections,
+                data_type=data_type,
+                max_connections=plug_max_connections,
             )
 
-            self.plugs[name] = plugInst
+            self.plugs[name] = plug_inst
 
         # Create a socket connection item.
         if socket:
-            socketInst = SocketItem(
+            socket_inst = SocketItem(
                 parent=self,
                 attribute=name,
-                index=self.attrCount,
+                index=self.attr_count,
                 preset=preset,
-                dataType=dataType,
-                maxConnections=socketMaxConnections,
+                data_type=data_type,
+                max_connections=socket_max_connections,
             )
 
-            self.sockets[name] = socketInst
+            self.sockets[name] = socket_inst
 
-        self.attrCount += 1
+        self.attr_count += 1
 
         # Add the attribute based on its index.
-        if index == -1 or index > self.attrCount:
+        if index == -1 or index > self.attr_count:
             self.attrs.append(name)
         else:
             self.attrs.insert(index, name)
 
         # Store attr data.
-        self.attrsData[name] = {
+        self.attrs_data[name] = {
             "name": name,
             "socket": socket,
             "plug": plug,
             "preset": preset,
-            "dataType": dataType,
-            "plugMaxConnections": plugMaxConnections,
-            "socketMaxConnections": socketMaxConnections,
+            "dataType": data_type,
+            "plugMaxConnections": plug_max_connections,
+            "socketMaxConnections": socket_max_connections,
         }
 
         # Update node height.
         self.update()
 
-    def _deleteAttribute(self, index: int) -> None:
+    def _delete_attribute(self, index: int) -> None:
         """
         Remove an attribute by reducing the node, removing the label
         and the connection items.
@@ -1621,8 +1627,8 @@ class NodeItem(QtWidgets.QGraphicsItem):
             self.plugs.pop(name)
 
         # Reduce node height.
-        if self.attrCount > 0:
-            self.attrCount -= 1
+        if self.attr_count > 0:
+            self.attr_count -= 1
 
         # Remove attribute from node.
         if name in self.attrs:
@@ -1660,7 +1666,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         The bounding rect based on the width and height variables.
 
         """
-        rect = QtCore.QRect(0, 0, self.baseWidth, self.height).toRectF()
+        rect = QtCore.QRect(0, 0, self.base_width, self.height).toRectF()
         return rect
 
     def shape(self) -> QtGui.QPainterPath:
@@ -1687,58 +1693,60 @@ class NodeItem(QtWidgets.QGraphicsItem):
         painter.setPen(self.pen)
 
         painter.drawRoundedRect(
-            0, 0, self.baseWidth, self.height, self.radius, self.radius
+            0, 0, self.base_width, self.height, self.radius, self.radius
         )
 
         # Node label.
-        painter.setPen(self._textPen)
-        painter.setFont(self._nodeTextFont)
+        painter.setPen(self._text_pen)
+        painter.setFont(self._node_text_font)
 
         metrics = QtGui.QFontMetrics(painter.font())
         text_width = metrics.boundingRect(self.name).width() + 14
         text_height = metrics.boundingRect(self.name).height() + 14
-        margin = (text_width - self.baseWidth) * 0.5
-        textRect = QtCore.QRect(-margin, -text_height, text_width, text_height)
+        margin = (text_width - self.base_width) * 0.5
+        text_rect = QtCore.QRect(
+            -margin, -text_height, text_width, text_height
+        )
 
         painter.drawText(
-            textRect, QtCore.Qt.AlignmentFlag.AlignCenter, self.name
+            text_rect, QtCore.Qt.AlignmentFlag.AlignCenter, self.name
         )
 
         # Attributes.
         offset = 0
-        for attr in self.attrs:
-            nodz_inst = self.nodz_instance
-            config = self.nodz_instance.config
+        nodz_inst = self.nodz_instance
+        config = self.nodz_instance.config
 
+        for attr in self.attrs:
             # Attribute rect.
             rect = QtCore.QRect(
                 self.border / 2,
-                self.baseHeight - self.radius + offset,
-                self.baseWidth - self.border,
-                self.attrHeight,
+                self.base_height - self.radius + offset,
+                self.base_width - self.border,
+                self.attr_height,
             )
 
-            attrData = self.attrsData[attr]
+            attr_data = self.attrs_data[attr]
             name = attr
 
-            preset = attrData["preset"]
+            preset = attr_data["preset"]
 
             # Attribute base.
-            self._attrBrush.setColor(
+            self._attr_brush.setColor(
                 utils._convert_data_to_color(config[preset]["bg"])
             )
             if self.alternate:
-                self._attrBrushAlt.setColor(
+                self._attr_brush_alt.setColor(
                     utils._convert_data_to_color(
                         config[preset]["bg"], True, config["alternate_value"]
                     )
                 )
 
-            self._attrPen.setColor(utils._convert_data_to_color([0, 0, 0, 0]))
-            painter.setPen(self._attrPen)
-            painter.setBrush(self._attrBrush)
-            if (offset / self.attrHeight) % 2:
-                painter.setBrush(self._attrBrushAlt)
+            self._attr_pen.setColor(utils._convert_data_to_color([0, 0, 0, 0]))
+            painter.setPen(self._attr_pen)
+            painter.setBrush(self._attr_brush)
+            if (offset / self.attr_height) % 2:
+                painter.setBrush(self._attr_brush_alt)
 
             painter.drawRect(rect)
 
@@ -1746,20 +1754,20 @@ class NodeItem(QtWidgets.QGraphicsItem):
             painter.setPen(
                 utils._convert_data_to_color(config[preset]["text"])
             )
-            painter.setFont(self._attrTextFont)
+            painter.setFont(self._attr_text_font)
 
             # Search non-connectable attributes.
-            if nodz_inst.drawingConnection:
-                if self == nodz_inst.currentHoveredNode:
-                    if not nodz_inst.sourceSlot:
-                        raise TypeError("Invalid sourceSlot")
-                    if attrData[
+            if nodz_inst.drawing_connection:
+                if self == nodz_inst.current_hovered_node:
+                    if not nodz_inst.source_slot:
+                        raise TypeError("Invalid source_slot")
+                    if attr_data[
                         "dataType"
-                    ] != nodz_inst.sourceSlot.dataType or (
-                        nodz_inst.sourceSlot.slotType == "plug"
-                        and attrData["socket"] is False
-                        or nodz_inst.sourceSlot.slotType == "socket"
-                        and attrData["plug"] is False
+                    ] != nodz_inst.source_slot.data_type or (
+                        nodz_inst.source_slot.slot_type == "plug"
+                        and attr_data["socket"] is False
+                        or nodz_inst.source_slot.slot_type == "socket"
+                        and attr_data["plug"] is False
                     ):
                         # Set non-connectable attributes color.
                         painter.setPen(
@@ -1768,17 +1776,17 @@ class NodeItem(QtWidgets.QGraphicsItem):
                             )
                         )
 
-            textRect = QtCore.QRect(
+            text_rect = QtCore.QRect(
                 rect.left() + self.radius,
                 rect.top(),
                 rect.width() - 2 * self.radius,
                 rect.height(),
             )
             painter.drawText(
-                textRect, QtCore.Qt.AlignmentFlag.AlignVCenter, name
+                text_rect, QtCore.Qt.AlignmentFlag.AlignVCenter, name
             )
 
-            offset += self.attrHeight
+            offset += self.attr_height
 
     def mousePressEvent(
         self, event: QtWidgets.QGraphicsSceneMouseEvent
@@ -1817,27 +1825,27 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
         """
         nodz_inst = self.nodz_instance
-        if nodz_inst.gridVisToggle:
-            if nodz_inst.gridSnapToggle or nodz_inst._nodeSnap:
-                gridSize = self.nodz_scene.gridSize
+        if nodz_inst.grid_vis_toggle:
+            if nodz_inst.grid_snap_toggle or nodz_inst._node_snap:
+                grid_size = self.nodz_scene.grid_size
 
-                currentPos = self.mapToScene(
-                    event.pos().x() - self.baseWidth / 2,
+                current_pos = self.mapToScene(
+                    event.pos().x() - self.base_width / 2,
                     event.pos().y() - self.height / 2,
                 )
 
                 snap_x = (
-                    round(currentPos.x() / gridSize) * gridSize
-                ) - gridSize / 4
+                    round(current_pos.x() / grid_size) * grid_size
+                ) - grid_size / 4
                 snap_y = (
-                    round(currentPos.y() / gridSize) * gridSize
-                ) - gridSize / 4
+                    round(current_pos.y() / grid_size) * grid_size
+                ) - grid_size / 4
                 snap_pos = QtCore.QPointF(snap_x, snap_y)
                 self.setPos(snap_pos)
 
-                self.nodz_scene.updateScene()
+                self.nodz_scene.update_scene()
             else:
-                self.nodz_scene.updateScene()
+                self.nodz_scene.update_scene()
                 super(NodeItem, self).mouseMoveEvent(event)
 
     def mouseReleaseEvent(
@@ -1877,8 +1885,8 @@ class SlotItem(QtWidgets.QGraphicsItem):
         attribute: str,
         preset: str,
         index: int,
-        dataType: Any,
-        maxConnections: int,
+        data_type: Any,
+        max_connections: int,
     ) -> None:
         """
         Initialize the class.
@@ -1895,8 +1903,8 @@ class SlotItem(QtWidgets.QGraphicsItem):
         :type  preset: str.
         :param preset: The name of graphical preset in the config file.
 
-        :param dataType: The data type associated to the attribute.
-        :type  dataType: Type.
+        :param data_type: The data type associated to the attribute.
+        :type  data_type: Type.
 
         """
         super(SlotItem, self).__init__(parent)
@@ -1905,11 +1913,11 @@ class SlotItem(QtWidgets.QGraphicsItem):
         self.setAcceptHoverEvents(True)
 
         # Storage.
-        self.slotType = None
+        self.slot_type = None
         self.attribute = attribute
         self.preset = preset
         self.index = index
-        self.dataType = dataType
+        self.data_type = data_type
 
         # Style.
         self.brush = QtGui.QBrush()
@@ -1920,9 +1928,9 @@ class SlotItem(QtWidgets.QGraphicsItem):
 
         # Connections storage.
         self.connected_slots = list()
-        self.newConnection = None
+        self.new_connection = None
         self.connections = list()
-        self.maxConnections = maxConnections
+        self.max_connections = max_connections
 
     @property
     def nodz_instance(self) -> Nodz:
@@ -1947,28 +1955,28 @@ class SlotItem(QtWidgets.QGraphicsItem):
 
         """
         # no plug on plug or socket on socket
-        hasPlugItem = isinstance(self, PlugItem) or isinstance(
+        has_plug_item = isinstance(self, PlugItem) or isinstance(
             slot_item, PlugItem
         )
-        hasSocketItem = isinstance(self, SocketItem) or isinstance(
+        has_socket_item = isinstance(self, SocketItem) or isinstance(
             slot_item, SocketItem
         )
-        if not (hasPlugItem and hasSocketItem):
+        if not (has_plug_item and has_socket_item):
             return False
 
         # no self connection
         if self.parentItem() == slot_item.parentItem():
             return False
 
-        # no more than maxConnections
+        # no more than max_connections
         if (
-            self.maxConnections > 0
-            and len(self.connected_slots) >= self.maxConnections
+            self.max_connections > 0
+            and len(self.connected_slots) >= self.max_connections
         ):
             return False
 
         # no connection with different types
-        if slot_item.dataType != self.dataType:
+        if slot_item.data_type != self.data_type:
             return False
 
         # otherwize, all fine.
@@ -1982,19 +1990,19 @@ class SlotItem(QtWidgets.QGraphicsItem):
 
         """
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            self.newConnection = ConnectionItem(
+            self.new_connection = ConnectionItem(
                 self.center().toPoint(),
                 self.mapToScene(event.pos()).toPoint(),
                 self,
                 None,
             )
 
-            self.connections.append(self.newConnection)
-            self.scene().addItem(self.newConnection)
+            self.connections.append(self.new_connection)
+            self.scene().addItem(self.new_connection)
 
-            nodzInst = self.nodz_instance
-            nodzInst.drawingConnection = True
-            nodzInst.sourceSlot = self
+            nodz_inst = self.nodz_instance
+            nodz_inst.drawing_connection = True
+            nodz_inst.source_slot = self
         else:
             super(SlotItem, self).mousePressEvent(event)
 
@@ -2005,12 +2013,12 @@ class SlotItem(QtWidgets.QGraphicsItem):
         Update the new connection's end point position.
 
         """
-        nodzInst = self.nodz_instance
-        config = nodzInst.config
-        if nodzInst.drawingConnection:
+        nodz_inst = self.nodz_instance
+        config = nodz_inst.config
+        if nodz_inst.drawing_connection:
             mbb = utils._create_pointer_bounding_box(
-                pointerPos=event.scenePos().toPoint(),
-                bbSize=config["mouse_bounding_box"],
+                pointer_pos=event.scenePos().toPoint(),
+                bb_size=config["mouse_bounding_box"],
             )
 
             # Get nodes in pointer's bounding box.
@@ -2020,15 +2028,15 @@ class SlotItem(QtWidgets.QGraphicsItem):
                 if self.parentItem() not in targets:
                     for target in targets:
                         if isinstance(target, NodeItem):
-                            nodzInst.currentHoveredNode = target
+                            nodz_inst.current_hovered_node = target
             else:
-                nodzInst.currentHoveredNode = None
+                nodz_inst.current_hovered_node = None
 
             # Set connection's end point.
-            if not self.newConnection:
+            if not self.new_connection:
                 raise RuntimeError("newConnection is invalid.")
-            self.newConnection.target_point = self.mapToScene(event.pos())
-            self.newConnection.updatePath()
+            self.new_connection.target_point = self.mapToScene(event.pos())
+            self.new_connection.update_path()
         else:
             super(SlotItem, self).mouseMoveEvent(event)
 
@@ -2039,11 +2047,11 @@ class SlotItem(QtWidgets.QGraphicsItem):
         Apply the connection if target_slot is valid.
 
         """
-        nodzInst = self.nodz_instance
+        nodz_inst = self.nodz_instance
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            nodzInst.drawingConnection = False
+            nodz_inst.drawing_connection = False
 
-            if not self.newConnection:
+            if not self.new_connection:
                 raise RuntimeError("newConnection is invalid")
 
             target = self.scene().itemAt(
@@ -2051,27 +2059,27 @@ class SlotItem(QtWidgets.QGraphicsItem):
             )
 
             if not isinstance(target, SlotItem):
-                self.newConnection._remove()
+                self.new_connection._remove()
                 super(SlotItem, self).mouseReleaseEvent(event)
                 return
 
             if target.accepts(self):
-                self.newConnection.target = target
-                self.newConnection.source = self
-                self.newConnection.target_point = target.center()
-                self.newConnection.source_point = self.center()
+                self.new_connection.target = target
+                self.new_connection.source = self
+                self.new_connection.target_point = target.center()
+                self.new_connection.source_point = self.center()
 
                 # Perform the ConnectionItem.
-                self.connect(target, self.newConnection)
-                target.connect(self, self.newConnection)
+                self.connect(target, self.new_connection)
+                target.connect(self, self.new_connection)
 
-                self.newConnection.updatePath()
+                self.new_connection.update_path()
             else:
-                self.newConnection._remove()
+                self.new_connection._remove()
         else:
             super(SlotItem, self).mouseReleaseEvent(event)
 
-        nodzInst.currentHoveredNode = None
+        nodz_inst.current_hovered_node = None
 
     def shape(self) -> QtGui.QPainterPath:
         """
@@ -2095,20 +2103,20 @@ class SlotItem(QtWidgets.QGraphicsItem):
         painter.setBrush(self.brush)
         painter.setPen(self.pen)
 
-        nodzInst = self.nodz_instance
-        config = nodzInst.config
-        if nodzInst.drawingConnection:
-            if self.parentItem() == nodzInst.currentHoveredNode:
+        nodz_inst = self.nodz_instance
+        config = nodz_inst.config
+        if nodz_inst.drawing_connection:
+            if self.parentItem() == nodz_inst.current_hovered_node:
                 painter.setBrush(
                     utils._convert_data_to_color(
                         config["non_connectable_color"]
                     )
                 )
-                if not nodzInst.sourceSlot:
-                    raise TypeError("Invalid sourceSlot")
-                if self.slotType == nodzInst.sourceSlot.slotType or (
-                    self.slotType != nodzInst.sourceSlot.slotType
-                    and self.dataType != nodzInst.sourceSlot.dataType
+                if not nodz_inst.source_slot:
+                    raise TypeError("Invalid source_slot")
+                if self.slot_type == nodz_inst.source_slot.slot_type or (
+                    self.slot_type != nodz_inst.source_slot.slot_type
+                    and self.data_type != nodz_inst.source_slot.data_type
                 ):
                     painter.setBrush(
                         utils._convert_data_to_color(
@@ -2116,11 +2124,11 @@ class SlotItem(QtWidgets.QGraphicsItem):
                         )
                     )
                 else:
-                    _penValid = QtGui.QPen()
-                    _penValid.setStyle(QtCore.Qt.PenStyle.SolidLine)
-                    _penValid.setWidth(2)
-                    _penValid.setColor(QtGui.QColor(255, 255, 255, 255))
-                    painter.setPen(_penValid)
+                    _pen_valid = QtGui.QPen()
+                    _pen_valid.setStyle(QtCore.Qt.PenStyle.SolidLine)
+                    _pen_valid.setWidth(2)
+                    _pen_valid.setColor(QtGui.QColor(255, 255, 255, 255))
+                    painter.setPen(_pen_valid)
                     painter.setBrush(self.brush)
 
         painter.drawEllipse(self.boundingRect())
@@ -2150,8 +2158,8 @@ class PlugItem(SlotItem):
         attribute: str,
         index: int,
         preset: str,
-        dataType: Any,
-        maxConnections: int,
+        data_type: Any,
+        max_connections: int,
     ) -> None:
         """
         Initialize the class.
@@ -2168,23 +2176,23 @@ class PlugItem(SlotItem):
         :type  preset: str.
         :param preset: The name of graphical preset in the config file.
 
-        :param dataType: The data type associated to the attribute.
-        :type  dataType: Type.
+        :param data_type: The data type associated to the attribute.
+        :type  data_type: Type.
 
         """
         super(PlugItem, self).__init__(
-            parent, attribute, preset, index, dataType, maxConnections
+            parent, attribute, preset, index, data_type, max_connections
         )
 
         # Storage.
         self.attributte = attribute
         self.preset = preset
-        self.slotType = "plug"
+        self.slot_type = "plug"
 
         # Methods.
-        self._createStyle(parent)
+        self._create_style(parent)
 
-    def _createStyle(self, parent: QtWidgets.QGraphicsItem) -> None:
+    def _create_style(self, parent: QtWidgets.QGraphicsItem) -> None:
         """
         Read the attribute style from the configuration file.
 
@@ -2201,18 +2209,16 @@ class PlugItem(SlotItem):
         The bounding rect based on the width and height variables.
 
         """
-        width = height = self.parent_node_item().attrHeight / 2.0
+        width = height = self.parent_node_item().attr_height / 2.0
+        config = self.nodz_instance.config
 
-        nodzInst = self.nodz_instance
-        config = nodzInst.config
-
-        x = self.parent_node_item().baseWidth - (width / 2.0)
+        x = self.parent_node_item().base_width - (width / 2.0)
         y = (
-            self.parent_node_item().baseHeight
+            self.parent_node_item().base_height
             - config["node_radius"]
-            + self.parent_node_item().attrHeight / 4
+            + self.parent_node_item().attr_height / 4
             + self.parent_node_item().attrs.index(self.attribute)
-            * self.parent_node_item().attrHeight
+            * self.parent_node_item().attr_height
         )
 
         rect = QtCore.QRect(x, y, width, height).toRectF()
@@ -2224,16 +2230,16 @@ class PlugItem(SlotItem):
 
         """
         if (
-            self.maxConnections > 0
-            and len(self.connected_slots) >= self.maxConnections
+            self.max_connections > 0
+            and len(self.connected_slots) >= self.max_connections
         ):
             # Already connected.
-            self.connections[self.maxConnections - 1]._remove()
+            self.connections[self.max_connections - 1]._remove()
 
         # Populate connection.
-        connection.socketItem = item
-        connection.plugNode = self.parent_node_item().name
-        connection.plugAttr = self.attribute
+        connection.socket_item = item
+        connection.plug_node = self.parent_node_item().name
+        connection.plug_attr = self.attribute
 
         # Add socket to connected slots.
         if item in self.connected_slots:
@@ -2246,10 +2252,10 @@ class PlugItem(SlotItem):
 
         # Emit signal.
         self.nodz_instance.signal_PlugConnected.emit(
-            connection.plugNode,
-            connection.plugAttr,
-            connection.socketNode,
-            connection.socketAttr,
+            connection.plug_node,
+            connection.plug_attr,
+            connection.socket_node,
+            connection.socket_attr,
         )
 
     def disconnect(self, connection: ConnectionItem) -> None:
@@ -2259,15 +2265,15 @@ class PlugItem(SlotItem):
         """
         # Emit signal.
         self.nodz_instance.signal_PlugDisconnected.emit(
-            connection.plugNode,
-            connection.plugAttr,
-            connection.socketNode,
-            connection.socketAttr,
+            connection.plug_node,
+            connection.plug_attr,
+            connection.socket_node,
+            connection.socket_attr,
         )
 
         # Remove connected socket from plug
-        if connection.socketItem in self.connected_slots:
-            self.connected_slots.remove(connection.socketItem)
+        if connection.socket_item in self.connected_slots:
+            self.connected_slots.remove(connection.socket_item)
         # Remove connection
         self.connections.remove(connection)
 
@@ -2284,8 +2290,8 @@ class SocketItem(SlotItem):
         attribute: str,
         index: int,
         preset: str,
-        dataType: Any,
-        maxConnections: int,
+        data_type: Any,
+        max_connections: int,
     ) -> None:
         """
         Initialize the socket.
@@ -2302,23 +2308,23 @@ class SocketItem(SlotItem):
         :type  preset: str.
         :param preset: The name of graphical preset in the config file.
 
-        :param dataType: The data type associated to the attribute.
-        :type  dataType: Type.
+        :param data_type: The data type associated to the attribute.
+        :type  data_type: Type.
 
         """
         super(SocketItem, self).__init__(
-            parent, attribute, preset, index, dataType, maxConnections
+            parent, attribute, preset, index, data_type, max_connections
         )
 
         # Storage.
         self.attributte = attribute
         self.preset = preset
-        self.slotType = "socket"
+        self.slot_type = "socket"
 
         # Methods.
-        self._createStyle(parent)
+        self._create_style(parent)
 
-    def _createStyle(self, parent: QtWidgets.QGraphicsItem) -> None:
+    def _create_style(self, parent: QtWidgets.QGraphicsItem) -> None:
         """
         Read the attribute style from the configuration file.
 
@@ -2335,17 +2341,16 @@ class SocketItem(SlotItem):
         The bounding rect based on the width and height variables.
 
         """
-        width = height = self.parent_node_item().attrHeight / 2.0
-
+        width = height = self.parent_node_item().attr_height / 2.0
         config = self.nodz_instance.config
 
         x = -width / 2.0
         y = (
-            self.parent_node_item().baseHeight
+            self.parent_node_item().base_height
             - config["node_radius"]
-            + (self.parent_node_item().attrHeight / 4)
+            + (self.parent_node_item().attr_height / 4)
             + self.parent_node_item().attrs.index(self.attribute)
-            * self.parent_node_item().attrHeight
+            * self.parent_node_item().attr_height
         )
 
         rect = QtCore.QRect(x, y, width, height).toRectF()
@@ -2357,16 +2362,16 @@ class SocketItem(SlotItem):
 
         """
         if (
-            self.maxConnections > 0
-            and len(self.connected_slots) >= self.maxConnections
+            self.max_connections > 0
+            and len(self.connected_slots) >= self.max_connections
         ):
             # Already connected.
-            self.connections[self.maxConnections - 1]._remove()
+            self.connections[self.max_connections - 1]._remove()
 
         # Populate connection.
-        connection.plugItem = item
-        connection.socketNode = self.parent_node_item().name
-        connection.socketAttr = self.attribute
+        connection.plug_item = item
+        connection.socket_node = self.parent_node_item().name
+        connection.socket_attr = self.attribute
 
         # Add plug to connected slots.
         self.connected_slots.append(item)
@@ -2377,10 +2382,10 @@ class SocketItem(SlotItem):
 
         # Emit signal.
         self.nodz_instance.signal_SocketConnected.emit(
-            connection.plugNode,
-            connection.plugAttr,
-            connection.socketNode,
-            connection.socketAttr,
+            connection.plug_node,
+            connection.plug_attr,
+            connection.socket_node,
+            connection.socket_attr,
         )
 
     def disconnect(self, connection: ConnectionItem) -> None:
@@ -2390,15 +2395,15 @@ class SocketItem(SlotItem):
         """
         # Emit signal.
         self.nodz_instance.signal_SocketDisconnected.emit(
-            connection.plugNode,
-            connection.plugAttr,
-            connection.socketNode,
-            connection.socketAttr,
+            connection.plug_node,
+            connection.plug_attr,
+            connection.socket_node,
+            connection.socket_attr,
         )
 
         # Remove connected plugs
-        if connection.plugItem in self.connected_slots:
-            self.connected_slots.remove(connection.plugItem)
+        if connection.plug_item in self.connected_slots:
+            self.connected_slots.remove(connection.plug_item)
         # Remove connections
         self.connections.remove(connection)
 
@@ -2419,11 +2424,11 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         """
         Initialize the class.
 
-        :param sourcePoint: Source position of the connection.
-        :type  sourcePoint: QPoint.
+        :param source_point: Source position of the connection.
+        :type  source_point: QPoint.
 
-        :param targetPoint: Target position of the connection
-        :type  targetPoint: QPoint.
+        :param target_point: Target position of the connection
+        :type  target_point: QPoint.
 
         :param source: Source item (plug or socket).
         :type  source: class.
@@ -2437,29 +2442,29 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         self.setZValue(1)
 
         # Storage.
-        self.socketNode: str | None = None
-        self.socketAttr: str | None = None
-        self.plugNode: str | None = None
-        self.plugAttr: str | None = None
+        self.socket_node: str | None = None
+        self.socket_attr: str | None = None
+        self.plug_node: str | None = None
+        self.plug_attr: str | None = None
 
         self.source_point = source_point
         self.target_point = target_point
         self.source = source
         self.target = target
 
-        self.plugItem: PlugItem | None = None
-        self.socketItem: SocketItem | None = None
+        self.plug_item: PlugItem | None = None
+        self.socket_item: SocketItem | None = None
 
         self.movable_point = None
 
         # Methods.
-        self._createStyle()
+        self._create_style()
 
     @property
     def nodz_instance(self) -> Nodz:
         return _nodz_instance(self)
 
-    def _createStyle(self) -> None:
+    def _create_style(self) -> None:
         """
         Read the connection style from the configuration file.
 
@@ -2475,14 +2480,14 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         )
         self._pen.setWidth(config["connection_width"])
 
-    def _outputConnectionData(self) -> tuple[str, str]:
+    def _output_connection_data(self) -> tuple[str, str]:
         """
         .
 
         """
         return (
-            "{0}.{1}".format(self.plugNode, self.plugAttr),
-            "{0}.{1}".format(self.socketNode, self.socketAttr),
+            "{0}.{1}".format(self.plug_node, self.plug_attr),
+            "{0}.{1}".format(self.socket_node, self.socket_attr),
         )
 
     def mousePressEvent(
@@ -2492,13 +2497,13 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         Snap the Connection to the mouse.
 
         """
-        nodzInst = self.nodz_instance
+        nodz_inst = self.nodz_instance
 
-        for item in nodzInst.scene().items():
+        for item in nodz_inst.scene().items():
             if isinstance(item, ConnectionItem):
                 item.setZValue(0)
 
-        nodzInst.drawingConnection = True
+        nodz_inst.drawing_connection = True
 
         d_to_target = (event.pos() - self.target_point).manhattanLength()
         d_to_source = (event.pos() - self.source_point).manhattanLength()
@@ -2509,7 +2514,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
             self.movable_point = "target_point"
             self.target.disconnect(self)
             self.target = None
-            nodzInst.sourceSlot = self.source
+            nodz_inst.source_slot = self.source
         else:
             if not self.source:
                 raise RuntimeError("Invalid source")
@@ -2517,9 +2522,9 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
             self.movable_point = "source_point"
             self.source.disconnect(self)
             self.source = None
-            nodzInst.sourceSlot = self.target
+            nodz_inst.source_slot = self.target
 
-        self.updatePath()
+        self.update_path()
 
     def mouseMoveEvent(
         self, event: QtWidgets.QGraphicsSceneMouseEvent
@@ -2528,33 +2533,33 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         Move the Connection with the mouse.
 
         """
-        nodzInst = self.nodz_instance
-        config = nodzInst.config
+        nodz_inst = self.nodz_instance
+        config = nodz_inst.config
 
         mbb = utils._create_pointer_bounding_box(
-            pointerPos=event.scenePos().toPoint(),
-            bbSize=config["mouse_bounding_box"],
+            pointer_pos=event.scenePos().toPoint(),
+            bb_size=config["mouse_bounding_box"],
         )
 
         # Get nodes in pointer's bounding box.
         targets = self.scene().items(mbb)
 
         if any(isinstance(target, NodeItem) for target in targets):
-            if not nodzInst.sourceSlot:
-                raise TypeError("Invalid sourceSlot")
-            if nodzInst.sourceSlot.parentItem() not in targets:
+            if not nodz_inst.source_slot:
+                raise TypeError("Invalid source_slot")
+            if nodz_inst.source_slot.parentItem() not in targets:
                 for target in targets:
                     if isinstance(target, NodeItem):
-                        nodzInst.currentHoveredNode = target
+                        nodz_inst.current_hovered_node = target
         else:
-            nodzInst.currentHoveredNode = None
+            nodz_inst.current_hovered_node = None
 
         if self.movable_point == "target_point":
             self.target_point = event.pos()
         else:
             self.source_point = event.pos()
 
-        self.updatePath()
+        self.update_path()
 
     def mouseReleaseEvent(
         self, event: QtWidgets.QGraphicsSceneMouseEvent
@@ -2563,7 +2568,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         Create a Connection if possible, otherwise delete it.
 
         """
-        self.nodz_instance.drawingConnection = False
+        self.nodz_instance.drawing_connection = False
 
         slot = self.scene().itemAt(
             event.scenePos().toPoint(), QtGui.QTransform()
@@ -2571,7 +2576,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
 
         if not isinstance(slot, SlotItem):
             self._remove()
-            self.updatePath()
+            self.update_path()
             super(ConnectionItem, self).mouseReleaseEvent(event)
             return
 
@@ -2588,7 +2593,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
                 # Reconnect.
                 socket.connect(plug, self)
 
-                self.updatePath()
+                self.update_path()
             else:
                 self._remove()
 
@@ -2605,7 +2610,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
                 # Reconnect.
                 plug.connect(socket, self)
 
-                self.updatePath()
+                self.update_path()
             else:
                 self._remove()
 
@@ -2623,7 +2628,7 @@ class ConnectionItem(QtWidgets.QGraphicsPathItem):
         scene.removeItem(self)
         scene.update()
 
-    def updatePath(self) -> None:
+    def update_path(self) -> None:
         """
         Update the path.
 
