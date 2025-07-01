@@ -1,5 +1,5 @@
 from typing import Any
-from qtpy import QtCore, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 import nodz.core as core
 from nodz.utils import nlog
 
@@ -34,6 +34,30 @@ class TestNode(core.NodeItem):
     def configure_from_dict(self, d: dict) -> None:
         if d and "help" in d:
             self.help = d["help"]
+
+    def paint_attr_label(
+        self,
+        attr: str,
+        painter: QtGui.QPainter,
+        rect: QtCore.QRect,
+        align_flag: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignVCenter,
+    ):
+        attr_data = self.attrs_data[attr]
+
+        align_flag = (
+            QtCore.Qt.AlignmentFlag.AlignVCenter
+            if attr_data["socket"] and not attr_data["plug"]
+            else QtCore.Qt.AlignmentFlag.AlignVCenter
+            | QtCore.Qt.AlignmentFlag.AlignRight
+            if attr_data["plug"] and not attr_data["socket"]
+            else QtCore.Qt.AlignmentFlag.AlignCenter
+        )
+        super().paint_attr_label(
+            attr,
+            painter,
+            rect,
+            align_flag=align_flag,
+        )
 
 
 class TestPlug(core.PlugItem):

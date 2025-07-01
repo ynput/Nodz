@@ -569,6 +569,105 @@ class NodeItem(QtWidgets.QGraphicsItem):
         path.addRect(self.boundingRect())
         return path
 
+    def paint_node_base(self, painter: QtGui.QPainter):
+        painter.setBrush(self._brush)
+        painter.setPen(self.pen)
+
+        painter.drawRoundedRect(
+            0, 0, self.base_width, self.height, self.radius, self.radius
+        )
+
+    def paint_node_label(
+        self,
+        painter: QtGui.QPainter,
+        align_flag: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignCenter,
+    ):
+        painter.setPen(self._text_pen)
+        painter.setFont(self._node_text_font)
+
+        metrics = QtGui.QFontMetrics(painter.font())
+        text_width = metrics.boundingRect(self.name).width() + 14
+        text_height = metrics.boundingRect(self.name).height() + 14
+        margin = (text_width - self.base_width) * 0.5
+        text_rect = QtCore.QRect(
+            -margin, -text_height, text_width, text_height
+        )
+
+        painter.drawText(text_rect, align_flag, self.name)
+
+    def paint_attr_base(
+        self,
+        attr: str,
+        offset: int,
+        painter: QtGui.QPainter,
+        rect: QtCore.QRect,
+    ):
+        config = self.nodz_instance.config
+        attr_data = self.attrs_data[attr]
+        preset = attr_data["preset"]
+
+        # Attribute base.
+        self._attr_brush.setColor(
+            utils._convert_data_to_color(config[preset]["bg"])
+        )
+        if self.alternate:
+            self._attr_brush_alt.setColor(
+                utils._convert_data_to_color(
+                    config[preset]["bg"], True, config["alternate_value"]
+                )
+            )
+
+        self._attr_pen.setColor(utils._convert_data_to_color([0, 0, 0, 0]))
+        painter.setPen(self._attr_pen)
+        painter.setBrush(self._attr_brush)
+        if (offset / self.attr_height) % 2:
+            painter.setBrush(self._attr_brush_alt)
+
+        painter.drawRect(rect)
+
+    def paint_attr_label(
+        self,
+        attr: str,
+        painter: QtGui.QPainter,
+        rect: QtCore.QRect,
+        align_flag: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignVCenter,
+    ):
+        nodz_inst = self.nodz_instance
+        config = nodz_inst.config
+        attr_data = self.attrs_data[attr]
+        preset = attr_data["preset"]
+
+        painter.setPen(utils._convert_data_to_color(config[preset]["text"]))
+        painter.setFont(self._attr_text_font)
+
+        # Search non-connectable attributes.
+        if nodz_inst.drawing_connection:
+            if self == nodz_inst.current_hovered_node:
+                if not nodz_inst.source_slot:
+                    raise TypeError("Invalid source_slot")
+                if attr_data[
+                    "dataType"
+                ] != nodz_inst.source_slot.data_type or (
+                    nodz_inst.source_slot.slot_type == "plug"
+                    and attr_data["socket"] is False
+                    or nodz_inst.source_slot.slot_type == "socket"
+                    and attr_data["plug"] is False
+                ):
+                    # Set non-connectable attributes color.
+                    painter.setPen(
+                        utils._convert_data_to_color(
+                            config["non_connectable_color"]
+                        )
+                    )
+
+        text_rect = QtCore.QRect(
+            rect.left() + self.radius,
+            rect.top(),
+            rect.width() - 2 * self.radius,
+            rect.height(),
+        )
+        painter.drawText(text_rect, align_flag, attr)
+
     def paint(
         self,
         painter: QtGui.QPainter,
@@ -586,103 +685,26 @@ class NodeItem(QtWidgets.QGraphicsItem):
                 to None.
         """
         # Node base.
-        painter.setBrush(self._brush)
-        painter.setPen(self.pen)
-
-        painter.drawRoundedRect(
-            0, 0, self.base_width, self.height, self.radius, self.radius
-        )
+        self.paint_node_base(painter)
 
         # Node label.
-        painter.setPen(self._text_pen)
-        painter.setFont(self._node_text_font)
-
-        metrics = QtGui.QFontMetrics(painter.font())
-        text_width = metrics.boundingRect(self.name).width() + 14
-        text_height = metrics.boundingRect(self.name).height() + 14
-        margin = (text_width - self.base_width) * 0.5
-        text_rect = QtCore.QRect(
-            -margin, -text_height, text_width, text_height
-        )
-
-        painter.drawText(
-            text_rect, QtCore.Qt.AlignmentFlag.AlignCenter, self.name
-        )
+        self.paint_node_label(painter)
 
         # Attributes.
         offset = 0
-        nodz_inst = self.nodz_instance
-        config = self.nodz_instance.config
 
         for attr in self.attrs:
-            # Attribute rect.
             rect = QtCore.QRect(
                 self.border / 2,
                 self.base_height - self.radius + offset,
                 self.base_width - self.border,
                 self.attr_height,
             )
-
-            attr_data = self.attrs_data[attr]
-            name = attr
-
-            preset = attr_data["preset"]
-
-            # Attribute base.
-            self._attr_brush.setColor(
-                utils._convert_data_to_color(config[preset]["bg"])
-            )
-            if self.alternate:
-                self._attr_brush_alt.setColor(
-                    utils._convert_data_to_color(
-                        config[preset]["bg"], True, config["alternate_value"]
-                    )
-                )
-
-            self._attr_pen.setColor(utils._convert_data_to_color([0, 0, 0, 0]))
-            painter.setPen(self._attr_pen)
-            painter.setBrush(self._attr_brush)
-            if (offset / self.attr_height) % 2:
-                painter.setBrush(self._attr_brush_alt)
-
-            painter.drawRect(rect)
-
+            # Attribute rect.
+            self.paint_attr_base(attr, offset, painter, rect)
             # Attribute label.
-            painter.setPen(
-                utils._convert_data_to_color(config[preset]["text"])
-            )
-            painter.setFont(self._attr_text_font)
-
-            # Search non-connectable attributes.
-            if nodz_inst.drawing_connection:
-                if self == nodz_inst.current_hovered_node:
-                    if not nodz_inst.source_slot:
-                        raise TypeError("Invalid source_slot")
-                    if attr_data[
-                        "dataType"
-                    ] != nodz_inst.source_slot.data_type or (
-                        nodz_inst.source_slot.slot_type == "plug"
-                        and attr_data["socket"] is False
-                        or nodz_inst.source_slot.slot_type == "socket"
-                        and attr_data["plug"] is False
-                    ):
-                        # Set non-connectable attributes color.
-                        painter.setPen(
-                            utils._convert_data_to_color(
-                                config["non_connectable_color"]
-                            )
-                        )
-
-            text_rect = QtCore.QRect(
-                rect.left() + self.radius,
-                rect.top(),
-                rect.width() - 2 * self.radius,
-                rect.height(),
-            )
-            painter.drawText(
-                text_rect, QtCore.Qt.AlignmentFlag.AlignVCenter, name
-            )
-
+            self.paint_attr_label(attr, painter, rect)
+            # update offset for next attribute
             offset += self.attr_height
 
     def mousePressEvent(
