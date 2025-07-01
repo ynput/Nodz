@@ -175,6 +175,20 @@ def _save_data(file_path: str, data: dict) -> None:
     nlog.info("Data successfully saved !")
 
 
+def _decoder(d: dict):
+    """decode specific fields to avoid code duplication."""
+
+    if "position" in d:
+        d["position"] = QtCore.QPointF(*d["position"])
+
+    if "dataType" in d:
+        data_type = d["dataType"]
+        if isinstance(data_type, str) and data_type.find("<") == 0:
+            d["dataType"] = eval(str(data_type.split("'")[1]))
+
+    return d
+
+
 def _load_data(file_path: str) -> dict:
     """
     load data from a .json file.
@@ -184,7 +198,7 @@ def _load_data(file_path: str) -> dict:
 
     """
     with open(file_path) as json_file:
-        j_data = json.load(json_file)
+        j_data = json.load(json_file, object_hook=_decoder)
 
     json_file.close()
 
