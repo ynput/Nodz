@@ -1,14 +1,99 @@
+from typing import Any
 from qtpy import QtCore, QtWidgets
 import nodz.core as core
 from nodz.utils import nlog
 
 try:
     app = QtWidgets.QApplication([])
-except:
+except BaseException:
     # I guess we're running somewhere that already has a QApp created
     app = None
 
-nodz = core.Nodz(None)
+######################################################################
+# Test subclasses
+######################################################################
+
+
+class TestNode(core.NodeItem):
+    def __init__(
+        self,
+        name: str,
+        alternate: bool,
+        preset: str,
+        config: dict,
+        help: str = "",
+    ) -> None:
+        super().__init__(name, alternate, preset, config)
+        self.help = help if help else "This is a subclassed node."
+
+    def to_dict(self) -> dict:
+        d = super().to_dict()
+        d["help"] = self.help
+        return d
+
+    def configure_from_dict(self, d: dict) -> None:
+        if d and "help" in d:
+            self.help = d["help"]
+
+
+class TestPlug(core.PlugItem):
+    def __init__(
+        self,
+        parent: QtWidgets.QGraphicsItem,
+        attribute: str,
+        index: int,
+        preset: str,
+        data_type: Any,
+        max_connections: int,
+        help: str = "",
+    ) -> None:
+        super().__init__(
+            parent, attribute, index, preset, data_type, max_connections
+        )
+        self.help = help if help else "This is a subclassed plug."
+
+    def to_dict(self) -> dict:
+        d = super().to_dict()
+        d["help"] = self.help
+        return d
+
+    def configure_from_dict(self, d: dict) -> None:
+        if d and "help" in d:
+            self.help = d["help"]
+
+
+class TestSocket(core.SocketItem):
+    def __init__(
+        self,
+        parent: QtWidgets.QGraphicsItem,
+        attribute: str,
+        index: int,
+        preset: str,
+        data_type: Any,
+        max_connections: int,
+        help: str = "",
+    ) -> None:
+        super().__init__(
+            parent, attribute, index, preset, data_type, max_connections
+        )
+        self.help = help if help else "This is a subclassed socket."
+
+    def to_dict(self) -> dict:
+        d = super().to_dict()
+        d["help"] = self.help
+        return d
+
+    def configure_from_dict(self, d: dict) -> None:
+        if d and "help" in d:
+            self.help = d["help"]
+
+
+nodz = core.Nodz(
+    None,
+    nodeitem_cls=TestNode,
+    plugitem_cls=TestPlug,
+    socketitem_cls=TestSocket,
+)
 # nodz.loadConfig(filePath='')
 nodz.initialize()
 nodz.show()
@@ -406,7 +491,9 @@ nodz.create_connection("nodeD", "Dattr2", "nodeA", "Aattr6")
 
 # Attributes Edition
 nodz.edit_attribute(node=nodeC, index=0, new_name=None, new_index=-1)
-nodz.edit_attribute(node=nodeC, index=-1, new_name="NewAttrName", new_index=None)
+nodz.edit_attribute(
+    node=nodeC, index=-1, new_name="NewAttrName", new_index=None
+)
 
 # Attributes Deletion
 nodz.delete_attribute(node=nodeC, index=-1)
