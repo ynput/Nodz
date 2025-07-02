@@ -502,6 +502,39 @@ nodz.create_attribute(
     data_type=int,
 )
 
+# Node F
+nodeF = nodz.create_node(name="nodeF", preset="node_preset_1")
+
+nodz.create_attribute(
+    node=nodeF,
+    name="Fattr1",
+    index=-1,
+    preset="attr_preset_1",
+    plug=True,
+    socket=False,
+    data_type=str,
+)
+
+nodz.create_attribute(
+    node=nodeF,
+    name="Fattr2",
+    index=-1,
+    preset="attr_preset_2",
+    plug=False,
+    socket=True,
+    data_type=str,
+)
+
+nodz.create_attribute(
+    node=nodeF,
+    name="Fattr3",
+    index=-1,
+    preset="attr_preset_2",
+    plug=False,
+    socket=True,
+    data_type=int,
+)
+
 
 # Please note that this is a local test so once the graph is cleared
 # and reloaded, all the local variables are not valid anymore, which
@@ -512,6 +545,7 @@ nodz.create_attribute(
 nodz.create_connection("nodeB", "Battr2", "nodeA", "Aattr3")
 nodz.create_connection("nodeB", "Battr1", "nodeA", "Aattr4")
 nodz.create_connection("nodeD", "Dattr2", "nodeA", "Aattr6")
+nodz.create_connection("nodeE", "Eattr1", "nodeF", "Fattr2")
 
 # Attributes Edition
 nodz.edit_attribute(node=nodeC, index=0, new_name=None, new_index=-1)

@@ -2098,60 +2098,65 @@ class Nodz(QtWidgets.QGraphicsView):
             f"_layout_graph: root_nodes: {[n.name for n in root_nodes]}"
         )
 
-        # Initialize graph layout data
-        graph_depth = [
-            [(root_nodes[0], root_nodes[0].base_width, root_nodes[0].height)]
-        ]
-        scene_height = graph_depth[0][0][
-            2
-        ]  # Initial height is the root node's height
+        start_x_pos = h_spacing
+        start_y_pos = 0
 
-        level = 0
-        while level >= 0:
-            has_connections = False
-            lheight = 0
+        for root in root_nodes:
+            # Initialize graph layout data
+            graph_depth = [[(root, root.base_width, root.height)]]
+            scene_height = graph_depth[0][0][
+                2
+            ]  # Initial height is the root node's height
 
-            for node, _, hgt in graph_depth[level]:
-                lheight += hgt + v_spacing
+            level = 0
+            while level >= 0:
+                has_connections = False
+                lheight = 0
 
-                for attr, socket in node.sockets.items():
-                    if attr not in node.attrs:
-                        continue
+                for node, _, hgt in graph_depth[level]:
+                    lheight += hgt + v_spacing
 
-                    for connection in socket.connections:
-                        has_connections = True
-                        src_node = connection.plug_item.parentItem()
-                        if len(graph_depth) <= level + 1:
-                            graph_depth.append([])
-                        graph_depth[level + 1].append(
-                            (src_node, src_node.base_width, src_node.height)
-                        )
+                    for attr, socket in node.sockets.items():
+                        if attr not in node.attrs:
+                            continue
 
-            scene_height = max(scene_height, lheight)
-            level = level + 1 if has_connections else -1
+                        for connection in socket.connections:
+                            has_connections = True
+                            src_node = connection.plug_item.parentItem()
+                            if len(graph_depth) <= level + 1:
+                                graph_depth.append([])
+                            graph_depth[level + 1].append(
+                                (
+                                    src_node,
+                                    src_node.base_width,
+                                    src_node.height,
+                                )
+                            )
 
-        nlog.debug(f"_layout_graph: graph_depth = {graph_depth}")
+                scene_height = max(scene_height, lheight)
+                level = level + 1 if has_connections else -1
 
-        # Position nodes from bottom to top
-        start_pos = h_spacing
-        ymax = 0
-        positioned_nodes = []
+            nlog.debug(f"_layout_graph: graph_depth = {graph_depth}")
 
-        for i, lst in enumerate(reversed(graph_depth)):
-            xpos = start_pos + i * (root_nodes[0].base_width + h_spacing)
-            ypos = v_spacing
+            # Position nodes from bottom to top
+            ymax = 0
+            positioned_nodes = []
 
-            for node, _, hgt in lst:
-                if node not in positioned_nodes:
-                    pos = QtCore.QPointF(xpos, ypos)
-                    ypos += hgt + v_spacing
-                    node.setPos(pos)
-                    positioned_nodes.append(node)
-            ymax = max(ymax, ypos)
+            for i, lst in enumerate(reversed(graph_depth)):
+                xpos = start_x_pos + i * (root_nodes[0].base_width + h_spacing)
+                ypos = start_y_pos + v_spacing
 
-        for i, node in enumerate(root_nodes[1:]):
-            xpos = start_pos + i * (root_nodes[0].base_width + h_spacing)
-            node.setPos(xpos, ymax)
+                for node, _, hgt in lst:
+                    if node not in positioned_nodes:
+                        pos = QtCore.QPointF(xpos, ypos)
+                        ypos += hgt + v_spacing
+                        node.setPos(pos)
+                        positioned_nodes.append(node)
+                ymax = max(ymax, ypos)
+
+            # update start position for next root node
+            start_y_pos = ymax
+
 
         self.nodz_scene.update_scene()
         self._center_graph_in_scene()
