@@ -585,7 +585,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         painter.setPen(self._text_pen)
         painter.setFont(self._node_text_font)
 
-        metrics = QtGui.QFontMetrics(painter.font())
+        metrics = painter.fontMetrics()
         text_width = metrics.boundingRect(self.name).width() + 14
         text_height = metrics.boundingRect(self.name).height() + 14
         margin = (text_width - self.base_width) * 0.5
@@ -1661,6 +1661,8 @@ class Nodz(QtWidgets.QGraphicsView):
         self.current_state = ViewState.DEFAULT
         self.pressed_keys = list()
 
+        self._help_document = None
+
     @property
     def nodz_scene(self) -> NodeScene:
         return _nodz_scene(self)
@@ -1695,23 +1697,27 @@ class Nodz(QtWidgets.QGraphicsView):
             rect (QtCore.QRectF | QtCore.QRect): The rectangle specifying
                 the area of the view that needs to be updated.
         """
-        h_str = (
-            "Keyboard Shortcuts:   "
-            "L: organize graph    A: Frame graph    F: Frame selection    "
-            "S-down: Snap to grid"
-        )
         vp_bottom_left = self.viewport().rect().bottomLeft()
         painter.resetTransform()
-        h_pen = QtGui.QPen()
-        h_pen.setColor(QtGui.QColor(255, 255, 255, 96))
-        painter.setPen(h_pen)
-        h_rect = painter.fontMetrics().boundingRect(h_str)
-        painter.drawText(
-            QtCore.QPointF(
-                vp_bottom_left.x() + 20, vp_bottom_left.y() - h_rect.height()
-            ),
-            h_str,
+        if not self._help_document:
+            h_str = (
+                "*Keyboard Shortcuts:*   "
+                "**L**: Layout graph    "
+                "**A**: Frame all nodes    "
+                "**F**: Frame selection    "
+                "**S-down**: Snap to grid"
+            )
+            self._help_document = QtGui.QTextDocument()
+            font_size = painter.fontInfo().pointSize()
+            self._help_document.setDefaultFont(
+                QtGui.QFont(painter.font().family(), max(10, font_size - 2))
+            )
+            self._help_document.setMarkdown(h_str)
+        painter.translate(
+            QtCore.QPoint(vp_bottom_left.x() + 20, vp_bottom_left.y() - 30)
         )
+        painter.setOpacity(0.5)
+        self._help_document.drawContents(painter)
 
     def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         """
@@ -2156,7 +2162,6 @@ class Nodz(QtWidgets.QGraphicsView):
 
             # update start position for next root node
             start_y_pos = ymax
-
 
         self.nodz_scene.update_scene()
         self._center_graph_in_scene()
