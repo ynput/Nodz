@@ -7,3 +7,9 @@ dependencies = [
     "qtpy",
     "PySide6"
 ]
+
+[tool.setuptools.packages.find]
+where = ["nodz"]
+
+[tool.setuptools.package-data]
+nodz = ["*.json"]
