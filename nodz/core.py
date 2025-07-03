@@ -2186,11 +2186,7 @@ class Nodz(QtWidgets.QGraphicsView):
         for node in self.scene().selectedItems():
             if not isinstance(node, NodeItem):
                 raise TypeError(f"Unexpected node type in graph: {node}")
-            selected_nodes.append(node.name)
-            node._remove()
-
-        # Emit signal.
-        self.signal_NodeDeleted.emit(selected_nodes)
+            self.delete_node(node)
 
     def _return_selection(self) -> None:
         """

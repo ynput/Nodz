@@ -9,7 +9,8 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-where = ["nodz"]
+where = ["."]
+include = ["nodz*"]
 
 [tool.setuptools.package-data]
 nodz = ["*.json"]
