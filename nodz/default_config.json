@@ -8,7 +8,7 @@
     "smooth_pixmap": true,
 
     // Viewport focus margins
-    "viewport_margins": 10,
+    "viewport_margins": 20,
 
     // nodes spacing when automatically laid out.
     "horizontal_node_spacing": 75,
