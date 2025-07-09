@@ -176,9 +176,7 @@ class Nodz(QtWidgets.QGraphicsView):
         # Add selection
         elif (
             event.button() == QtCore.Qt.MouseButton.LeftButton
-            and event.modifiers()
-            == QtCore.Qt.KeyboardModifier.ShiftModifier
-            | QtCore.Qt.KeyboardModifier.ControlModifier
+            and event.modifiers() == QtCore.Qt.KeyboardModifier.ShiftModifier
         ):
             self.current_state = ViewState.ADD_SELECTION
             self._init_rubberband(event.pos().toPointF())
@@ -196,7 +194,9 @@ class Nodz(QtWidgets.QGraphicsView):
         # Toggle selection
         elif (
             event.button() == QtCore.Qt.MouseButton.LeftButton
-            and event.modifiers() == QtCore.Qt.KeyboardModifier.ShiftModifier
+            and event.modifiers()
+            == QtCore.Qt.KeyboardModifier.ShiftModifier
+            | QtCore.Qt.KeyboardModifier.ControlModifier
         ):
             self.current_state = ViewState.TOGGLE_SELECTION
             self._init_rubberband(event.pos().toPointF())
