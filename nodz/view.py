@@ -33,11 +33,11 @@ class Nodz(QtWidgets.QGraphicsView):
 
     """
 
-    # FIXME: Somehow QtCore.Signal is flagged by pylance as
+    # NOTE: Somehow QtCore.Signal is flagged by pylance as
     # not exported by qtpy.QtCore...
 
     signal_KeyPressed = QtCore.Signal(object)  # type: ignore (qtpy)
-    signal_NodeMoved = QtCore.Signal(str, object)  # type: ignore (qtpy)
+    signal_NodeMoved = QtCore.Signal(object, object)  # type: ignore (qtpy)
     delete_selected_nodes = QtCore.Signal()  # type: ignore (qtpy)
     snap_node_to_grid = QtCore.Signal(bool)  # type: ignore (qtpy)
     selection_changed = QtCore.Signal(bool)  # type: ignore (qtpy)
@@ -471,7 +471,7 @@ class Nodz(QtWidgets.QGraphicsView):
             if all(len(plug.connections) == 0 for plug in node.plugs.values())
         ]
         nlog.debug(
-            f"_layout_graph: root_nodes: {[n.name for n in root_nodes]}"
+            f"_layout_graph: root_nodes: {[n.model.name for n in root_nodes]}"
         )
 
         start_x_pos = h_spacing
@@ -548,7 +548,7 @@ class Nodz(QtWidgets.QGraphicsView):
                 rect = rect.united(item.sceneBoundingRect())
         return rect if rect else QtCore.QRectF()
 
-    def initialize(self) -> None:
+    def initialize(self, node_factory=None) -> None:
         """
         Setup the view's behavior.
         """
@@ -585,6 +585,8 @@ class Nodz(QtWidgets.QGraphicsView):
         scene_width = config["scene_width"]
         scene_height = config["scene_height"]
         self._scene.setSceneRect(0, 0, scene_width, scene_height)
+        if node_factory:
+            self._scene.register_factory(node_factory)
         self.setScene(self._scene)
 
         # Connect scene node signals
@@ -610,10 +612,11 @@ class Nodz(QtWidgets.QGraphicsView):
         preset: str = "node_default",
         position: Optional[QtCore.QPointF] = None,
         alternate: bool = True,
+        **kwargs,
     ) -> str:
         return self._scene.api_create_node(
-            name, preset, position, alternate
-        ).name
+            name, preset, position, alternate, **kwargs
+        ).model.name
 
     def delete_node(self, node_name: str) -> None:
         self._scene.api_delete_node(self._scene.node_by_name(node_name))
@@ -621,7 +624,7 @@ class Nodz(QtWidgets.QGraphicsView):
     def edit_node(self, node_name: str, new_name: str) -> str:
         node = self._scene.node_by_name(node_name)
         self._scene.api_edit_node(node, new_name)
-        return node.name
+        return node.model.name
 
     def create_attribute(
         self,
@@ -634,6 +637,7 @@ class Nodz(QtWidgets.QGraphicsView):
         data_type: Any = None,
         plug_max_connections: int = -1,
         socket_max_connections: int = 1,
+        **kwargs,
     ) -> None:
         self._scene.api_create_attribute(
             self._scene.node_by_name(node_name),
@@ -645,6 +649,7 @@ class Nodz(QtWidgets.QGraphicsView):
             data_type,
             plug_max_connections,
             socket_max_connections,
+            **kwargs,
         )
 
     def delete_attribute(self, node_name: str, index: int) -> None:

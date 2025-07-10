@@ -1,8 +1,9 @@
-from typing import Any
+from typing import Union
 from qtpy import QtCore, QtGui, QtWidgets
 import nodz.view as view
 import nodz.items as items
 from nodz.utils import nlog
+from nodz.data_types import NodeModel, AttrModel, ConnectionModel
 
 try:
     app = QtWidgets.QApplication([])
@@ -11,113 +12,134 @@ except BaseException:
     app = None
 
 ######################################################################
-# Test subclasses
+# Test subclasses and factory
 ######################################################################
 
 
-# class TestNode(items.NodeItem):
-#     def __init__(
-#         self,
-#         name: str,
-#         alternate: bool,
-#         preset: str,
-#         config: dict,
-#         help: str = "",
-#     ) -> None:
-#         super().__init__(name, alternate, preset, config)
-#         self.help = help if help else "This is a subclassed node."
+class TestNode(items.NodeItem):
+    """
+    Derived class adding a tooltip on the node and changing the attributes'
+    label alignment based on its category (slot, plug or socket).
+    """
 
-#     def to_dict(self) -> dict:
-#         d = super().to_dict()
-#         d["help"] = self.help
-#         return d
+    def __init__(
+        self,
+        model: NodeModel,
+        config: dict,
+        help="%(name)s is a TestNode",
+    ) -> None:
+        super().__init__(model, config)
+        if self.model.kwargs.get("help") != help:
+            self.model.kwargs["help"] = help
+        self.setToolTip(self.model.kwargs["help"] % self.model.to_dict())
 
-#     def configure_from_dict(self, d: dict) -> None:
-#         if d and "help" in d:
-#             self.help = d["help"]
+    def paint_attr_label(
+        self,
+        attr: str,
+        painter: QtGui.QPainter,
+        rect: QtCore.QRect,
+        align_flag: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignVCenter,
+    ):
+        attr_data = self.attrs_data[attr]
 
-#     def paint_attr_label(
-#         self,
-#         attr: str,
-#         painter: QtGui.QPainter,
-#         rect: QtCore.QRect,
-#         align_flag: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignVCenter,
-#     ):
-#         attr_data = self.attrs_data[attr]
+        align_flag = QtCore.Qt.AlignmentFlag.AlignVCenter | (
+            QtCore.Qt.AlignmentFlag.AlignLeft
+            if attr_data.socket and not attr_data.plug
+            else QtCore.Qt.AlignmentFlag.AlignRight
+            if attr_data.plug and not attr_data.socket
+            else QtCore.Qt.AlignmentFlag.AlignCenter
+        )
 
-#         align_flag = (
-#             QtCore.Qt.AlignmentFlag.AlignVCenter
-#             if attr_data["socket"] and not attr_data["plug"]
-#             else QtCore.Qt.AlignmentFlag.AlignVCenter
-#             | QtCore.Qt.AlignmentFlag.AlignRight
-#             if attr_data["plug"] and not attr_data["socket"]
-#             else QtCore.Qt.AlignmentFlag.AlignCenter
-#         )
-#         super().paint_attr_label(
-#             attr,
-#             painter,
-#             rect,
-#             align_flag=align_flag,
-#         )
+        super().paint_attr_label(
+            attr,
+            painter,
+            rect,
+            align_flag=align_flag,
+        )
 
 
-# class TestPlug(items.PlugItem):
-#     def __init__(
-#         self,
-#         parent: QtWidgets.QGraphicsItem,
-#         attribute: str,
-#         index: int,
-#         preset: str,
-#         data_type: Any,
-#         max_connections: int,
-#         help: str = "",
-#     ) -> None:
-#         super().__init__(
-#             parent, attribute, index, preset, data_type, max_connections
-#         )
-#         self.help = help if help else "This is a subclassed plug."
+class TestPlug(items.PlugItem):
+    """
+    Derived class adding a tooltip on the plug.
+    """
 
-#     def to_dict(self) -> dict:
-#         d = super().to_dict()
-#         d["help"] = self.help
-#         return d
-
-#     def configure_from_dict(self, d: dict) -> None:
-#         if d and "help" in d:
-#             self.help = d["help"]
+    def __init__(
+        self,
+        parent: QtWidgets.QGraphicsItem,
+        model: AttrModel,
+        config: dict,
+        help="%(attribute)s is a TestPlug of type %(data_type)s",
+    ) -> None:
+        super().__init__(
+            parent,
+            model,
+            config,
+        )
+        if self.model.kwargs.get("help") != help:
+            self.model.kwargs["help"] = help
+        self.setToolTip(self.model.kwargs["help"] % self.model.to_dict())
 
 
-# class TestSocket(items.SocketItem):
-#     def __init__(
-#         self,
-#         parent: QtWidgets.QGraphicsItem,
-#         attribute: str,
-#         index: int,
-#         preset: str,
-#         data_type: Any,
-#         max_connections: int,
-#         help: str = "",
-#     ) -> None:
-#         super().__init__(
-#             parent, attribute, index, preset, data_type, max_connections
-#         )
-#         self.help = help if help else "This is a subclassed socket."
+class TestSocket(items.SocketItem):
+    """
+    Derived class adding a tooltip on the socket.
+    """
 
-#     def to_dict(self) -> dict:
-#         d = super().to_dict()
-#         d["help"] = self.help
-#         return d
-
-#     def configure_from_dict(self, d: dict) -> None:
-#         if d and "help" in d:
-#             self.help = d["help"]
+    def __init__(
+        self,
+        parent: QtWidgets.QGraphicsItem,
+        model: AttrModel,
+        config: dict,
+        help="%(attribute)s  is a TestSocket of type %(data_type)s",
+    ) -> None:
+        super().__init__(
+            parent,
+            model,
+            config,
+        )
+        if self.model.kwargs.get("help") != help:
+            self.model.kwargs["help"] = help
+        self.setToolTip(self.model.kwargs["help"] % self.model.to_dict())
 
 
+class TestConnection(items.ConnectionItem):
+    def __init__(
+        self,
+        source_point: QtCore.QPoint,
+        target_point: QtCore.QPoint,
+        source: items.SlotItem,
+        target: Union[items.SlotItem, None],
+    ) -> None:
+        super().__init__(source_point, target_point, source, target)
+
+    def set_connection_color(self, color):
+        self._pen.setColor(color)
+
+
+# We can create a new factory inheriting from NodeFactory to implement
+# custom logic when instancing items.
+class TestFactory(items.ItemFactory):
+    def create_connection(
+        self,
+        source_point: QtCore.QPoint,
+        target_point: QtCore.QPoint,
+        source: items.SlotItem,
+        target: Union[items.SlotItem, None],
+    ) -> items.ConnectionItem:
+        c = TestConnection(source_point, target_point, source, target)
+        if source.model.data_type is str:
+            c.set_connection_color("#55AA55")
+        return c
+
+
+# We replace some of the standard item classes with our own.
+test_factory = TestFactory(
+    node_cls=TestNode, plug_cls=TestPlug, socket_cls=TestSocket
+)
 nodz = view.Nodz(
     None,
 )
-# nodz.loadConfig(filePath='')
-nodz.initialize()
+nodz.initialize(node_factory=test_factory)
 nodz.show()
 
 
@@ -127,90 +149,94 @@ nodz.show()
 
 
 # Nodes
-@QtCore.Slot(str)  # type: ignore
-def on_nodeCreated(nodeName):
-    nlog.info(f"node created : {nodeName}")
+@QtCore.Slot(object)  # type: ignore
+def on_nodeCreated(node_model: NodeModel):
+    nlog.info(f"> node created : {node_model.name}")
 
 
 @QtCore.Slot(str)  # type: ignore
-def on_nodeDeleted(nodeName):
-    nlog.info(f"node deleted : {nodeName}")
+def on_nodeDeleted(node_name):
+    nlog.info(f"> node deleted : {node_name}")
 
 
 @QtCore.Slot(str, str)  # type: ignore
-def on_nodeEdited(nodeName, newName):
-    nlog.info(f"node edited : {nodeName}, new name : {newName}")
+def on_nodeEdited(node_name, new_name):
+    nlog.info(f"> node edited : {node_name}, new name : {new_name}")
 
 
-@QtCore.Slot(str)  # type: ignore
-def on_nodeSelected(nodesName):
-    nlog.info(f"node selected : {nodesName}")
+@QtCore.Slot(object)  # type: ignore
+def on_nodeSelected(nodes_names: list):
+    nlog.info(f"> node selected : {nodes_names}")
 
 
-@QtCore.Slot(str, object)  # type: ignore
-def on_nodeMoved(nodeName, nodePos):
-    nlog.info(f"node {nodeName} moved to {nodePos}")
+@QtCore.Slot(object, object)  # type: ignore
+def on_nodeMoved(node_model: NodeModel, nodePos: QtCore.QPointF):
+    nlog.info(f"> node {node_model.name} moved to {nodePos.toTuple()}")
 
 
-@QtCore.Slot(str)  # type: ignore
-def on_nodeDoubleClick(nodeName):
-    nlog.info(f"double click on node : {nodeName}")
+@QtCore.Slot(object)  # type: ignore
+def on_nodeDoubleClick(node_model: NodeModel):
+    nlog.info(f"> double click on node : {node_model.name}")
 
 
 # Attrs
-@QtCore.Slot(str, int)  # type: ignore
-def on_attrCreated(nodeName, attrId):
-    nlog.info(f"attr created : {nodeName} at index : {attrId}")
-
-
-@QtCore.Slot(str, int)  # type: ignore
-def on_attrDeleted(nodeName, attrId):
-    nlog.info(f"attr Deleted : {nodeName} at old index : {attrId}")
-
-
-@QtCore.Slot(str, int, int)  # type: ignore
-def on_attrEdited(nodeName, oldId, newId):
+@QtCore.Slot(object, int)  # type: ignore
+def on_attrCreated(model: NodeModel, attr_id: int):
     nlog.info(
-        f"attr Edited : {nodeName} at old index : {oldId}, new index : {newId}"
+        f"> attr created : {model.name}.{model.attributes[attr_id].attribute} "
+        f"at index : {attr_id}"
+    )
+
+
+@QtCore.Slot(object, int)  # type: ignore
+def on_attrDeleted(model: NodeModel, attr_id: int):
+    nlog.info(f"> attr Deleted : {model.name} at old index : {attr_id}")
+
+
+@QtCore.Slot(object, int, int)  # type: ignore
+def on_attrEdited(model: NodeModel, old_id: int, new_id: int):
+    nlog.info(
+        f"> attr Edited : {model.name}.{model.attributes[new_id].attribute} "
+        f"at old index : {old_id}, new index : {new_id}"
     )
 
 
 # Connections
-@QtCore.Slot(str, str, str, str)  # type: ignore
-def on_connected(srcNodeName, srcPlugName, destNodeName, dstSocketName):
+@QtCore.Slot(object)  # type: ignore
+def on_connected(model: ConnectionModel):
     nlog.info(
-        f'connected src: "{srcNodeName}" at "{srcPlugName}" to dst: '
-        f'"{destNodeName}" at "{dstSocketName}"'
+        f'> connected src: "{model.plug_node}" at "{model.plug_attr}" to dst: '
+        f'"{model.socket_node}" at "{model.socket_attr}"'
     )
 
 
-@QtCore.Slot(str, str, str, str)  # type: ignore
-def on_disconnected(srcNodeName, srcPlugName, destNodeName, dstSocketName):
+@QtCore.Slot(object)  # type: ignore
+def on_disconnected(model: ConnectionModel):
     nlog.info(
-        f'disconnected src: "{srcNodeName}" at "{srcPlugName}" from dst: '
-        f'"{destNodeName}" at "{dstSocketName}"'
+        f'> disconnected src: "{model.plug_node}" at "{model.plug_attr}" from dst: '
+        f'"{model.socket_node}" at "{model.socket_attr}"'
     )
 
 
 # Graph
 @QtCore.Slot()  # type: ignore
 def on_graphSaved():
-    nlog.info("graph saved !")
+    nlog.info("> graph saved !")
 
 
 @QtCore.Slot()  # type: ignore
 def on_graphLoaded():
-    nlog.info("graph loaded !")
+    nlog.info("> graph loaded !")
 
 
 @QtCore.Slot()  # type: ignore
 def on_graphCleared():
-    nlog.info("graph cleared !")
+    nlog.info("> graph cleared !")
 
 
 @QtCore.Slot()  # type: ignore
 def on_graphEvaluated():
-    nlog.info("graph evaluated !")
+    nlog.info("> graph evaluated !")
 
 
 # Other
@@ -254,7 +280,12 @@ nodz.signal_KeyPressed.connect(on_keyPressed)
 ######################################################################
 
 # Node A
-nodeA = nodz.create_node(name="nodeA", preset="node_preset_1", position=None)
+nodeA = nodz.create_node(
+    name="nodeA",
+    preset="node_preset_1",
+    position=None,
+    help="NodeA has it's own special help string !",
+)
 
 nodz.create_attribute(
     nodeA,
@@ -264,6 +295,7 @@ nodz.create_attribute(
     plug=True,
     socket=False,
     data_type=str,
+    help="Just checking this is working !",
 )
 
 nodz.create_attribute(
@@ -274,6 +306,7 @@ nodz.create_attribute(
     plug=False,
     socket=False,
     data_type=int,
+    help="This attribute is purely decorative and the tooltip won't show.",
 )
 
 nodz.create_attribute(
@@ -567,13 +600,13 @@ nodz.delete_node(nodeC)
 
 
 # Graph
-nlog.info(nodz.evaluate_graph())
+nlog.info(f"graph evaluation = {nodz.evaluate_graph()}")
 
-nodz.save_graph(file_path="Enter your path")
+nodz.save_graph(file_path="nodz_demo_graph.json")
 
 nodz.clear_graph()
 
-nodz.load_graph(file_path="Enter your path")
+nodz.load_graph(file_path="nodz_demo_graph.json")
 
 nodz._layout_graph()
 

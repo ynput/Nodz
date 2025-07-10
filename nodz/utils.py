@@ -14,18 +14,15 @@ def _convert_data_to_color(
     data: list, alternate: bool = False, av: int = 20
 ) -> QtGui.QColor:
     """
-    Convert a list of 3 (rgb) or 4(rgba) values from the configuration
-    file into a QColor.
+    Convert a list of RGB or RGBA values from the configuration to a
+    QtGui.QColor object.
 
-    :param data: Input color.
-    :type  data: List.
-
-    :param alternate: Whether or not this is an alternate color.
-    :type  alternate: Bool.
-
-    :param av: Alternate value.
-    :type  av: Int.
-
+    Args:
+        data (list): Input list of RGB or RGBA values.
+        alternate (bool): Whether to generate an alternate color.
+        av (int): The amount to adjust the color values by.
+    Returns:
+        QtGui.QColor: A QColor object
     """
     # rgb
     if len(data) == 3:
@@ -68,15 +65,14 @@ def _generate_alternate_color_multiplier(
     color: QtGui.QColor, av: int
 ) -> float:
     """
-    Generate a multiplier based on the input color lighness to increase
+    Generate a multiplier based on the input color lightness to increase
     the alternate value for dark color or reduce it for bright colors.
 
-    :param color: Input color.
-    :type  color: QColor.
-
-    :param av: Alternate value.
-    :type  av: Int.
-
+    Args:
+        color (QtGui.QColor): Input color.
+        av (int): Alternate value.
+    Returns:
+        float: Multiplier based on color lightness.
     """
     lightness = color.lightness()
     mult = float(lightness) / 255
@@ -88,14 +84,13 @@ def _create_pointer_bounding_box(
     pointer_pos: QtCore.QPoint, bb_size: int
 ) -> QtCore.QRectF:
     """
-    generate a bounding box around the pointer.
+    Generate a bounding box around the pointer.
 
-    :param pointer_pos: Pointer position.
-    :type  pointer_pos: QPoint.
-
-    :param bb_size: Width and Height of the bounding box.
-    :type  bb_size: Int.
-
+    Args:
+        pointer_pos (QtCore.QPoint): Pointer position.
+        bb_size (int): Width and Height of the bounding box.
+    Returns:
+        QtCore.QRectF: Bounding box around the pointer.
     """
     # Create pointer's bounding box.
     point = pointer_pos
@@ -110,41 +105,15 @@ def _create_pointer_bounding_box(
     return bb
 
 
-def _swap_list_indices(
-    input_list: list, old_index: int, new_index: int
-) -> None:
-    """
-    Simply swap 2 indices in a the specified list.
-
-    :param input_list: List that contains the elements to swap.
-    :type  input_list: List.
-
-    :param old_index: Index of the element to move.
-    :type  old_index: Int.
-
-    :param new_index: Destination index of the element.
-    :type  new_index: Int.
-
-    """
-    if old_index == -1:
-        old_index = len(input_list) - 1
-
-    if new_index == -1:
-        new_index = len(input_list)
-
-    value = input_list[old_index]
-    input_list.pop(old_index)
-    input_list.insert(new_index, value)
-
-
 # IO
 def _load_config(file_path: str) -> dict:
     """
     Read the configuration file and strips out comments.
 
-    :param file_path: File path.
-    :type  file_path: Str.
-
+    Args:
+        file_path (str): Path to the configuration
+    Returns:
+        dict: Configuration data.
     """
     with open(file_path, "r") as myfile:
         file_string = myfile.read()
@@ -161,42 +130,56 @@ def _save_data(file_path: str, data: dict) -> None:
     """
     save data as a .json file
 
-    :param file_path: Path of the .json file.
-    :type  file_path: Str.
-
-    :param data: Data you want to save.
-    :type  data: Dict or List.
-
+    Args:
+        file_path (str): Path to json file to save to.
+        data (dict): Data to save.
     """
+
+    def _encoder(obj):
+        if isinstance(obj, QtCore.QPointF):
+            obj = (obj.x(), obj.y())
+        elif isinstance(obj, type):
+            obj = str(obj)
+        return obj
+
     f = open(file_path, "w")
-    f.write(json.dumps(data, sort_keys=True, indent=4, ensure_ascii=False))
+    f.write(
+        json.dumps(
+            data,
+            sort_keys=True,
+            indent=4,
+            ensure_ascii=False,
+            default=_encoder,
+        )
+    )
     f.close()
 
     nlog.info("Data successfully saved !")
-
-
-def _decoder(d: dict):
-    """decode specific fields to avoid code duplication."""
-
-    if "position" in d:
-        d["position"] = QtCore.QPointF(*d["position"])
-
-    if "dataType" in d:
-        data_type = d["dataType"]
-        if isinstance(data_type, str) and data_type.find("<") == 0:
-            d["dataType"] = eval(str(data_type.split("'")[1]))
-
-    return d
 
 
 def _load_data(file_path: str) -> dict:
     """
     load data from a .json file.
 
-    :param file_path: Path of the .json file.
-    :type  file_path: Str.
-
+    Args:
+        file_path (str): Path to the json file to load.
+    Returns:
+        dict: dict loaded from the file.
     """
+
+    def _decoder(d: dict):
+        """decode specific fields to avoid code duplication."""
+
+        if "position" in d:
+            d["position"] = QtCore.QPointF(*d["position"])
+
+        if "data_type" in d:
+            data_type = d["data_type"]
+            if isinstance(data_type, str) and data_type.find("<") == 0:
+                d["data_type"] = eval(str(data_type.split("'")[1]))
+
+        return d
+
     with open(file_path) as json_file:
         j_data = json.load(json_file, object_hook=_decoder)
 

@@ -3,15 +3,21 @@ import os
 from typing import Any, Optional
 from qtpy import QtGui, QtCore, QtWidgets
 
-from .items import PlugItem, SocketItem, NodeItem, ConnectionItem
-from nodz.utils import (
+from .items import (
+    PlugItem,
+    SocketItem,
+    NodeItem,
+    ConnectionItem,
+    ItemFactory,
+)
+from .utils import (
     nlog,
     _convert_data_to_color,
     _load_config,
-    _swap_list_indices,
     _load_data,
     _save_data,
 )
+from .data_types import NodeModel
 
 
 class NodeScene(QtWidgets.QGraphicsScene):
@@ -20,22 +26,22 @@ class NodeScene(QtWidgets.QGraphicsScene):
     """
 
     signal_NodeCreated = QtCore.Signal(object)  # type: ignore (qtpy)
-    signal_NodeDeleted = QtCore.Signal(object)  # type: ignore (qtpy)
-    signal_NodeEdited = QtCore.Signal(object, object)  # type: ignore (qtpy)
+    signal_NodeDeleted = QtCore.Signal(str)  # type: ignore (qtpy)
+    signal_NodeEdited = QtCore.Signal(str, str)  # type: ignore (qtpy)
     signal_NodeSelected = QtCore.Signal(object)  # type: ignore (qtpy)
-    signal_NodeMoved = QtCore.Signal(str, object)  # type: ignore (qtpy)
-    signal_NodeDoubleClicked = QtCore.Signal(str)  # type: ignore (qtpy)
+    signal_NodeMoved = QtCore.Signal(object, object)  # type: ignore (qtpy)
+    signal_NodeDoubleClicked = QtCore.Signal(object)  # type: ignore (qtpy)
 
     signal_AttrCreated = QtCore.Signal(object, object)  # type: ignore (qtpy)
-    signal_AttrDeleted = QtCore.Signal(object, object)  # type: ignore (qtpy)
-    signal_AttrEdited = QtCore.Signal(object, object, object)  # type: ignore (qtpy)
+    signal_AttrDeleted = QtCore.Signal(object, int)  # type: ignore (qtpy)
+    signal_AttrEdited = QtCore.Signal(object, int, int)  # type: ignore (qtpy)
 
-    signal_PlugConnected = QtCore.Signal(object, object, object, object)  # type: ignore (qtpy)
-    signal_PlugDisconnected = QtCore.Signal(object, object, object, object)  # type: ignore (qtpy)
-    signal_SocketConnected = QtCore.Signal(object, object, object, object)  # type: ignore (qtpy)
-    signal_SocketDisconnected = QtCore.Signal(object, object, object, object)  # type: ignore (qtpy)
+    signal_PlugConnected = QtCore.Signal(object)  # type: ignore (qtpy)
+    signal_PlugDisconnected = QtCore.Signal(object)  # type: ignore (qtpy)
+    signal_SocketConnected = QtCore.Signal(object)  # type: ignore (qtpy)
+    signal_SocketDisconnected = QtCore.Signal(object)  # type: ignore (qtpy)
 
-    signal_RemoveConnections = QtCore.Signal(object, object, object, object)  # type: ignore (qtpy)
+    signal_RemoveConnections = QtCore.Signal(object)  # type: ignore (qtpy)
 
     signal_Dropped = QtCore.Signal()  # type: ignore (qtpy)
 
@@ -57,6 +63,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         # General.
         self.config = config
+        self.factory = ItemFactory()
         self.grid_size = parent.config["grid_size"]
         self.grid_vis_toggle = True
         self.grid_snap_toggle = False
@@ -68,21 +75,23 @@ class NodeScene(QtWidgets.QGraphicsScene):
         self.selectionChanged.connect(self.selection_changed)
         self.selectionChanged.connect(self._return_selection)
 
+    def register_factory(self, factory) -> None:
+        self.factory = factory
+
     def addItem(self, item: QtWidgets.QGraphicsItem):
         """Extends QGraphicsScene.addItem to update the _node_dict."""
         if isinstance(item, NodeItem):
-            self._node_dict[item.name] = item
+            self._node_dict[item.model.name] = item
         super().addItem(item)
 
     def removeItem(self, item: QtWidgets.QGraphicsItem):
-        """Extends QGraphicsScene.addItem to update the _node_dict."""
+        """Extends QGraphicsScene.removeItem to update the _node_dict."""
         if isinstance(item, NodeItem):
-            del self._node_dict[item.name]
-            # FIXME: delete connections to/from this node
+            del self._node_dict[item.model.name]
         super().removeItem(item)
 
     def clear(self):
-        """Extends QGraphicsScene.addItem to update the _node_dict."""
+        """Extends QGraphicsScene.clear to update the _node_dict."""
         self._node_dict = dict()
         super().clear()
 
@@ -136,7 +145,6 @@ class NodeScene(QtWidgets.QGraphicsScene):
             grid_size = self.grid_size
             epos_x = event.scenePos().x()
             epos_y = event.scenePos().y()
-            # print(f"event_pos {epos_x} {epos_y}")
 
             for node_item in selected:
                 node_rect = node_item.boundingRect()
@@ -144,7 +152,6 @@ class NodeScene(QtWidgets.QGraphicsScene):
                     epos_x - node_rect.width() / 2,
                     epos_y - node_rect.height() / 2,
                 )
-                # print(f"current_pos {node_item.name} {current_pos}")
                 snap_x = (
                     round(current_pos.x() / grid_size) * grid_size
                 ) - grid_size / 4
@@ -239,7 +246,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         if self.selectedItems():
             for node in self.selectedItems():
                 if node in self.node_items():
-                    selected_nodes.append(node.name)
+                    selected_nodes.append(node.model.name)  # type: ignore
 
         # Emit signal.
         self.signal_NodeSelected.emit(selected_nodes)
@@ -301,6 +308,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         preset: str = "node_default",
         position: Optional[QtCore.QPointF] = None,
         alternate: bool = True,
+        **kwargs,
     ) -> NodeItem:
         """
         Create a new node with a given name, position and color.
@@ -320,16 +328,13 @@ class NodeScene(QtWidgets.QGraphicsScene):
                 f"A node with the same name already exists : {name}"
             )
 
-        node_item = NodeItem(
-            name,
-            alternate,
-            preset,
-            self.config,
+        node_item = self.factory.create_node(
+            NodeModel(name, alternate, preset, kwargs=kwargs), self.config
         )
         self.add_node(node_item, position=position)
 
         # Emit signal.
-        self.signal_NodeCreated.emit(name)
+        self.signal_NodeCreated.emit(node_item.model)
 
         return node_item
 
@@ -346,13 +351,12 @@ class NodeScene(QtWidgets.QGraphicsScene):
             return
 
         if node in self.node_items():
-            node_name = node.name
             node._remove_connections()
             # Remove node.
             self.removeItem(node)
             self.update()
             # Emit signal.
-            self.signal_NodeDeleted.emit([node_name])
+            self.signal_NodeDeleted.emit(node.model.name)
 
     def api_edit_node(self, node, new_name: str) -> None:
         """
@@ -367,7 +371,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
             nlog.error("Node edition aborted !")
             return
 
-        old_name = node.name
+        old_name = node.model.name
 
         # Check for name clashes
         if new_name in self.node_names():
@@ -377,7 +381,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
             nlog.error("Node edition aborted !")
             return
         else:
-            node.name = new_name
+            node.model.name = new_name
 
         # Replace node data.
         self._node_dict[new_name] = self._node_dict[old_name]
@@ -411,6 +415,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         data_type: Any = None,
         plug_max_connections: int = -1,
         socket_max_connections: int = 1,
+        **kwargs,
     ) -> None:
         """
         Create a new attribute with a given name.
@@ -441,7 +446,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
             nlog.error("Attribute creation aborted !")
             return
 
-        node._create_attribute(
+        final_index = node._create_attribute(
             name=name,
             index=index,
             preset=preset,
@@ -450,10 +455,11 @@ class NodeScene(QtWidgets.QGraphicsScene):
             data_type=data_type,
             plug_max_connections=plug_max_connections,
             socket_max_connections=socket_max_connections,
+            **kwargs,
         )
 
         # Emit signal.
-        self.signal_AttrCreated.emit(node.name, index)
+        self.signal_AttrCreated.emit(node.model, final_index)
 
     def api_delete_attribute(self, node: NodeItem, index: int) -> None:
         """
@@ -471,7 +477,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         node._delete_attribute(index)
 
         # Emit signal.
-        self.signal_AttrDeleted.emit(node.name, index)
+        self.signal_AttrDeleted.emit(node.model, index)
 
     def api_edit_attribute(
         self,
@@ -505,28 +511,24 @@ class NodeScene(QtWidgets.QGraphicsScene):
                 old_name = node.attrs[index]
 
             # Rename in the slot item(s).
-            if node.attrs_data[old_name]["plug"]:
-                node.plugs[old_name].attribute = new_name
+            if node.attrs_data[old_name].plug:
+                node.plugs[old_name].model.attribute = new_name
                 node.plugs[new_name] = node.plugs[old_name]
                 node.plugs.pop(old_name)
                 for connection in node.plugs[new_name].connections:
                     connection.plugAttr = new_name
 
-            if node.attrs_data[old_name]["socket"]:
-                node.sockets[old_name].attribute = new_name
+            if node.attrs_data[old_name].socket:
+                node.sockets[old_name].model.attribute = new_name
                 node.sockets[new_name] = node.sockets[old_name]
                 node.sockets.pop(old_name)
                 for connection in node.sockets[new_name].connections:
                     connection.socketAttr = new_name
 
-            # Replace attribute data.
-            node.attrs_data[old_name]["name"] = new_name
-            node.attrs_data[new_name] = node.attrs_data[old_name]
-            node.attrs_data.pop(old_name)
-            node.attrs[index] = new_name
-
         if isinstance(new_index, int):
-            _swap_list_indices(node.attrs, index, new_index)
+            # swap attributes in the model
+            alist = node.model.attributes
+            alist[new_index], alist[index] = alist[index], alist[new_index]
 
             # Refresh connections.
             for plug in node.plugs.values():
@@ -563,9 +565,9 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         # Emit signal.
         if new_index:
-            self.signal_AttrEdited.emit(node.name, index, new_index)
+            self.signal_AttrEdited.emit(node.model, index, new_index)
         else:
-            self.signal_AttrEdited.emit(node.name, index, index)
+            self.signal_AttrEdited.emit(node.model, index, index)
 
     # GRAPH
     def api_save_graph(self, file_path: str) -> None:
@@ -614,25 +616,28 @@ class NodeScene(QtWidgets.QGraphicsScene):
         nodes_data = data["NODES"]
 
         for name, d in nodes_data.items():
+            del d["name"]
+            attr_list = d.pop("attributes")
             node_item = self.api_create_node(
                 name,
-                d["preset"],
-                d["position"],
-                d["alternate"],
+                d.pop("preset"),
+                d.pop("position"),
+                d.pop("alternate"),
+                **d.pop("kwargs"),
             )
-            for ad in d["attributes"]:
+            for ad in attr_list:
                 self.api_create_attribute(
                     node_item,
-                    name=ad["name"],
-                    index=ad["index"],
-                    preset=ad["preset"],
-                    plug=ad["plug"],
-                    socket=ad["socket"],
-                    data_type=ad["dataType"],
-                    plug_max_connections=ad["plugMaxConnections"],
-                    socket_max_connections=ad["socketMaxConnections"],
+                    name=ad.pop("attribute"),
+                    index=ad.pop("index"),
+                    preset=ad.pop("preset"),
+                    plug=ad.pop("plug"),
+                    socket=ad.pop("socket"),
+                    data_type=ad.pop("data_type"),
+                    plug_max_connections=ad.pop("plug_max_connections"),
+                    socket_max_connections=ad.pop("socket_max_connections"),
+                    **ad.pop("kwargs"),
                 )
-            self.addItem(node_item)
 
         # Apply connections data.
         connections_data = data["CONNECTIONS"]
@@ -674,14 +679,14 @@ class NodeScene(QtWidgets.QGraphicsScene):
         plug = self._node_dict[source_node].plugs[source_attr]
         socket = self._node_dict[target_node].sockets[target_attr]
 
-        connection = ConnectionItem(
+        connection = self.factory.create_connection(
             plug.center(), socket.center(), plug, socket
         )
 
-        connection.plug_node = plug.parentItem().name
-        connection.plug_attr = plug.attribute
-        connection.socket_node = socket.parentItem().name
-        connection.socket_attr = socket.attribute
+        connection.model.plug_node = plug.parentItem().model.name
+        connection.model.plug_attr = plug.model.attribute
+        connection.model.socket_node = socket.parentItem().model.name
+        connection.model.socket_attr = socket.model.attribute
 
         plug.connect(socket, connection)
         socket.connect(plug, connection)
