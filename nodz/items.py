@@ -514,6 +514,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
         self.setAcceptHoverEvents(True)
 
         # Storage.
+        self.max_connections = 0
         self.slot_type = SlotItem.Type.Slot
 
         # Style.
@@ -527,13 +528,6 @@ class SlotItem(QtWidgets.QGraphicsItem):
         self.connected_slots = list()
         self.new_connection = None
         self.connections = list()
-        self.max_connections = (
-            model.plug_max_connections
-            if model.plug
-            else model.socket_max_connections
-            if model.socket
-            else 0
-        )
 
     def to_dict(self) -> dict:
         """
@@ -768,6 +762,7 @@ class PlugItem(SlotItem):
         )
 
         # Storage.
+        self.max_connections = model.plug_max_connections
         self.slot_type = SlotItem.Type.Plug
 
         # Methods.
@@ -885,6 +880,7 @@ class SocketItem(SlotItem):
         )
 
         # Storage.
+        self.max_connections = model.socket_max_connections
         self.slot_type = SlotItem.Type.Socket
 
         # Methods.
