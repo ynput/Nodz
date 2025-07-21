@@ -365,7 +365,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         self._attr_pen.setColor(_convert_data_to_color([0, 0, 0, 0]))
         painter.setPen(self._attr_pen)
         painter.setBrush(self._attr_brush)
-        if (offset / self.attr_height) % 2:
+        if self.model.alternate and (offset / self.attr_height) % 2:
             painter.setBrush(self._attr_brush_alt)
 
         painter.drawRect(rect)
