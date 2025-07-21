@@ -357,12 +357,12 @@ class ModelAPI:
             con_model = data[0]
 
             if edit == ModelEdit.Create:
-                nlog.info(f"update_model:  Create CON {con_model}")
+                nlog.debug(f"update_model:  Create CON {con_model}")
                 self.graph.connections.append(con_model)
                 self.adapter.from_graph_model(self.graph)
 
             elif edit == ModelEdit.Delete:
-                nlog.info(f"update_model:  Delete CON {con_model}")
+                nlog.debug(f"update_model:  Delete CON {con_model}")
                 try:
                     idx = self.graph.connections.index(con_model)
                 except ValueError:
@@ -374,12 +374,12 @@ class ModelAPI:
         elif entity == ModelEntity.Node:
             if edit == ModelEdit.Create:
                 node_model = data[0]
-                nlog.info(f"update_model:  Create NODE {node_model}")
+                nlog.debug(f"update_model:  Create NODE {node_model}")
                 self.graph.nodes[node_model.name] = node_model
                 self.adapter.from_graph_model(self.graph)
 
             elif edit == ModelEdit.Update:
-                nlog.info(f"update_model:  Update NODE {data}")
+                nlog.debug(f"update_model:  Update NODE {data}")
                 nargs = len(data)
                 if nargs == 2:
                     if isinstance(data[0], str) and isinstance(data[1], str):
@@ -387,6 +387,6 @@ class ModelAPI:
                 self.adapter.from_graph_model(self.graph)
 
             elif edit == ModelEdit.Delete:
-                nlog.info(f"update_model:  Delete NODE {data}")
+                nlog.debug(f"update_model:  Delete NODE {data}")
                 # IMPLEMENT ME
                 self.adapter.from_graph_model(self.graph)
