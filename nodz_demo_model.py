@@ -173,6 +173,7 @@ class TestAdapter(NodzAdapter):
 nodz = view.Nodz(
     None,
 )
+nodz.setWindowTitle("Nodz Demo Model")
 nodz.initialize(node_factory=test_factory, adapter=TestAdapter())
 nodz.show()
 

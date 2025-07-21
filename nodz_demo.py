@@ -136,9 +136,11 @@ class TestFactory(items.ItemFactory):
 test_factory = TestFactory(
     node_cls=TestNode, plug_cls=TestPlug, socket_cls=TestSocket
 )
+# Create the Nodz view.
 nodz = view.Nodz(
     None,
 )
+nodz.setWindowTitle("Nodz Core API Demo")
 nodz.initialize(node_factory=test_factory)
 nodz.show()
 
