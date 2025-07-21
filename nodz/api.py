@@ -246,7 +246,10 @@ class ModelAPI:
                 self.delete_connection_from_model(model)
         elif isinstance(model, GraphModel):
             if edit == ModelEdit.Create:
-                raise NotImplementedError
+                for node in model.nodes.values():
+                    self.create_node_from_model(node)
+                for con in model.connections:
+                    self.create_connection_from_model(con)
             elif edit == ModelEdit.Update:
                 changes = self.diff_graph(model)
                 for diff, id in changes["nodes"]:
@@ -261,9 +264,10 @@ class ModelAPI:
                         self.create_connection_from_model(con)
                     elif diff == Diff.Deleted:
                         pass
-                self.graph = deepcopy(model)
             elif edit == ModelEdit.Delete:
-                raise NotImplementedError
+                model = GraphModel()
+            # keep a copy for next diff.
+            self.graph = deepcopy(model)
 
         self.scene.signals.blockSignals(False)
 
