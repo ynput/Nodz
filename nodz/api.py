@@ -343,8 +343,13 @@ class ModelAPI:
             socket_item.sockets.pop(model.socket_attr)
             socket_item.update()
 
-    def select_node(self, node_name: str, state: bool) -> None:
+    def select_node(
+        self, node_name: str, state: bool, clear_selection=True
+    ) -> None:
         node_item = self.scene.node_by_name(node_name)
+        if clear_selection:
+            for item in self.scene.selectedItems():
+                item.setSelected(False)
         node_item.setSelected(state)
 
     def load_graph(self, file_path: str) -> None:
