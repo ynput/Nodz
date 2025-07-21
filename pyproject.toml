@@ -14,3 +14,7 @@ include = ["nodz*"]
 
 [tool.setuptools.package-data]
 nodz = ["*.json"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

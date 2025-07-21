@@ -6,6 +6,21 @@ from .utils import _convert_data_to_color, _create_pointer_bounding_box
 from .data_types import NodeModel, AttrModel, ConnectionModel
 
 
+def is_compatible_type(source_type: Any, target_type: Any) -> bool:
+    """
+    Check if the source type is compatible with the target type.
+
+    Args:
+        source_type (Any): The source data type.
+        target_type (Any): The target data type.
+    Returns:
+        bool: True if compatible, False otherwise.
+    """
+    if isinstance(source_type, type) and isinstance(target_type, type):
+        return issubclass(source_type, target_type)
+    return False
+
+
 class NodeItem(QtWidgets.QGraphicsItem):
     """
     A graphic representation of a node containing attributes.
@@ -40,9 +55,9 @@ class NodeItem(QtWidgets.QGraphicsItem):
         self._create_style()
 
     @property
-    def attrs(self) -> list[str]:
+    def attr_names(self) -> list[str]:
         """Returns a list of attribute names, based on the node's model."""
-        return [am.attribute for am in self.model.attributes]
+        return list(self.model.attributes.keys())
 
     @property
     def attr_count(self) -> int:
@@ -50,9 +65,12 @@ class NodeItem(QtWidgets.QGraphicsItem):
         return len(self.model.attributes)
 
     @property
-    def attrs_data(self) -> dict[str, AttrModel]:
-        """Returns a dictionary of attribute names and their models."""
-        return {m.attribute: m for m in self.model.attributes}
+    def existing_attrs(self) -> list:
+        return (
+            list(self.plugs.keys())
+            + list(self.sockets.keys())
+            + list(self.unconnectables.keys())
+        )
 
     def to_dict(self) -> dict:
         """
@@ -166,7 +184,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         plug_max_connections: int,
         socket_max_connections: int,
         **kwargs,
-    ) -> int:
+    ) -> None:
         """
         Create an attribute by expanding the node, adding a label and
         connection items.
@@ -184,7 +202,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         Returns:
             int: The actual attribute index.
         """
-        if name in self.attrs:
+        if name in self.existing_attrs:
             raise NameError(
                 "An attribute with the same name already exists on this "
                 f"node : {name}"
@@ -206,17 +224,19 @@ class NodeItem(QtWidgets.QGraphicsItem):
 
         # Create a plug connection item.
         if plug:
-            plug_inst = factory.create_plug(self, attr_model, self.config)
+            plug_inst = factory.create_plug_item(self, attr_model, self.config)
             self.plugs[name] = plug_inst
 
         # Create a socket connection item.
         if socket:
-            socket_inst = factory.create_socket(self, attr_model, self.config)
+            socket_inst = factory.create_socket_item(
+                self, attr_model, self.config
+            )
             self.sockets[name] = socket_inst
 
         # Unconnectable slot that still needs to be serialized.
         if not plug and not socket:
-            unconnectable_inst = factory.create_slot(
+            unconnectable_inst = factory.create_slot_item(
                 None, attr_model, self.config
             )
             self.unconnectables[name] = unconnectable_inst
@@ -224,17 +244,18 @@ class NodeItem(QtWidgets.QGraphicsItem):
         # Add the attribute based on its index and update model index.
         if index == -1 or index > self.attr_count:
             attr_model.index = len(self.model.attributes)
-            self.model.attributes.append(attr_model)
+            if attr_model.attribute not in self.attr_names:
+                self.model.attributes[attr_model.attribute] = attr_model
         else:
             attr_model.index = index
-            self.model.attributes.insert(index, attr_model)
+            if attr_model.attribute not in self.attr_names:
+                self.model.attributes[attr_model.attribute] = attr_model
+                self.model.sort_attributes()
 
         # Update node height.
         self.update()
 
-        return attr_model.index
-
-    def _delete_attribute(self, index: int) -> None:
+    def _delete_attribute(self, name: str) -> None:
         """
         Remove an attribute by reducing the node's height, removing the label
         and the connection items.
@@ -242,8 +263,6 @@ class NodeItem(QtWidgets.QGraphicsItem):
         Args:
             index (int): Index of the attribute to remove.
         """
-        name = self.attrs[index]
-
         # Remove socket and its connections.
         if name in self.sockets.keys():
             for connection in self.sockets[name].connections:
@@ -261,7 +280,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
             self.plugs.pop(name)
 
         # Remove attribute from node.
-        self.model.attributes.pop(index)
+        self.model.attributes.pop(name)
 
         self.update()
 
@@ -331,7 +350,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         rect: QtCore.QRect,
     ):
         config = self.config
-        attr_data = self.attrs_data[attr]
+        attr_data = self.model.attributes[attr]
         preset = attr_data.preset
 
         # Attribute base.
@@ -359,7 +378,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         align_flag: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignVCenter,
     ):
         config = self.config
-        attr_data = self.attrs_data[attr]
+        attr_data = self.model.attributes[attr]
         preset = attr_data.preset
 
         painter.setPen(_convert_data_to_color(config[preset]["text"]))
@@ -370,15 +389,13 @@ class NodeItem(QtWidgets.QGraphicsItem):
             if self == SlotItem.current_hovered_node:
                 if not SlotItem.source_slot:
                     raise TypeError("Invalid source_slot")
-                if (
-                    attr_data.data_type != SlotItem.source_slot.model.data_type
-                    or (
-                        SlotItem.source_slot.slot_type == SlotItem.Type.Plug
-                        and attr_data.socket is False
-                        or SlotItem.source_slot.slot_type
-                        == SlotItem.Type.Socket
-                        and attr_data.plug is False
-                    )
+                if is_compatible_type(
+                    attr_data.data_type, SlotItem.source_slot.model.data_type
+                ) or (
+                    SlotItem.source_slot.slot_type == SlotItem.Type.Plug
+                    and attr_data.socket is False
+                    or SlotItem.source_slot.slot_type == SlotItem.Type.Socket
+                    and attr_data.plug is False
                 ):
                     # Set non-connectable attributes color.
                     painter.setPen(
@@ -418,7 +435,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         # Attributes.
         offset = 0
 
-        for attr in self.attrs:
+        for attr in self.attr_names:
             rect = QtCore.QRect(
                 self.border / 2,
                 self.base_height - self.radius + offset,
@@ -439,7 +456,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         Emit a signal when the node is double-clicked.
         """
         super(NodeItem, self).mouseDoubleClickEvent(event)
-        self.scene().signal_NodeDoubleClicked.emit(self.model)  # type: ignore
+        self.scene().signals.NodeDoubleClicked.emit(self.model)  # type: ignore
 
     def mouseMoveEvent(
         self, event: QtWidgets.QGraphicsSceneMouseEvent
@@ -457,7 +474,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         # Emit node moved signal.
         if self._moving:
             self._moving = False
-            self.scene().signal_NodeMoved.emit(self.model, self.pos())  # type: ignore
+            self.scene().signals.NodeMoved.emit(self.model, self.pos())  # type: ignore
         super(NodeItem, self).mouseReleaseEvent(event)
 
     def hoverLeaveEvent(
@@ -583,7 +600,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
             return False
 
         # no connection with different types
-        if slot_item.model.data_type != self.model.data_type:
+        if is_compatible_type(slot_item.model.data_type, self.model.data_type):
             return False
 
         # otherwize, all fine.
@@ -597,7 +614,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
         """
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             factory = scene_factory(self)
-            self.new_connection = factory.create_connection(
+            self.new_connection = factory.create_connection_item(
                 self.center().toPoint(),
                 self.mapToScene(event.pos()).toPoint(),
                 self,
@@ -718,8 +735,10 @@ class SlotItem(QtWidgets.QGraphicsItem):
                     raise TypeError("Invalid source_slot")
                 if self.slot_type == SlotItem.source_slot.slot_type or (
                     self.slot_type != SlotItem.source_slot.slot_type
-                    and self.model.data_type
-                    != SlotItem.source_slot.model.data_type
+                    and is_compatible_type(
+                        self.model.data_type,
+                        SlotItem.source_slot.model.data_type,
+                    )
                 ):
                     painter.setBrush(
                         _convert_data_to_color(config["non_connectable_color"])
@@ -802,7 +821,7 @@ class PlugItem(SlotItem):
             self.parent_node_item().base_height
             - config["node_radius"]
             + self.parent_node_item().attr_height / 4
-            + self.parent_node_item().attrs.index(self.model.attribute)
+            + self.parent_node_item().attr_names.index(self.model.attribute)
             * self.parent_node_item().attr_height
         )
 
@@ -839,7 +858,7 @@ class PlugItem(SlotItem):
             self.connections.append(connection)
 
         # Emit signal.
-        self.scene().signal_PlugConnected.emit(connection.model)  # type: ignore
+        self.scene().signals.PlugConnected.emit(connection.model)  # type: ignore
 
     def disconnect(self, connection: ConnectionItem) -> None:
         """
@@ -849,7 +868,7 @@ class PlugItem(SlotItem):
             connection (ConnectionItem): The connection to disconnect.
         """
         # Emit signal.
-        self.scene().signal_PlugDisconnected.emit(connection.model)  # type: ignore
+        self.scene().signals.PlugDisconnected.emit(connection.model)  # type: ignore
 
         # Remove connected socket from plug
         if connection.socket_item in self.connected_slots:
@@ -916,7 +935,7 @@ class SocketItem(SlotItem):
             self.parent_node_item().base_height
             - config["node_radius"]
             + (self.parent_node_item().attr_height / 4)
-            + self.parent_node_item().attrs.index(self.model.attribute)
+            + self.parent_node_item().attr_names.index(self.model.attribute)
             * self.parent_node_item().attr_height
         )
 
@@ -951,7 +970,7 @@ class SocketItem(SlotItem):
             self.connections.append(connection)
 
         # Emit signal.
-        self.scene().signal_SocketConnected.emit(connection.model)  # type: ignore
+        self.scene().signals.SocketConnected.emit(connection.model)  # type: ignore
 
     def disconnect(self, connection: ConnectionItem) -> None:
         """
@@ -961,7 +980,7 @@ class SocketItem(SlotItem):
             connection (ConnectionItem): The connection to disconnect.
         """
         # Emit signal.
-        self.scene().signal_SocketDisconnected.emit(connection.model)  # type: ignore
+        self.scene().signals.SocketDisconnected.emit(connection.model)  # type: ignore
 
         # Remove connected plugs
         if connection.plug_item in self.connected_slots:
@@ -1217,13 +1236,13 @@ class ItemFactory:
         self.socket_cls = socket_cls
         self.connection_cls = connection_cls
 
-    def create_node(self, model: NodeModel, config: dict) -> NodeItem:
+    def create_node_item(self, model: NodeModel, config: dict) -> NodeItem:
         """
         Create a new node item with the registered node item class.
         """
         return self.node_cls(model, config)
 
-    def create_slot(
+    def create_slot_item(
         self,
         parent: NodeItem | None,
         model: AttrModel,
@@ -1238,7 +1257,7 @@ class ItemFactory:
             config,
         )
 
-    def create_plug(
+    def create_plug_item(
         self,
         parent: NodeItem,
         model: AttrModel,
@@ -1253,7 +1272,7 @@ class ItemFactory:
             config,
         )
 
-    def create_socket(
+    def create_socket_item(
         self,
         parent: NodeItem,
         model: AttrModel,
@@ -1268,7 +1287,7 @@ class ItemFactory:
             config,
         )
 
-    def create_connection(
+    def create_connection_item(
         self,
         source_point: QtCore.QPoint,
         target_point: QtCore.QPoint,

@@ -25,34 +25,9 @@ class NodeScene(QtWidgets.QGraphicsScene):
     The scene containing all the nodes.
     """
 
-    signal_NodeCreated = QtCore.Signal(object)  # type: ignore (qtpy)
-    signal_NodeDeleted = QtCore.Signal(str)  # type: ignore (qtpy)
-    signal_NodeEdited = QtCore.Signal(str, str)  # type: ignore (qtpy)
-    signal_NodeSelected = QtCore.Signal(object)  # type: ignore (qtpy)
-    signal_NodeMoved = QtCore.Signal(object, object)  # type: ignore (qtpy)
-    signal_NodeDoubleClicked = QtCore.Signal(object)  # type: ignore (qtpy)
-
-    signal_AttrCreated = QtCore.Signal(object, object)  # type: ignore (qtpy)
-    signal_AttrDeleted = QtCore.Signal(object, int)  # type: ignore (qtpy)
-    signal_AttrEdited = QtCore.Signal(object, int, int)  # type: ignore (qtpy)
-
-    signal_PlugConnected = QtCore.Signal(object)  # type: ignore (qtpy)
-    signal_PlugDisconnected = QtCore.Signal(object)  # type: ignore (qtpy)
-    signal_SocketConnected = QtCore.Signal(object)  # type: ignore (qtpy)
-    signal_SocketDisconnected = QtCore.Signal(object)  # type: ignore (qtpy)
-
-    signal_RemoveConnections = QtCore.Signal(object)  # type: ignore (qtpy)
-
-    signal_Dropped = QtCore.Signal()  # type: ignore (qtpy)
-
-    signal_GraphSaved = QtCore.Signal()  # type: ignore (qtpy)
-    signal_GraphLoaded = QtCore.Signal()  # type: ignore (qtpy)
-    signal_GraphCleared = QtCore.Signal()  # type: ignore (qtpy)
-    signal_GraphEvaluated = QtCore.Signal()  # type: ignore (qtpy)
-
     connection_start = QtCore.Signal(object)  # type: ignore (qtpy)
 
-    def __init__(self, parent, config) -> None:
+    def __init__(self, parent, config, signals) -> None:
         """
         Initialize the class.
 
@@ -63,6 +38,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         # General.
         self.config = config
+        self.signals = signals
         self.factory = ItemFactory()
         self.grid_size = parent.config["grid_size"]
         self.grid_vis_toggle = True
@@ -124,7 +100,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         """
         # Emit signal.
         if self.views():
-            self.signal_Dropped.emit(event.scenePos())
+            self.signals.Dropped.emit(event.scenePos())
 
         event.accept()
 
@@ -236,7 +212,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         for node in self.selectedItems():
             if not isinstance(node, NodeItem):
                 raise TypeError(f"Unexpected node type in graph: {node}")
-            self.api_delete_node(node)
+            self.delete_node(node)
 
     def _return_selection(self) -> None:
         """
@@ -249,7 +225,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
                     selected_nodes.append(node.model.name)  # type: ignore
 
         # Emit signal.
-        self.signal_NodeSelected.emit(selected_nodes)
+        self.signals.NodeSelected.emit(selected_nodes)
 
     def snap_node_to_grid(self, state: bool):
         self._node_snap = state
@@ -268,7 +244,9 @@ class NodeScene(QtWidgets.QGraphicsScene):
         self.addItem(node_item)
 
         # Set node position.
-        if not position and self.views():
+        if (
+            not position or position == QtCore.QPointF(-1, -1)
+        ) and self.views():
             # Get the center of the view.
             view = self.views()[0]
             position = view.mapToScene(view.viewport().rect().center())
@@ -302,7 +280,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
     def node_items(self) -> list[NodeItem]:
         return list(self._node_dict.values())
 
-    def api_create_node(
+    def create_node(
         self,
         name: str = "default",
         preset: str = "node_default",
@@ -328,17 +306,17 @@ class NodeScene(QtWidgets.QGraphicsScene):
                 f"A node with the same name already exists : {name}"
             )
 
-        node_item = self.factory.create_node(
-            NodeModel(name, alternate, preset, kwargs=kwargs), self.config
+        node_item = self.factory.create_node_item(
+            NodeModel(name, preset, alternate, kwargs=kwargs), self.config
         )
         self.add_node(node_item, position=position)
 
         # Emit signal.
-        self.signal_NodeCreated.emit(node_item.model)
+        self.signals.NodeCreated.emit(node_item.model)
 
         return node_item
 
-    def api_delete_node(self, node: NodeItem) -> None:
+    def delete_node(self, node: NodeItem) -> None:
         """
         Delete the specified node from the view.
 
@@ -356,9 +334,9 @@ class NodeScene(QtWidgets.QGraphicsScene):
             self.removeItem(node)
             self.update()
             # Emit signal.
-            self.signal_NodeDeleted.emit(node.model.name)
+            self.signals.NodeDeleted.emit(node.model.name)
 
-    def api_edit_node(self, node, new_name: str) -> None:
+    def rename_node(self, node, new_name: str) -> None:
         """
         Rename an existing node.
 
@@ -401,10 +379,10 @@ class NodeScene(QtWidgets.QGraphicsScene):
         node.update()
 
         # Emit signal.
-        self.signal_NodeEdited.emit(old_name, new_name)
+        self.signals.NodeRenamed.emit(old_name, new_name)
 
     # ATTRS
-    def api_create_attribute(
+    def create_attribute(
         self,
         node: NodeItem,
         name: str = "default",
@@ -439,14 +417,14 @@ class NodeScene(QtWidgets.QGraphicsScene):
             nlog.error("Attribute creation aborted !")
             return
 
-        if name in node.attrs:
+        if name in node.attr_names:
             nlog.error(
                 f"An attribute with the same name already exists : {name}"
             )
             nlog.error("Attribute creation aborted !")
             return
 
-        final_index = node._create_attribute(
+        node._create_attribute(
             name=name,
             index=index,
             preset=preset,
@@ -459,9 +437,9 @@ class NodeScene(QtWidgets.QGraphicsScene):
         )
 
         # Emit signal.
-        self.signal_AttrCreated.emit(node.model, final_index)
+        self.signals.AttrCreated.emit(node.model, name)
 
-    def api_delete_attribute(self, node: NodeItem, index: int) -> None:
+    def delete_attribute(self, node: NodeItem, attr_name: str) -> None:
         """
         Delete the specified attribute.
 
@@ -474,12 +452,12 @@ class NodeScene(QtWidgets.QGraphicsScene):
             nlog.error("Attribute deletion aborted !")
             return
 
-        node._delete_attribute(index)
+        node._delete_attribute(attr_name)
 
         # Emit signal.
-        self.signal_AttrDeleted.emit(node.model, index)
+        self.signals.AttrDeleted.emit(node.model, attr_name)
 
-    def api_edit_attribute(
+    def edit_attribute(
         self,
         node: NodeItem,
         index: int,
@@ -501,34 +479,43 @@ class NodeScene(QtWidgets.QGraphicsScene):
             return
 
         if new_name is not None:
-            if new_name in node.attrs:
+            if new_name in node.attr_names:
                 nlog.error(
                     f"An attribute with the same name already exists : {new_name}"
                 )
                 nlog.error("Attribute edition aborted !")
                 return
             else:
-                old_name = node.attrs[index]
+                old_name = node.attr_names[index]
 
             # Rename in the slot item(s).
-            if node.attrs_data[old_name].plug:
+            if node.model.attributes[old_name].plug is True:
                 node.plugs[old_name].model.attribute = new_name
                 node.plugs[new_name] = node.plugs[old_name]
                 node.plugs.pop(old_name)
                 for connection in node.plugs[new_name].connections:
                     connection.plugAttr = new_name
 
-            if node.attrs_data[old_name].socket:
+            if node.model.attributes[old_name].socket is True:
                 node.sockets[old_name].model.attribute = new_name
                 node.sockets[new_name] = node.sockets[old_name]
                 node.sockets.pop(old_name)
                 for connection in node.sockets[new_name].connections:
                     connection.socketAttr = new_name
 
+            node.model.sort_attributes()
+            self.update()
+
         if isinstance(new_index, int):
-            # swap attributes in the model
-            alist = node.model.attributes
-            alist[new_index], alist[index] = alist[index], alist[new_index]
+            # move attribute to the new index in the model.
+            alist = list(node.model.attributes.keys())
+            atname = alist.pop(index)
+            alist.insert(
+                min(new_index if new_index >= 0 else 9999, len(alist)), atname
+            )
+            for i, at_name in enumerate(alist):
+                node.model.attributes[at_name].index = i
+            node.model.sort_attributes()
 
             # Refresh connections.
             for plug in node.plugs.values():
@@ -565,12 +552,12 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         # Emit signal.
         if new_index:
-            self.signal_AttrEdited.emit(node.model, index, new_index)
+            self.signals.AttrEdited.emit(node.model, index, new_index)
         else:
-            self.signal_AttrEdited.emit(node.model, index, index)
+            self.signals.AttrEdited.emit(node.model, index, index)
 
     # GRAPH
-    def api_save_graph(self, file_path: str) -> None:
+    def save_graph(self, file_path: str) -> None:
         """
         Get all the current graph infos and store them in a .json file
         at the given location.
@@ -587,7 +574,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
             data["NODES"][node_name] = node_item.to_dict()
 
         # Store connections data.
-        data["CONNECTIONS"] = self.api_evaluate_graph()
+        data["CONNECTIONS"] = self.evaluate_graph()
 
         # Save data.
         try:
@@ -596,9 +583,9 @@ class NodeScene(QtWidgets.QGraphicsScene):
             raise FileNotFoundError(f"Invalid path : {file_path}")
 
         # Emit signal.
-        self.signal_GraphSaved.emit()
+        self.signals.GraphSaved.emit()
 
-    def api_load_graph(self, file_path: str) -> None:
+    def load_graph(self, file_path: str) -> None:
         """
         Get all the stored info from the .json file at the given location
         and recreate the graph as saved.
@@ -617,16 +604,16 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         for name, d in nodes_data.items():
             del d["name"]
-            attr_list = d.pop("attributes")
-            node_item = self.api_create_node(
+            attr_dict = d.pop("attributes")
+            node_item = self.create_node(
                 name,
                 d.pop("preset"),
                 d.pop("position"),
                 d.pop("alternate"),
                 **d.pop("kwargs"),
             )
-            for ad in attr_list:
-                self.api_create_attribute(
+            for ad in attr_dict.values():
+                self.create_attribute(
                     node_item,
                     name=ad.pop("attribute"),
                     index=ad.pop("index"),
@@ -651,16 +638,16 @@ class NodeScene(QtWidgets.QGraphicsScene):
             target_node = target.split(".")[0]
             target_attr = target.split(".")[1]
 
-            self.api_create_connection(
+            self.create_connection(
                 source_node, source_attr, target_node, target_attr
             )
 
         self.update()
 
         # Emit signal.
-        self.signal_GraphLoaded.emit()
+        self.signals.GraphLoaded.emit()
 
-    def api_create_connection(
+    def create_connection(
         self,
         source_node: str,
         source_attr: str,
@@ -679,7 +666,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
         plug = self._node_dict[source_node].plugs[source_attr]
         socket = self._node_dict[target_node].sockets[target_attr]
 
-        connection = self.factory.create_connection(
+        connection = self.factory.create_connection_item(
             plug.center(), socket.center(), plug, socket
         )
 
@@ -697,7 +684,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
 
         return connection
 
-    def api_evaluate_graph(self) -> list:
+    def evaluate_graph(self) -> list:
         """
         Create a list of connection tuples.
         [("sourceNode.attribute", "TargetNode.attribute"), ...]
@@ -711,17 +698,17 @@ class NodeScene(QtWidgets.QGraphicsScene):
                 data.append(item.to_tuple())
 
         # Emit Signal
-        self.signal_GraphEvaluated.emit()
+        self.signals.GraphEvaluated.emit()
 
         return data
 
-    def api_clear_graph(self) -> None:
+    def clear_graph(self) -> None:
         """
         Clear the graph.
         """
         self.clear()
         # Emit signal.
-        self.signal_GraphCleared.emit()
+        self.signals.GraphCleared.emit()
 
     ##################################################################
     # END API

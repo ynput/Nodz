@@ -40,7 +40,7 @@ class TestNode(items.NodeItem):
         rect: QtCore.QRect,
         align_flag: QtCore.Qt.AlignmentFlag = QtCore.Qt.AlignmentFlag.AlignVCenter,
     ):
-        attr_data = self.attrs_data[attr]
+        attr_data = self.model.attributes[attr]
 
         align_flag = QtCore.Qt.AlignmentFlag.AlignVCenter | (
             QtCore.Qt.AlignmentFlag.AlignLeft
@@ -119,7 +119,7 @@ class TestConnection(items.ConnectionItem):
 # We can create a new factory inheriting from NodeFactory to implement
 # custom logic when instancing items.
 class TestFactory(items.ItemFactory):
-    def create_connection(
+    def create_connection_item(
         self,
         source_point: QtCore.QPoint,
         target_point: QtCore.QPoint,
@@ -181,22 +181,23 @@ def on_nodeDoubleClick(node_model: NodeModel):
 
 # Attrs
 @QtCore.Slot(object, int)  # type: ignore
-def on_attrCreated(model: NodeModel, attr_id: int):
+def on_attrCreated(model: NodeModel, attr_name: str):
     nlog.info(
-        f"> attr created : {model.name}.{model.attributes[attr_id].attribute} "
-        f"at index : {attr_id}"
+        f"> attr created : {model.name}."
+        f"{model.attributes[attr_name].attribute}"
     )
 
 
 @QtCore.Slot(object, int)  # type: ignore
-def on_attrDeleted(model: NodeModel, attr_id: int):
-    nlog.info(f"> attr Deleted : {model.name} at old index : {attr_id}")
+def on_attrDeleted(model: NodeModel, attr_name: int):
+    nlog.info(f"> attr Deleted : {model.name}.{attr_name}")
 
 
 @QtCore.Slot(object, int, int)  # type: ignore
 def on_attrEdited(model: NodeModel, old_id: int, new_id: int):
+    atname = list(model.attributes.keys())[new_id]
     nlog.info(
-        f"> attr Edited : {model.name}.{model.attributes[new_id].attribute} "
+        f"> attr Edited : {model.name}.{model.attributes[atname].attribute} "
         f"at old index : {old_id}, new index : {new_id}"
     )
 
@@ -251,28 +252,28 @@ def on_keyPressed(key):
         _last_key = key
 
 
-nodz._scene.signal_NodeCreated.connect(on_nodeCreated)
-nodz._scene.signal_NodeDeleted.connect(on_nodeDeleted)
-nodz._scene.signal_NodeEdited.connect(on_nodeEdited)
-nodz._scene.signal_NodeSelected.connect(on_nodeSelected)
-nodz._scene.signal_NodeMoved.connect(on_nodeMoved)
-nodz._scene.signal_NodeDoubleClicked.connect(on_nodeDoubleClick)
+nodz.signals.NodeCreated.connect(on_nodeCreated)
+nodz.signals.NodeDeleted.connect(on_nodeDeleted)
+nodz.signals.NodeRenamed.connect(on_nodeEdited)
+nodz.signals.NodeSelected.connect(on_nodeSelected)
+nodz.signals.NodeMoved.connect(on_nodeMoved)
+nodz.signals.NodeDoubleClicked.connect(on_nodeDoubleClick)
 
-nodz._scene.signal_AttrCreated.connect(on_attrCreated)
-nodz._scene.signal_AttrDeleted.connect(on_attrDeleted)
-nodz._scene.signal_AttrEdited.connect(on_attrEdited)
+nodz.signals.AttrCreated.connect(on_attrCreated)
+nodz.signals.AttrDeleted.connect(on_attrDeleted)
+nodz.signals.AttrEdited.connect(on_attrEdited)
 
-nodz._scene.signal_PlugConnected.connect(on_connected)
-nodz._scene.signal_SocketConnected.connect(on_connected)
-nodz._scene.signal_PlugDisconnected.connect(on_disconnected)
-nodz._scene.signal_SocketDisconnected.connect(on_disconnected)
+nodz.signals.PlugConnected.connect(on_connected)
+nodz.signals.SocketConnected.connect(on_connected)
+nodz.signals.PlugDisconnected.connect(on_disconnected)
+nodz.signals.SocketDisconnected.connect(on_disconnected)
 
-nodz._scene.signal_GraphSaved.connect(on_graphSaved)
-nodz._scene.signal_GraphLoaded.connect(on_graphLoaded)
-nodz._scene.signal_GraphCleared.connect(on_graphCleared)
-nodz._scene.signal_GraphEvaluated.connect(on_graphEvaluated)
+nodz.signals.GraphSaved.connect(on_graphSaved)
+nodz.signals.GraphLoaded.connect(on_graphLoaded)
+nodz.signals.GraphCleared.connect(on_graphCleared)
+nodz.signals.GraphEvaluated.connect(on_graphEvaluated)
 
-nodz.signal_KeyPressed.connect(on_keyPressed)
+nodz.signals.KeyPressed.connect(on_keyPressed)
 
 
 ######################################################################
@@ -280,14 +281,14 @@ nodz.signal_KeyPressed.connect(on_keyPressed)
 ######################################################################
 
 # Node A
-nodeA = nodz.create_node(
+nodeA = nodz.api.create_node(
     name="nodeA",
     preset="node_preset_1",
     position=None,
     help="NodeA has it's own special help string !",
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeA,
     name="Aattr1",
     index=-1,
@@ -298,7 +299,7 @@ nodz.create_attribute(
     help="Just checking this is working !",
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeA,
     name="Aattr2",
     index=-1,
@@ -309,7 +310,7 @@ nodz.create_attribute(
     help="This attribute is purely decorative and the tooltip won't show.",
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeA,
     name="Aattr3",
     index=-1,
@@ -319,7 +320,7 @@ nodz.create_attribute(
     data_type=int,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeA,
     name="Aattr4",
     index=-1,
@@ -329,7 +330,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeA,
     name="Aattr5",
     index=-1,
@@ -341,7 +342,7 @@ nodz.create_attribute(
     socket_max_connections=-1,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeA,
     name="Aattr6",
     index=-1,
@@ -355,9 +356,9 @@ nodz.create_attribute(
 
 
 # Node B
-nodeB = nodz.create_node(name="nodeB", preset="node_preset_1")
+nodeB = nodz.api.create_node(name="nodeB", preset="node_preset_1")
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeB,
     name="Battr1",
     index=-1,
@@ -367,7 +368,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeB,
     name="Battr2",
     index=-1,
@@ -377,7 +378,7 @@ nodz.create_attribute(
     data_type=int,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeB,
     name="Battr3",
     index=-1,
@@ -387,7 +388,7 @@ nodz.create_attribute(
     data_type=int,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeB,
     name="Battr4",
     index=-1,
@@ -401,9 +402,9 @@ nodz.create_attribute(
 
 
 # Node C
-nodeC = nodz.create_node(name="nodeC", preset="node_preset_1")
+nodeC = nodz.api.create_node(name="nodeC", preset="node_preset_1")
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeC,
     name="Cattr1",
     index=-1,
@@ -413,7 +414,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeC,
     name="Cattr2",
     index=-1,
@@ -423,7 +424,7 @@ nodz.create_attribute(
     data_type=int,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeC,
     name="Cattr3",
     index=-1,
@@ -433,7 +434,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeC,
     name="Cattr4",
     index=-1,
@@ -443,7 +444,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeC,
     name="Cattr5",
     index=-1,
@@ -453,7 +454,7 @@ nodz.create_attribute(
     data_type=int,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeC,
     name="Cattr6",
     index=-1,
@@ -463,7 +464,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeC,
     name="Cattr7",
     index=-1,
@@ -473,7 +474,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeC,
     name="Cattr8",
     index=-1,
@@ -484,9 +485,9 @@ nodz.create_attribute(
 )
 
 # Node D
-nodeD = nodz.create_node(name="nodeD", preset="node_preset_1")
+nodeD = nodz.api.create_node(name="nodeD", preset="node_preset_1")
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeD,
     name="Dattr1",
     index=-1,
@@ -496,7 +497,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeD,
     name="Dattr2",
     index=-1,
@@ -507,9 +508,9 @@ nodz.create_attribute(
 )
 
 # Node E
-nodeE = nodz.create_node(name="nodeE", preset="node_preset_1")
+nodeE = nodz.api.create_node(name="nodeE", preset="node_preset_1")
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeE,
     name="Eattr1",
     index=-1,
@@ -519,7 +520,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeE,
     name="Eattr2",
     index=-1,
@@ -529,7 +530,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeE,
     name="Eattr3",
     index=-1,
@@ -540,9 +541,9 @@ nodz.create_attribute(
 )
 
 # Node F
-nodeF = nodz.create_node(name="nodeF", preset="node_preset_1")
+nodeF = nodz.api.create_node(name="nodeF", preset="node_preset_1")
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeF,
     name="Fattr1",
     index=-1,
@@ -552,7 +553,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeF,
     name="Fattr2",
     index=-1,
@@ -562,7 +563,7 @@ nodz.create_attribute(
     data_type=str,
 )
 
-nodz.create_attribute(
+nodz.api.create_attribute(
     nodeF,
     name="Fattr3",
     index=-1,
@@ -579,34 +580,36 @@ nodz.create_attribute(
 # clearing/evaluating will.
 
 # Connection creation
-nodz.create_connection("nodeB", "Battr2", "nodeA", "Aattr3")
-nodz.create_connection("nodeB", "Battr1", "nodeA", "Aattr4")
-nodz.create_connection("nodeD", "Dattr2", "nodeA", "Aattr6")
-nodz.create_connection("nodeE", "Eattr1", "nodeF", "Fattr2")
+nodz.api.create_connection("nodeB", "Battr2", "nodeA", "Aattr3")
+nodz.api.create_connection("nodeB", "Battr1", "nodeA", "Aattr4")
+nodz.api.create_connection("nodeD", "Dattr2", "nodeA", "Aattr6")
+nodz.api.create_connection("nodeE", "Eattr1", "nodeF", "Fattr2")
 
 # Attributes Edition
-nodz.edit_attribute(nodeC, index=0, new_name=None, new_index=-1)
-nodz.edit_attribute(nodeC, index=-1, new_name="NewAttrName", new_index=None)
+nodz.api.edit_attribute(nodeC, index=0, new_name=None, new_index=-1)
+nodz.api.edit_attribute(
+    nodeC, index=-1, new_name="NewAttrName", new_index=None
+)
 
 # Attributes Deletion
-nodz.delete_attribute(nodeC, index=-1)
+nodz.api.delete_attribute(nodeC, "NewAttrName")
 
 
 # Nodes Edition
-nodeC = nodz.edit_node(nodeC, new_name="newNodeName")
+nodeC = nodz.api.edit_node(nodeC, new_name="newNodeName")
 
 # Nodes Deletion
-nodz.delete_node(nodeC)
+nodz.api.delete_node(nodeC)
 
 
 # Graph
-nlog.info(f"graph evaluation = {nodz.evaluate_graph()}")
+nlog.info(f"graph evaluation = {nodz.api.evaluate_graph()}")
 
-nodz.save_graph(file_path="nodz_demo_graph.json")
+nodz.api.save_graph(file_path="nodz_demo_graph.json")
 
-nodz.clear_graph()
+nodz.api.clear_graph()
 
-nodz.load_graph(file_path="nodz_demo_graph.json")
+nodz.api.load_graph(file_path="nodz_demo_graph.json")
 
 nodz._layout_graph()
 

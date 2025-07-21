@@ -1,11 +1,13 @@
 from __future__ import annotations
 import os
-from typing import Any, Optional
+from typing import Any
 from enum import Enum
 from qtpy import QtGui, QtCore, QtWidgets
 
 from nodz.scene import NodeScene
 from nodz.utils import nlog, _load_config
+from nodz.data_types import NodzAdapter
+from .api import CoreAPI, ModelAPI
 
 
 DEFAULT_CONFIG_PATH = os.path.join(
@@ -24,6 +26,36 @@ class ViewState(Enum):
     DRAG_ITEM = 7
 
 
+class NodzSignals(QtCore.QObject):
+    NodeCreated = QtCore.Signal(object)  # type: ignore (qtpy)
+    NodeDeleted = QtCore.Signal(str)  # type: ignore (qtpy)
+    NodeRenamed = QtCore.Signal(str, str)  # type: ignore (qtpy)
+    NodeSelected = QtCore.Signal(object)  # type: ignore (qtpy)
+    NodeMoved = QtCore.Signal(object, object)  # type: ignore (qtpy)
+    NodeDoubleClicked = QtCore.Signal(object)  # type: ignore (qtpy)
+
+    AttrCreated = QtCore.Signal(object, str)  # type: ignore (qtpy)
+    AttrDeleted = QtCore.Signal(object, str)  # type: ignore (qtpy)
+    AttrEdited = QtCore.Signal(object, int, int)  # type: ignore (qtpy)
+
+    PlugConnected = QtCore.Signal(object)  # type: ignore (qtpy)
+    PlugDisconnected = QtCore.Signal(object)  # type: ignore (qtpy)
+    SocketConnected = QtCore.Signal(object)  # type: ignore (qtpy)
+    SocketDisconnected = QtCore.Signal(object)  # type: ignore (qtpy)
+
+    RemoveConnections = QtCore.Signal(object)  # type: ignore (qtpy)
+
+    Dropped = QtCore.Signal()  # type: ignore (qtpy)
+
+    GraphSaved = QtCore.Signal()  # type: ignore (qtpy)
+    GraphLoaded = QtCore.Signal()  # type: ignore (qtpy)
+    GraphCleared = QtCore.Signal()  # type: ignore (qtpy)
+    GraphEvaluated = QtCore.Signal()  # type: ignore (qtpy)
+
+    KeyPressed = QtCore.Signal(object)  # type: ignore (qtpy)
+    NodeMoved = QtCore.Signal(object, object)  # type: ignore (qtpy)
+
+
 class Nodz(QtWidgets.QGraphicsView):
     """
     The main view for the node graph representation.
@@ -36,8 +68,6 @@ class Nodz(QtWidgets.QGraphicsView):
     # NOTE: Somehow QtCore.Signal is flagged by pylance as
     # not exported by qtpy.QtCore...
 
-    signal_KeyPressed = QtCore.Signal(object)  # type: ignore (qtpy)
-    signal_NodeMoved = QtCore.Signal(object, object)  # type: ignore (qtpy)
     delete_selected_nodes = QtCore.Signal()  # type: ignore (qtpy)
     snap_node_to_grid = QtCore.Signal(bool)  # type: ignore (qtpy)
     selection_changed = QtCore.Signal(bool)  # type: ignore (qtpy)
@@ -52,7 +82,7 @@ class Nodz(QtWidgets.QGraphicsView):
                 to DEFAULT_CONFIG_PATH.
         """
         super(Nodz, self).__init__(parent)
-
+        self.signals = NodzSignals()
         self.config = _load_config(config_path)
 
         # Display options.
@@ -377,7 +407,7 @@ class Nodz(QtWidgets.QGraphicsView):
             self.snap_node_to_grid.emit(True)
 
         # Emit signal.
-        self.signal_KeyPressed.emit(event.key())
+        self.signals.KeyPressed.emit(event.key())
 
     def keyReleaseEvent(self, event: QtGui.QKeyEvent) -> None:
         """
@@ -493,7 +523,7 @@ class Nodz(QtWidgets.QGraphicsView):
                     lheight += hgt + v_spacing
 
                     for attr, socket in node.sockets.items():
-                        if attr not in node.attrs:
+                        if attr not in node.attr_names:
                             continue
 
                         for connection in socket.connections:
@@ -548,7 +578,7 @@ class Nodz(QtWidgets.QGraphicsView):
                 rect = rect.united(item.sceneBoundingRect())
         return rect if rect else QtCore.QRectF()
 
-    def initialize(self, node_factory=None) -> None:
+    def initialize(self, node_factory=None, adapter=None) -> None:
         """
         Setup the view's behavior.
         """
@@ -581,16 +611,20 @@ class Nodz(QtWidgets.QGraphicsView):
         )
 
         # Setup scene.
-        self._scene = NodeScene(self, self.config)
+        self._scene = NodeScene(self, self.config, self.signals)
         scene_width = config["scene_width"]
         scene_height = config["scene_height"]
         self._scene.setSceneRect(0, 0, scene_width, scene_height)
         if node_factory:
             self._scene.register_factory(node_factory)
+        self.api = CoreAPI(self, self._scene)
+        self.model_api = ModelAPI(
+            self, self._scene, adapter if adapter else NodzAdapter()
+        )
         self.setScene(self._scene)
 
         # Connect scene node signals
-        self._scene.signal_NodeMoved.connect(self.signal_NodeMoved)
+        # self.signals.signal_NodeMoved.connect(self.signal_NodeMoved)
         self.delete_selected_nodes.connect(self._scene._delete_selected_nodes)
         self.snap_node_to_grid.connect(self._scene.snap_node_to_grid)
 
@@ -598,95 +632,3 @@ class Nodz(QtWidgets.QGraphicsView):
         self.previous_mouse_offset = 0
         self.zoom_direction = 0
         self.zoom_incr = 0
-
-    # #########################################################################
-    # PUBLIC API
-    # #########################################################################
-
-    def load_config(self, file_path: str) -> None:
-        self._scene.api_load_config(file_path)
-
-    def create_node(
-        self,
-        name: str = "default",
-        preset: str = "node_default",
-        position: Optional[QtCore.QPointF] = None,
-        alternate: bool = True,
-        **kwargs,
-    ) -> str:
-        return self._scene.api_create_node(
-            name, preset, position, alternate, **kwargs
-        ).model.name
-
-    def delete_node(self, node_name: str) -> None:
-        self._scene.api_delete_node(self._scene.node_by_name(node_name))
-
-    def edit_node(self, node_name: str, new_name: str) -> str:
-        node = self._scene.node_by_name(node_name)
-        self._scene.api_edit_node(node, new_name)
-        return node.model.name
-
-    def create_attribute(
-        self,
-        node_name: str,
-        name: str = "default",
-        index: int = -1,
-        preset: str = "attr_default",
-        plug: bool = True,
-        socket: bool = True,
-        data_type: Any = None,
-        plug_max_connections: int = -1,
-        socket_max_connections: int = 1,
-        **kwargs,
-    ) -> None:
-        self._scene.api_create_attribute(
-            self._scene.node_by_name(node_name),
-            name,
-            index,
-            preset,
-            plug,
-            socket,
-            data_type,
-            plug_max_connections,
-            socket_max_connections,
-            **kwargs,
-        )
-
-    def delete_attribute(self, node_name: str, index: int) -> None:
-        self._scene.api_delete_attribute(
-            self._scene.node_by_name(node_name), index
-        )
-
-    def edit_attribute(
-        self,
-        node_name: str,
-        index: int,
-        new_name: Optional[str] = None,
-        new_index: Optional[int] = None,
-    ) -> None:
-        self._scene.api_edit_attribute(
-            self._scene.node_by_name(node_name), index, new_name, new_index
-        )
-
-    def save_graph(self, file_path: str) -> None:
-        self._scene.api_save_graph(file_path)
-
-    def load_graph(self, file_path: str) -> None:
-        self._scene.api_load_graph(file_path)
-
-    def create_connection(
-        self,
-        source_node: str,
-        source_attr: str,
-        target_node: str,
-        target_attr: str,
-    ) -> None:
-        self._scene.api_create_connection(
-            source_node, source_attr, target_node, target_attr
-        )
-
-    def evaluate_graph(self) -> list:
-        return self._scene.api_evaluate_graph()
-
-    def clear_graph(self):
-        self._scene.api_clear_graph()
