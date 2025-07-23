@@ -1,6 +1,6 @@
 from typing import Any, Optional
 from functools import partial
-from enum import Enum
+from enum import Flag, auto
 from copy import deepcopy
 from .data_types import (
     ModelEntity,
@@ -14,22 +14,6 @@ from .data_types import (
 from .scene import NodeScene
 from .utils import nlog
 from qtpy import QtCore
-
-from functools import wraps
-import time
-
-
-def timeit(func):
-    @wraps(func)
-    def timeit_wrapper(*args, **kwargs):
-        start_time = time.perf_counter()
-        result = func(*args, **kwargs)
-        end_time = time.perf_counter()
-        total_time = end_time - start_time
-        nlog.debug(f"Function {func.__name__} Took {total_time:.4f} seconds")
-        return result
-
-    return timeit_wrapper
 
 
 class CoreAPI:
@@ -126,11 +110,13 @@ class CoreAPI:
         self.scene.clear_graph()
 
 
-class Diff(Enum):
-    Same = 0
-    Created = 1
-    Deleted = 2
-    Updated = 3
+class Diff(Flag):
+    Same = auto()
+    Created = auto()
+    Deleted = auto()
+    Updated = auto()
+    PositionChanged = auto()
+    AttributesChanged = auto()
 
 
 class ModelAPI:
@@ -139,6 +125,8 @@ class ModelAPI:
         self.scene = scene
         self.adapter = adapter
         self.graph = GraphModel()
+        self._reference_graph = deepcopy(self.graph)
+
         # connect signals
         self.scene.signals.PlugConnected.connect(
             partial(
@@ -160,7 +148,7 @@ class ModelAPI:
             partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
         )
         self.scene.signals.NodeMoved.connect(
-            partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
+            partial(self.update_model, ModelEntity.Node, ModelEdit.Position)
         )
         self.scene.signals.AttrCreated.connect(
             partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
@@ -171,107 +159,139 @@ class ModelAPI:
         self.scene.signals.AttrEdited.connect(
             partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
         )
+        self.scene.signals.NodeLayoutChanged.connect(
+            partial(self.update_model, ModelEntity.Graph, ModelEdit.Layout)
+        )
 
-    @timeit
-    def diff_graph(self, new_graph: GraphModel) -> dict[str, list]:
+    @property
+    def reference_graph(self):
+        return self._reference_graph
+
+    @reference_graph.setter
+    def reference_graph(self, value):
+        self._reference_graph = deepcopy(value)
+
+    def _diff_graph(self, new_graph: GraphModel) -> dict[str, list]:
         """Compare two GraphModel objects and return a list of differences."""
 
         diffs = {"nodes": [], "connections": []}
 
         # Compare nodes
-        for node_id, node1 in self.graph.nodes.items():
+        for node_id, node1 in self.reference_graph.nodes.items():
             if node_id not in new_graph.nodes:
                 diffs["nodes"].append((Diff.Deleted, node_id))
             else:
                 node2 = new_graph.nodes[node_id]
                 if node1 != node2:
-                    diffs["nodes"].append((Diff.Updated, node_id))
+                    status = Diff.Updated
+                    if node1.position != node2.position:
+                        nlog.debug(
+                            f"   >  diff: {node2.name} position changed."
+                        )
+                        status |= Diff.PositionChanged
+                    if node1.attributes != node2.attributes:
+                        nlog.debug(
+                            f"   >  diff: {node2.name} attributes changed."
+                        )
+                        status |= Diff.AttributesChanged
+                    diffs["nodes"].append((status, node_id))
 
         for node_id in new_graph.nodes:
-            if node_id not in self.graph.nodes:
+            if node_id not in self.reference_graph.nodes:
                 diffs["nodes"].append((Diff.Created, node_id))
 
         # Compare connections
-        for con in self.graph.connections:
+        for con in self.reference_graph.connections:
             if con not in new_graph.connections:
                 diffs["connections"].append((Diff.Deleted, con))
 
         for con in new_graph.connections:
-            if con not in self.graph.connections:
+            if con not in self.reference_graph.connections:
                 diffs["connections"].append((Diff.Created, con))
 
-        # print(f">>  diff: {diffs}")
         return diffs
 
-    @timeit
     def update_view(
         self,
-        data: Any,
+        client_data: Any,
         entity: ModelEntity = ModelEntity.Graph,
         edit: ModelEdit = ModelEdit.Update,
     ):
         # Build a model corresponding on the requested entity type.
         if entity == ModelEntity.Attr:
-            model = self.adapter.to_attr_model(data)
+            nodz_model = self.adapter.to_attr_model(client_data)
         elif entity == ModelEntity.Node:
-            model = self.adapter.to_node_model(data)
+            nodz_model = self.adapter.to_node_model(client_data)
         elif entity == ModelEntity.Connection:
-            model = self.adapter.to_connecttion_model(data)
+            nodz_model = self.adapter.to_connecttion_model(client_data)
         elif entity == ModelEntity.Graph:
-            model = self.adapter.to_graph_model(data)
+            nodz_model = self.adapter.to_graph_model(client_data)
 
         self.scene.signals.blockSignals(True)
 
         # Send an edit to the graph
-        if isinstance(model, NodeModel):
+        if isinstance(nodz_model, NodeModel):
             if edit == ModelEdit.Create:
-                self.create_node_from_model(model)
+                self._create_node_from_model(nodz_model)
             elif edit == ModelEdit.Update:
-                self.update_node_from_model(model)
+                self._update_node_from_model(nodz_model, Diff.Updated)
             elif edit == ModelEdit.Delete:
-                self.delete_node_from_model(model.name)
-        elif isinstance(model, AttrModel):
+                self._delete_node_from_model(nodz_model.name)
+            elif edit == ModelEdit.Position:
+                self.scene.node_by_name(nodz_model.name).setPos(
+                    nodz_model.position
+                )
+
+        elif isinstance(nodz_model, AttrModel):
             if edit == ModelEdit.Create:
                 raise NotImplementedError
-            elif edit == ModelEdit.Update:
-                raise NotImplementedError
-            elif edit == ModelEdit.Delete:
-                raise NotImplementedError
-        elif isinstance(model, ConnectionModel):
-            if edit == ModelEdit.Create:
-                self.create_connection_from_model(model)
             elif edit == ModelEdit.Update:
                 raise NotImplementedError
             elif edit == ModelEdit.Delete:
-                self.delete_connection_from_model(model)
-        elif isinstance(model, GraphModel):
+                raise NotImplementedError
+
+        elif isinstance(nodz_model, ConnectionModel):
             if edit == ModelEdit.Create:
-                for node in model.nodes.values():
-                    self.create_node_from_model(node)
-                for con in model.connections:
-                    self.create_connection_from_model(con)
+                self._create_connection_from_model(nodz_model)
             elif edit == ModelEdit.Update:
-                changes = self.diff_graph(model)
+                raise NotImplementedError(
+                    "Updating connections is NOT supported."
+                )
+            elif edit == ModelEdit.Delete:
+                self._delete_connection_from_model(nodz_model)
+
+        elif isinstance(nodz_model, GraphModel):
+            if edit == ModelEdit.Create:
+                for node in nodz_model.nodes.values():
+                    self._create_node_from_model(node)
+                for con in nodz_model.connections:
+                    self._create_connection_from_model(con)
+            elif edit == ModelEdit.Update:
+                # nlog.info(">  update graph")
+                changes = self._diff_graph(nodz_model)  # diff models
                 for diff, id in changes["nodes"]:
-                    if diff == Diff.Created:
-                        self.create_node_from_model(model.nodes[id])
-                    elif diff == Diff.Updated:
-                        self.update_node_from_model(model.nodes[id])
-                    else:
-                        self.delete_node_from_model(id)
+                    if Diff.Created in diff:
+                        self._create_node_from_model(nodz_model.nodes[id])
+                    elif Diff.Updated in diff:
+                        self._update_node_from_model(
+                            nodz_model.nodes[id], diff
+                        )
+                    elif Diff.Deleted in diff:
+                        self._delete_node_from_model(id)
                 for diff, con in changes["connections"]:
                     if diff == Diff.Created:
-                        self.create_connection_from_model(con)
+                        self._create_connection_from_model(con)
                     elif diff == Diff.Deleted:
-                        pass
+                        self._delete_connection_from_model(con)
             elif edit == ModelEdit.Delete:
-                model = GraphModel()
+                nodz_model = GraphModel()
+                self.view.api.clear_graph()
             # keep a copy for next diff.
-            self.graph = deepcopy(model)
+            self.reference_graph = deepcopy(nodz_model)
 
         self.scene.signals.blockSignals(False)
 
-    def create_node_from_model(self, model: NodeModel) -> None:
+    def _create_node_from_model(self, model: NodeModel) -> None:
         # Check for name clashes
         if model.name in self.scene.node_names():
             raise NameError(
@@ -293,21 +313,27 @@ class ModelAPI:
                 attr.socket_max_connections,
                 **attr.kwargs,
             )
+        node_item.update()
 
-    def update_node_from_model(self, model: NodeModel) -> None:
+    def _update_node_from_model(self, model: NodeModel, diff: Diff) -> None:
         if model.name not in self.scene.node_names():
             raise NameError(f"Updatable node doesn't exist: {model.name}")
+        # store current pos and connections to this node.
         pos = self.scene.node_by_name(model.name).pos()
-        cons = self.scene.evaluate_graph()
-        self.delete_node_from_model(model.name)
-        self.create_node_from_model(model)
+        cons = [
+            c
+            for c in self.scene.evaluate_graph()
+            if any([cc.startswith(f"{model.name}.") for cc in c])
+        ]
+        self._delete_node_from_model(model.name)
+        self._create_node_from_model(model)
         node_item = self.scene.node_by_name(model.name)
         node_item.setPos(pos)
         for src, dst in cons:
             self.scene.create_connection(*src.split("."), *dst.split("."))
         self.scene.update()
 
-    def delete_node_from_model(self, node_id: str) -> None:
+    def _delete_node_from_model(self, node_id: str) -> None:
         if node_id not in self.scene.node_names():
             raise NameError(f"Deletable node doesn't exist: {node_id}")
         node_item = self.scene.node_by_name(node_id)
@@ -315,7 +341,7 @@ class ModelAPI:
         self.scene.removeItem(node_item)
         self.scene.update()
 
-    def create_connection_from_model(self, model: ConnectionModel) -> None:
+    def _create_connection_from_model(self, model: ConnectionModel) -> None:
         self.scene.create_connection(
             model.plug_node,
             model.plug_attr,
@@ -323,7 +349,7 @@ class ModelAPI:
             model.socket_attr,
         )
 
-    def delete_connection_from_model(self, model: ConnectionModel) -> None:
+    def _delete_connection_from_model(self, model: ConnectionModel) -> None:
         plug_item = self.scene.node_by_name(model.plug_node)
         socket_item = self.scene.node_by_name(model.socket_node)
 
@@ -357,41 +383,72 @@ class ModelAPI:
         self.scene.load_graph(file_path)
         self.scene.signals.blockSignals(False)
 
-    def update_model(self, entity: ModelEntity, edit: ModelEdit, *data):
+    def update_model(
+        self, entity: ModelEntity, edit: ModelEdit, *data
+    ) -> None:
+        # get a fresh copy of the client's data
+        client_model = self.adapter.to_graph_model(self.adapter.client_model)
+
         if entity == ModelEntity.Connection:
             con_model = data[0]
 
             if edit == ModelEdit.Create:
                 nlog.debug(f"update_model:  Create CON {con_model}")
-                self.graph.connections.append(con_model)
-                self.adapter.from_graph_model(self.graph)
+                client_model.add_connection(con_model)
+                self.adapter.from_graph_model(client_model)
 
             elif edit == ModelEdit.Delete:
                 nlog.debug(f"update_model:  Delete CON {con_model}")
                 try:
-                    idx = self.graph.connections.index(con_model)
+                    idx = client_model.connections.index(con_model)
                 except ValueError:
                     nlog.warning(f"Ignoring unknown: {con_model}")
                     return
-                self.graph.connections.pop(idx)
-                self.adapter.from_graph_model(self.graph)
+                client_model.connections.pop(idx)
+                self.adapter.from_graph_model(client_model)
 
         elif entity == ModelEntity.Node:
             if edit == ModelEdit.Create:
                 node_model = data[0]
                 nlog.debug(f"update_model:  Create NODE {node_model}")
-                self.graph.nodes[node_model.name] = node_model
-                self.adapter.from_graph_model(self.graph)
+                client_model.nodes[node_model.name] = node_model
+                self.adapter.from_graph_model(client_model)
 
             elif edit == ModelEdit.Update:
                 nlog.debug(f"update_model:  Update NODE {data}")
                 nargs = len(data)
                 if nargs == 2:
                     if isinstance(data[0], str) and isinstance(data[1], str):
-                        self.graph.rename_node(*data)
-                self.adapter.from_graph_model(self.graph)
+                        client_model.rename_node(*data)
+                    elif isinstance(data[0], NodeModel) and isinstance(
+                        data[1], str
+                    ):
+                        client_model.nodes[data[1]] = data[0]
+                    else:
+                        nlog.warning(f"Unimplemented node update: {data}")
+                self.adapter.from_graph_model(client_model)
 
             elif edit == ModelEdit.Delete:
                 nlog.debug(f"update_model:  Delete NODE {data}")
-                # IMPLEMENT ME
-                self.adapter.from_graph_model(self.graph)
+                if len(data) == 1 and isinstance(data[0], str):
+                    client_model.nodes.pop(data[0])
+                else:
+                    raise ValueError(f"Unexpected data: {data}")
+                self.adapter.from_graph_model(client_model)
+
+            elif edit == ModelEdit.Position:
+                nlog.debug(f"update_model:  Position NODE {data}")
+                model, pos = data
+                client_model.nodes[model.name].position = pos
+
+        elif entity == ModelEntity.Graph:
+            if edit == ModelEdit.Create:
+                pass
+            elif edit == ModelEdit.Update:
+                pass
+            elif edit == ModelEdit.Delete:
+                pass
+            elif edit == ModelEdit.Layout:
+                for node_name, pos in data[0].items():
+                    client_model.nodes[node_name].position = pos
+                self.adapter.from_graph_model(client_model)

@@ -600,7 +600,9 @@ class SlotItem(QtWidgets.QGraphicsItem):
             return False
 
         # no connection with different types
-        if is_compatible_type(slot_item.model.data_type, self.model.data_type):
+        if not is_compatible_type(
+            slot_item.model.data_type, self.model.data_type
+        ):
             return False
 
         # otherwize, all fine.
@@ -847,6 +849,8 @@ class PlugItem(SlotItem):
         connection.socket_item = item
         connection.model.plug_node = self.parent_node_item().model.name
         connection.model.plug_attr = self.model.attribute
+        connection.model.socket_node = item.parent_node_item().model.name
+        connection.model.socket_attr = item.model.attribute
 
         # Add socket to connected slots.
         if item in self.connected_slots:
@@ -961,6 +965,8 @@ class SocketItem(SlotItem):
         connection.plug_item = item
         connection.model.socket_node = self.parent_node_item().model.name
         connection.model.socket_attr = self.model.attribute
+        connection.model.plug_node = item.parent_node_item().model.name
+        connection.model.plug_attr = item.model.attribute
 
         # Add plug to connected slots.
         self.connected_slots.append(item)

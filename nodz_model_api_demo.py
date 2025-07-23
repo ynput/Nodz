@@ -1,5 +1,6 @@
 import sys
 from typing import Any, Union
+from collections import OrderedDict
 from qtpy import QtCore, QtGui, QtWidgets
 
 from nodz import view, items
@@ -152,11 +153,64 @@ test_factory = TestFactory(
 
 
 class TestAdapter(NodzAdapter):
+    def to_graph_model(self, data: Any) -> GraphModel:
+        graph = GraphModel()
+
+        # Create nodes and attributes from data
+        for node_name, node_data in data["graph_data"].items():
+            node = NodeModel(
+                name=node_name,
+                preset=node_data.get("preset", "node_default"),
+                alternate=node_data.get("alternate", False),
+                kwargs=node_data.get("kwargs", {}),
+            )
+            for attr_name, attr_data in node_data.get(
+                "attributes", {}
+            ).items():
+                try:
+                    node.attributes[attr_name] = AttrModel(
+                        attribute=attr_name, index=-1, **attr_data
+                    )
+                except TypeError:
+                    node.attributes[attr_name] = AttrModel(**attr_data)
+            graph.nodes[node_name] = node
+
+        for src_node, src_attr, dst_node, dst_attr in data["connections_data"]:
+            graph.add_connection(
+                ConnectionModel(src_node, src_attr, dst_node, dst_attr)
+            )
+
+        return graph
+
     def from_graph_model(self, data: GraphModel) -> Any:
         nlog.info(
             f"GRAPH model update: nodes: {list(data.nodes.keys())} with "
             f"{len(data.connections)} connections"
         )
+        # delete missing nodes
+        for name in list(self.client_model["graph_data"].keys()):
+            if name not in data.nodes:
+                del self.client_model["graph_data"][name]
+        # add new nodes
+        for name, model in data.nodes.items():
+            self.client_model["graph_data"][name] = model.to_dict()
+        # add new connections
+        for con in data.connections:
+            con_tuple = (
+                con.plug_node,
+                con.plug_attr,
+                con.socket_node,
+                con.socket_attr,
+            )
+            if con_tuple not in self.client_model["connections_data"]:
+                self.client_model["connections_data"].append(con_tuple)
+        # delete missing connections
+        for con in self.client_model["connections_data"]:
+            con_model = ConnectionModel(*con)
+            if con_model not in data.connections:
+                self.client_model["connections_data"].pop(
+                    self.client_model["connections_data"].index(con)
+                )
 
     def from_node_model(self, data: NodeModel) -> Any:
         nlog.info(
@@ -169,255 +223,252 @@ class TestAdapter(NodzAdapter):
 
 
 ######################################################################
+# Test Model Data
+######################################################################
+
+client_model = {
+    "graph_data": {
+        "nodeA": {
+            "preset": "node_preset_1",
+            "alternate": True,
+            "kwargs": {"help": "NodeA has its own special help string!"},
+            "attributes": OrderedDict(
+                {
+                    "Aattr1": {
+                        "preset": "attr_preset_1",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": str,
+                        "kwargs": {
+                            "help": "Just checking this is working!",
+                        },
+                    },
+                    "Aattr2": {
+                        "preset": "attr_preset_1",
+                        "plug": False,
+                        "socket": False,
+                        "data_type": int,
+                        "kwargs": {
+                            "help": "This attribute is purely decorative.",
+                        },
+                    },
+                    "Aattr3": {
+                        "preset": "attr_preset_2",
+                        "plug": True,
+                        "socket": True,
+                        "data_type": int,
+                    },
+                    "Aattr4": {
+                        "preset": "attr_preset_2",
+                        "plug": True,
+                        "socket": True,
+                        "data_type": str,
+                    },
+                    "Aattr5": {
+                        "preset": "attr_preset_3",
+                        "plug": True,
+                        "socket": True,
+                        "data_type": int,
+                        "plug_max_connections": 1,
+                        "socket_max_connections": -1,
+                    },
+                    "Aattr6": {
+                        "preset": "attr_preset_3",
+                        "plug": True,
+                        "socket": True,
+                        "data_type": int,
+                        "plug_max_connections": 1,
+                        "socket_max_connections": -1,
+                    },
+                }
+            ),
+        },
+        "nodeB": {
+            "preset": "node_preset_1",
+            "alternate": True,
+            "attributes": OrderedDict(
+                {
+                    "Battr1": {
+                        "preset": "attr_preset_1",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": str,
+                    },
+                    "Battr2": {
+                        "preset": "attr_preset_1",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": int,
+                    },
+                    "Battr3": {
+                        "preset": "attr_preset_2",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": int,
+                    },
+                    "Battr4": {
+                        "preset": "attr_preset_3",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": int,
+                        "plug_max_connections": 1,
+                        "socket_max_connections": -1,
+                    },
+                }
+            ),
+        },
+        "nodeC": {
+            "preset": "node_preset_1",
+            "alternate": True,
+            "attributes": OrderedDict(
+                {
+                    "Cattr1": {
+                        "preset": "attr_preset_1",
+                        "plug": False,
+                        "socket": True,
+                        "data_type": str,
+                    },
+                    "Cattr2": {
+                        "preset": "attr_preset_1",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": int,
+                    },
+                    "Cattr3": {
+                        "preset": "attr_preset_1",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": str,
+                    },
+                    "Cattr4": {
+                        "preset": "attr_preset_2",
+                        "plug": False,
+                        "socket": True,
+                        "data_type": str,
+                    },
+                    "Cattr5": {
+                        "preset": "attr_preset_2",
+                        "plug": False,
+                        "socket": True,
+                        "data_type": int,
+                    },
+                    "Cattr6": {
+                        "preset": "attr_preset_3",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": str,
+                    },
+                    "Cattr7": {
+                        "preset": "attr_preset_3",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": str,
+                    },
+                    "Cattr8": {
+                        "preset": "attr_preset_3",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": int,
+                    },
+                }
+            ),
+        },
+        "nodeD": {
+            "preset": "node_preset_1",
+            "alternate": True,
+            "attributes": OrderedDict(
+                {
+                    "Dattr1": {
+                        "preset": "attr_preset_3",
+                        "plug": False,
+                        "socket": True,
+                        "data_type": str,
+                    },
+                    "Dattr2": {
+                        "preset": "attr_preset_3",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": int,
+                    },
+                }
+            ),
+        },
+        "nodeE": {
+            "preset": "node_preset_1",
+            "alternate": True,
+            "attributes": OrderedDict(
+                {
+                    "Eattr1": {
+                        "preset": "attr_preset_1",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": str,
+                    },
+                    "Eattr2": {
+                        "preset": "attr_preset_2",
+                        "plug": False,
+                        "socket": True,
+                        "data_type": str,
+                    },
+                    "Eattr3": {
+                        "preset": "attr_preset_2",
+                        "plug": False,
+                        "socket": True,
+                        "data_type": int,
+                    },
+                }
+            ),
+        },
+        "nodeF": {
+            "preset": "node_preset_1",
+            "alternate": True,
+            "attributes": OrderedDict(
+                {
+                    "Fattr1": {
+                        "preset": "attr_preset_1",
+                        "plug": True,
+                        "socket": False,
+                        "data_type": str,
+                    },
+                    "Fattr2": {
+                        "preset": "attr_preset_2",
+                        "plug": False,
+                        "socket": True,
+                        "data_type": str,
+                    },
+                    "Fattr3": {
+                        "preset": "attr_preset_2",
+                        "plug": False,
+                        "socket": True,
+                        "data_type": int,
+                    },
+                }
+            ),
+        },
+    },
+    "connections_data": [
+        ("nodeB", "Battr2", "nodeA", "Aattr3"),
+        ("nodeB", "Battr1", "nodeA", "Aattr4"),
+        ("nodeD", "Dattr2", "nodeA", "Aattr6"),
+        ("nodeE", "Eattr1", "nodeF", "Fattr2"),
+    ],
+}
+
+######################################################################
 # Setup and initialization
 ######################################################################
 
 # Create the Nodz view.
 nodz = view.Nodz(None)
 nodz.setWindowTitle("Nodz Model API Demo")
-nodz.initialize(node_factory=test_factory, adapter=TestAdapter())
+nodz.initialize(node_factory=test_factory, adapter=TestAdapter(client_model))
 nodz.show()
-
 
 ######################################################################
 # Test Model API
 ######################################################################
 
-graph_data = {
-    "nodeA": {
-        "preset": "node_preset_1",
-        "alternate": True,
-        "kwargs": {"help": "NodeA has its own special help string!"},
-        "attributes": {
-            "Aattr1": {
-                "preset": "attr_preset_1",
-                "plug": True,
-                "socket": False,
-                "data_type": str,
-                "kwargs": {"help": "Just checking this is working!"},
-            },
-            "Aattr2": {
-                "preset": "attr_preset_1",
-                "plug": False,
-                "socket": False,
-                "data_type": int,
-                "kwargs": {"help": "This attribute is purely decorative."},
-            },
-            "Aattr3": {
-                "preset": "attr_preset_2",
-                "plug": True,
-                "socket": True,
-                "data_type": int,
-            },
-            "Aattr4": {
-                "preset": "attr_preset_2",
-                "plug": True,
-                "socket": True,
-                "data_type": str,
-            },
-            "Aattr5": {
-                "preset": "attr_preset_3",
-                "plug": True,
-                "socket": True,
-                "data_type": int,
-                "plug_max_connections": 1,
-                "socket_max_connections": -1,
-            },
-            "Aattr6": {
-                "preset": "attr_preset_3",
-                "plug": True,
-                "socket": True,
-                "data_type": int,
-                "plug_max_connections": 1,
-                "socket_max_connections": -1,
-            },
-        },
-    },
-    "nodeB": {
-        "preset": "node_preset_1",
-        "alternate": True,
-        "attributes": {
-            "Battr1": {
-                "preset": "attr_preset_1",
-                "plug": True,
-                "socket": False,
-                "data_type": str,
-            },
-            "Battr2": {
-                "preset": "attr_preset_1",
-                "plug": True,
-                "socket": False,
-                "data_type": int,
-            },
-            "Battr3": {
-                "preset": "attr_preset_2",
-                "plug": True,
-                "socket": False,
-                "data_type": int,
-            },
-            "Battr4": {
-                "preset": "attr_preset_3",
-                "plug": True,
-                "socket": False,
-                "data_type": int,
-                "plug_max_connections": 1,
-                "socket_max_connections": -1,
-            },
-        },
-    },
-    "nodeC": {
-        "preset": "node_preset_1",
-        "alternate": True,
-        "attributes": {
-            "Cattr1": {
-                "preset": "attr_preset_1",
-                "plug": False,
-                "socket": True,
-                "data_type": str,
-            },
-            "Cattr2": {
-                "preset": "attr_preset_1",
-                "plug": True,
-                "socket": False,
-                "data_type": int,
-            },
-            "Cattr3": {
-                "preset": "attr_preset_1",
-                "plug": True,
-                "socket": False,
-                "data_type": str,
-            },
-            "Cattr4": {
-                "preset": "attr_preset_2",
-                "plug": False,
-                "socket": True,
-                "data_type": str,
-            },
-            "Cattr5": {
-                "preset": "attr_preset_2",
-                "plug": False,
-                "socket": True,
-                "data_type": int,
-            },
-            "Cattr6": {
-                "preset": "attr_preset_3",
-                "plug": True,
-                "socket": False,
-                "data_type": str,
-            },
-            "Cattr7": {
-                "preset": "attr_preset_3",
-                "plug": True,
-                "socket": False,
-                "data_type": str,
-            },
-            "Cattr8": {
-                "preset": "attr_preset_3",
-                "plug": True,
-                "socket": False,
-                "data_type": int,
-            },
-        },
-    },
-    "nodeD": {
-        "preset": "node_preset_1",
-        "alternate": True,
-        "attributes": {
-            "Dattr1": {
-                "preset": "attr_preset_3",
-                "plug": False,
-                "socket": True,
-                "data_type": str,
-            },
-            "Dattr2": {
-                "preset": "attr_preset_3",
-                "plug": True,
-                "socket": False,
-                "data_type": int,
-            },
-        },
-    },
-    "nodeE": {
-        "preset": "node_preset_1",
-        "alternate": True,
-        "attributes": {
-            "Eattr1": {
-                "preset": "attr_preset_1",
-                "plug": True,
-                "socket": False,
-                "data_type": str,
-            },
-            "Eattr2": {
-                "preset": "attr_preset_2",
-                "plug": False,
-                "socket": True,
-                "data_type": str,
-            },
-            "Eattr3": {
-                "preset": "attr_preset_2",
-                "plug": False,
-                "socket": True,
-                "data_type": int,
-            },
-        },
-    },
-    "nodeF": {
-        "preset": "node_preset_1",
-        "alternate": True,
-        "attributes": {
-            "Fattr1": {
-                "preset": "attr_preset_1",
-                "plug": True,
-                "socket": False,
-                "data_type": str,
-            },
-            "Fattr2": {
-                "preset": "attr_preset_2",
-                "plug": False,
-                "socket": True,
-                "data_type": str,
-            },
-            "Fattr3": {
-                "preset": "attr_preset_2",
-                "plug": False,
-                "socket": True,
-                "data_type": int,
-            },
-        },
-    },
-}
-
-connections_data = [
-    ("nodeB", "Battr2", "nodeA", "Aattr3"),
-    ("nodeB", "Battr1", "nodeA", "Aattr4"),
-    ("nodeD", "Dattr2", "nodeA", "Aattr6"),
-    ("nodeE", "Eattr1", "nodeF", "Fattr2"),
-]
-
-graph = GraphModel()
-
-# Create nodes and attributes from data
-for node_name, node_data in graph_data.items():
-    node = NodeModel(
-        name=node_name,
-        preset=node_data.get("preset", "node_default"),
-        alternate=node_data.get("alternate", False),
-        kwargs=node_data.get("kwargs", {}),
-    )
-    for attr_name, attr_data in node_data.get("attributes", {}).items():
-        node.attributes[attr_name] = AttrModel(
-            attribute=attr_name, index=-1, **attr_data
-        )
-    graph.nodes[node_name] = node
-
-nodz.model_api.update_view(graph)
-
-# Create connections from data
-for src_node, src_attr, dest_node, dest_attr in connections_data:
-    graph.connections.append(
-        ConnectionModel(src_node, src_attr, dest_node, dest_attr)
-    )
-nodz.model_api.update_view(graph)
+nodz.model_api.update_view(client_model)
 
 
 # --- The rest of the script remains for demonstrating dynamic operations ---
@@ -428,34 +479,34 @@ nodz.model_api.update_view(graph)
 # clearing/evaluating will.
 
 # Get a reference to a node model for manipulation
-nodeC = graph.nodes["nodeC"]
+nodeC = client_model["graph_data"]["nodeC"]
 
 # Attributes Edition
 # Move first attribute to the end
-attr_name = next(iter(nodeC.attributes))
-attr_model = nodeC.attributes.pop(attr_name)
-nodeC.attributes[attr_name] = attr_model
-nodeC.sort_attributes()
-nodz.model_api.update_view(graph)
+first_attr_name = next(iter(nodeC["attributes"]))
+# first_attr = nodeC["attributes"].pop(first_attr_name)
+nodeC["attributes"][first_attr_name] = nodeC["attributes"].pop(first_attr_name)
+nodz.model_api.update_view(client_model)
 
 # Rename last attribute
-last_attr_name = next(reversed(nodeC.attributes))
-nodeC.attributes[last_attr_name].attribute = "NewAttrName"
-nodeC.sort_attributes()
-nodz.model_api.update_view(graph)
+last_attr_name = next(reversed(nodeC["attributes"]))
+nodeC["attributes"]["NewAttrName"] = nodeC["attributes"].pop(last_attr_name)
+nodz.model_api.update_view(client_model)
 
 # Attributes Deletion - delete last attribute
-last_attr_name = next(reversed(nodeC.attributes))
-nodeC.attributes.pop(last_attr_name)
-nodz.model_api.update_view(graph)
+last_attr_name = next(reversed(nodeC["attributes"]))
+nodeC["attributes"].pop(last_attr_name)
+nodz.model_api.update_view(client_model)
 
 # Nodes Edition - rename node
-graph.rename_node(nodeC.name, "newNodeName")
-nodz.model_api.update_view(graph)
+client_model["graph_data"]["newNodeName"] = client_model["graph_data"].pop(
+    "nodeC"
+)
+nodz.model_api.update_view(client_model)
 
 # Nodes Deletion
-del graph.nodes["newNodeName"]
-nodz.model_api.update_view(graph)
+del client_model["graph_data"]["newNodeName"]
+nodz.model_api.update_view(client_model)
 
 # Graph
 nlog.info(f"graph evaluation = {nodz.api.evaluate_graph()}")
@@ -470,11 +521,11 @@ nodz.model_api.load_graph(file_path="nodz_demo_model_graph.json")
 # test view -> data model communication
 print()
 nlog.info("test view -> data model communication ============================")
-nodz.api.create_node("test node")
+test_node = nodz.api.create_node("test node")
 nodz.api.create_attribute(
-    "test node", name="T_attr1", plug=True, socket=False, data_type=str
+    test_node, name="T_attr1", plug=True, socket=False, data_type=str
 )
-nodz.api.edit_node("test node", "test node renamed")
+nodz.api.edit_node(test_node, "test node renamed")
 
 nodz._layout_graph()
 

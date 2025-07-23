@@ -2,7 +2,7 @@ from dataclasses import dataclass, field, asdict
 from collections import OrderedDict
 from typing import Any, List
 from enum import Enum
-from copy import copy
+from copy import deepcopy
 from qtpy import QtCore
 
 # =============================================================================
@@ -95,9 +95,12 @@ class GraphModel(BaseModel):
         self.nodes[name] = node
 
     def rename_node(self, name, new_name):
-        self.nodes[new_name] = copy(self.nodes[name])
-        del self.nodes[name]
+        self.nodes[new_name] = self.nodes.pop(name)
         self.nodes[new_name].name = new_name
+
+    def add_connection(self, con: ConnectionModel):
+        if con not in self.connections:
+            self.connections.append(con)
 
 
 # =============================================================================
@@ -109,6 +112,8 @@ class ModelEdit(Enum):
     Create = 0
     Update = 1
     Delete = 2
+    Layout = 3
+    Position = 4
 
 
 class ModelEntity(Enum):
@@ -119,42 +124,61 @@ class ModelEntity(Enum):
 
 
 class NodzAdapter:
+    """
+    Abstract adapter class that can be inherited to handle the conversion
+    between a client data model and the nodz data model.
+
+    This allows nodz to display and edit graphs from various sources,
+    i.e. from a list of houdini nodes, a dict, etc.
+    """
+
+    def __init__(self, client_model: Any) -> None:
+        # Read-only reference
+        self._client_model = client_model
+
+    @property
+    def client_model(self):
+        return self._client_model
+
+    def update_client_model(self, value):
+        self._client_model = value
+
     def to_attr_model(self, data: Any) -> AttrModel:
         if isinstance(data, AttrModel):
-            return data
+            return deepcopy(data)
         raise NotImplementedError()
 
     def to_node_model(self, data: Any) -> NodeModel:
         if isinstance(data, NodeModel):
-            return data
+            return deepcopy(data)
         raise NotImplementedError()
 
     def to_connecttion_model(self, data: Any) -> ConnectionModel:
         if isinstance(data, ConnectionModel):
-            return data
+            return deepcopy(data)
         raise NotImplementedError()
 
     def to_graph_model(self, data: Any) -> GraphModel:
         if isinstance(data, GraphModel):
-            return data
+            return deepcopy(data)
         raise NotImplementedError()
 
     def from_attr_model(self, data: AttrModel) -> Any:
         if isinstance(data, AttrModel):
-            return data
+            return deepcopy(data)
         raise NotImplementedError()
 
     def from_node_model(self, data: NodeModel) -> Any:
         if isinstance(data, NodeModel):
-            return data
+            return deepcopy(data)
         raise NotImplementedError()
 
     def from_connecttion_model(self, data: ConnectionModel) -> Any:
         if isinstance(data, ConnectionModel):
-            return data
+            return deepcopy(data)
         raise NotImplementedError()
 
     def from_graph_model(self, data: GraphModel) -> Any:
         if isinstance(data, GraphModel):
-            return data
+            return deepcopy(data)
         raise NotImplementedError()

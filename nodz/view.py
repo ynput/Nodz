@@ -6,7 +6,7 @@ from qtpy import QtGui, QtCore, QtWidgets
 
 from nodz.scene import NodeScene
 from nodz.utils import nlog, _load_config
-from nodz.data_types import NodzAdapter
+from nodz.data_types import NodzAdapter, GraphModel
 from .api import CoreAPI, ModelAPI
 
 
@@ -47,13 +47,14 @@ class NodzSignals(QtCore.QObject):
 
     Dropped = QtCore.Signal()  # type: ignore (qtpy)
 
+    NodeLayoutChanged = QtCore.Signal(object)  # type: ignore (qtpy)
+
     GraphSaved = QtCore.Signal()  # type: ignore (qtpy)
     GraphLoaded = QtCore.Signal()  # type: ignore (qtpy)
     GraphCleared = QtCore.Signal()  # type: ignore (qtpy)
     GraphEvaluated = QtCore.Signal()  # type: ignore (qtpy)
 
     KeyPressed = QtCore.Signal(object)  # type: ignore (qtpy)
-    NodeMoved = QtCore.Signal(object, object)  # type: ignore (qtpy)
 
 
 class Nodz(QtWidgets.QGraphicsView):
@@ -566,6 +567,11 @@ class Nodz(QtWidgets.QGraphicsView):
         self._scene.update_scene()
         self._center_graph_in_scene()
 
+        # emit a dict[str, QPointF] for all nodes.
+        self.signals.NodeLayoutChanged.emit(
+            {n.model.name: n.pos() for n in self._scene.node_items()}
+        )
+
     def _get_selection_boundingbox(self) -> QtCore.QRectF:
         """
         Return the bounding box of the selection.
@@ -619,7 +625,9 @@ class Nodz(QtWidgets.QGraphicsView):
             self._scene.register_factory(node_factory)
         self.api = CoreAPI(self, self._scene)
         self.model_api = ModelAPI(
-            self, self._scene, adapter if adapter else NodzAdapter()
+            self,
+            self._scene,
+            adapter if adapter else NodzAdapter(GraphModel()),
         )
         self.setScene(self._scene)
 
