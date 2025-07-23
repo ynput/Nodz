@@ -389,7 +389,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
             if self == SlotItem.current_hovered_node:
                 if not SlotItem.source_slot:
                     raise TypeError("Invalid source_slot")
-                if is_compatible_type(
+                if not is_compatible_type(
                     attr_data.data_type, SlotItem.source_slot.model.data_type
                 ) or (
                     SlotItem.source_slot.slot_type == SlotItem.Type.Plug
@@ -737,7 +737,7 @@ class SlotItem(QtWidgets.QGraphicsItem):
                     raise TypeError("Invalid source_slot")
                 if self.slot_type == SlotItem.source_slot.slot_type or (
                     self.slot_type != SlotItem.source_slot.slot_type
-                    and is_compatible_type(
+                    and not is_compatible_type(
                         self.model.data_type,
                         SlotItem.source_slot.model.data_type,
                     )
