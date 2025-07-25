@@ -362,8 +362,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
             node.model.name = new_name
 
         # Replace node data.
-        self._node_dict[new_name] = self._node_dict[old_name]
-        self._node_dict.pop(old_name)
+        self._node_dict[new_name] = self._node_dict.pop(old_name)
 
         # Store new node name in the connections
         if node.sockets:
