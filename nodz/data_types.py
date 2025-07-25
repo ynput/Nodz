@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field, asdict
 from collections import OrderedDict
-from typing import Any, List
+from typing import Any, List, Union, get_origin, get_args
 from enum import Enum
 from copy import deepcopy
 from qtpy import QtCore
+from .utils import str_to_type, nlog
 
 # =============================================================================
 # Data Models
@@ -31,6 +32,49 @@ class AttrModel(BaseModel):
     plug_max_connections: int = -1
     socket_max_connections: int = -1
     kwargs: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        self.data_type = str_to_type(self.data_type)
+
+    @staticmethod
+    def is_compatible_type(plug_type: Any, socket_type: Any) -> bool:
+        """
+        Check if the source type is compatible with the target type.
+        This method supports subclasses, Any and Union types.
+
+        Args:
+            plug_type (Any): The source data type.
+            socket_type (Any): The destination data type.
+        Returns:
+            bool: True if compatible, False otherwise.
+        """
+        status = False
+        if str(plug_type) == "typing.Any" or str(socket_type) == "typing.Any":
+            status = True
+        elif get_origin(plug_type) is Union:
+            if get_origin(socket_type) is not Union:
+                status = any(
+                    [
+                        issubclass(src, socket_type)
+                        for src in get_args(plug_type)
+                    ]
+                )
+            else:
+                status = any(
+                    [
+                        issubclass(src, get_args(socket_type))
+                        for src in get_args(plug_type)
+                    ]
+                )
+        elif get_origin(socket_type) is Union:
+            status = issubclass(plug_type, get_args(socket_type))
+        elif isinstance(plug_type, type) and isinstance(socket_type, type):
+            status = issubclass(plug_type, socket_type)
+        nlog.debug(
+            f"  >>  is_compatible_type:  source_type: {plug_type} -> "
+            f"target_type: {socket_type} = {status}"
+        )
+        return status
 
 
 @dataclass

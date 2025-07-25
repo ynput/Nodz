@@ -1,6 +1,7 @@
 import json
 import re
 import logging
+import typing
 from qtpy import QtCore, QtGui
 
 logging.basicConfig(
@@ -140,6 +141,8 @@ def _save_data(file_path: str, data: dict) -> None:
             obj = (obj.x(), obj.y())
         elif isinstance(obj, type):
             obj = str(obj)
+        elif typing.get_origin(obj):
+            obj = str(obj)
         return obj
 
     f = open(file_path, "w")
@@ -172,12 +175,8 @@ def _load_data(file_path: str) -> dict:
 
         if "position" in d:
             d["position"] = QtCore.QPointF(*d["position"])
-
         if "data_type" in d:
-            data_type = d["data_type"]
-            if isinstance(data_type, str) and data_type.find("<") == 0:
-                d["data_type"] = eval(str(data_type.split("'")[1]))
-
+            d["data_type"] = str_to_type(d["data_type"])
         return d
 
     with open(file_path) as json_file:
@@ -187,3 +186,12 @@ def _load_data(file_path: str) -> dict:
 
     nlog.info("Data successfully loaded !")
     return j_data
+
+
+def str_to_type(val: typing.Union[str, type]):
+    if isinstance(val, str):
+        if val.find("<") == 0:
+            return eval(str(val.split("'")[1]))
+        else:
+            return eval(val)
+    return val

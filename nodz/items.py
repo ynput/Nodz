@@ -2,23 +2,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Tuple, Optional, Union
 from qtpy import QtGui, QtCore, QtWidgets
-from .utils import _convert_data_to_color, _create_pointer_bounding_box
+from .utils import _convert_data_to_color, _create_pointer_bounding_box, nlog
 from .data_types import NodeModel, AttrModel, ConnectionModel
-
-
-def is_compatible_type(source_type: Any, target_type: Any) -> bool:
-    """
-    Check if the source type is compatible with the target type.
-
-    Args:
-        source_type (Any): The source data type.
-        target_type (Any): The target data type.
-    Returns:
-        bool: True if compatible, False otherwise.
-    """
-    if isinstance(source_type, type) and isinstance(target_type, type):
-        return issubclass(source_type, target_type)
-    return False
 
 
 class NodeItem(QtWidgets.QGraphicsItem):
@@ -389,7 +374,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
             if self == SlotItem.current_hovered_node:
                 if not SlotItem.source_slot:
                     raise TypeError("Invalid source_slot")
-                if not is_compatible_type(
+                if not AttrModel.is_compatible_type(
                     attr_data.data_type, SlotItem.source_slot.model.data_type
                 ) or (
                     SlotItem.source_slot.slot_type == SlotItem.Type.Plug
@@ -552,6 +537,15 @@ class SlotItem(QtWidgets.QGraphicsItem):
             else 0
         )
 
+    def is_slot(self):
+        return self.slot_type == SlotItem.Type.Slot
+
+    def is_plug(self):
+        return self.slot_type == SlotItem.Type.Plug
+
+    def is_socket(self):
+        return self.slot_type == SlotItem.Type.Socket
+
     def to_dict(self) -> dict:
         """
         Serialize the slot item to a dict.
@@ -600,13 +594,56 @@ class SlotItem(QtWidgets.QGraphicsItem):
             return False
 
         # no connection with different types
-        if not is_compatible_type(
+        if not AttrModel.is_compatible_type(
             slot_item.model.data_type, self.model.data_type
         ):
             return False
 
         # otherwize, all fine.
         return True
+
+    @staticmethod
+    def is_compatible_slot(slot1: SlotItem, slot2: SlotItem) -> bool:
+        """Check if 2 slots are connectable, based on their slot type and data type.
+
+        Args:
+            slot1 (SlotItem): a slot
+            slot2 (SlotItem): another slot
+
+        Raises:
+            ValueError: if a slot is neither a plug nor a socket.
+
+        Returns:
+            bool: True is they are connectable.
+        """
+        slot1_type = slot1.slot_type
+        slot2_type = slot2.slot_type
+        if slot1_type == slot2_type:
+            nlog.debug(
+                f"  >>  is_compatible_slot:  cannot connect same slot type:  "
+                f"{slot1.model.attribute}::{slot1_type} == "
+                f"{slot2.model.attribute}::{slot2_type}"
+            )
+            return False
+
+        plug_data_type = (
+            slot1.model.data_type
+            if slot1.is_plug()
+            else slot2.model.data_type
+            if slot2.is_plug()
+            else None
+        )
+        socket_data_type = (
+            slot1.model.data_type
+            if slot1.is_socket()
+            else slot2.model.data_type
+            if slot2.is_socket()
+            else None
+        )
+        if plug_data_type is None or socket_data_type is None:
+            raise ValueError("is_compatible_slot:  unexpected None slot !")
+
+        return AttrModel.is_compatible_type(plug_data_type, socket_data_type)
 
     def mousePressEvent(
         self, event: QtWidgets.QGraphicsSceneMouseEvent
@@ -735,13 +772,8 @@ class SlotItem(QtWidgets.QGraphicsItem):
                 )
                 if not SlotItem.source_slot:
                     raise TypeError("Invalid source_slot")
-                if self.slot_type == SlotItem.source_slot.slot_type or (
-                    self.slot_type != SlotItem.source_slot.slot_type
-                    and not is_compatible_type(
-                        self.model.data_type,
-                        SlotItem.source_slot.model.data_type,
-                    )
-                ):
+
+                if not SlotItem.is_compatible_slot(SlotItem.source_slot, self):
                     painter.setBrush(
                         _convert_data_to_color(config["non_connectable_color"])
                     )
