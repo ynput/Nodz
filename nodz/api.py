@@ -120,48 +120,53 @@ class Diff(Flag):
 
 
 class ModelAPI:
-    def __init__(self, view, scene: NodeScene, adapter: NodzAdapter) -> None:
+    def __init__(
+        self, view, scene: NodeScene, adapter: Optional[NodzAdapter] = None
+    ) -> None:
         self.view = view
         self.scene = scene
         self.adapter = adapter
         self.graph = GraphModel()
         self._reference_graph = deepcopy(self.graph)
 
-        # connect signals
-        self.scene.signals.PlugConnected.connect(
-            partial(
-                self.update_model, ModelEntity.Connection, ModelEdit.Create
+        if self.adapter:
+            # connect signals
+            self.scene.signals.PlugConnected.connect(
+                partial(
+                    self.update_model, ModelEntity.Connection, ModelEdit.Create
+                )
             )
-        )
-        self.scene.signals.PlugDisconnected.connect(
-            partial(
-                self.update_model, ModelEntity.Connection, ModelEdit.Delete
+            self.scene.signals.PlugDisconnected.connect(
+                partial(
+                    self.update_model, ModelEntity.Connection, ModelEdit.Delete
+                )
             )
-        )
-        self.scene.signals.NodeCreated.connect(
-            partial(self.update_model, ModelEntity.Node, ModelEdit.Create)
-        )
-        self.scene.signals.NodeDeleted.connect(
-            partial(self.update_model, ModelEntity.Node, ModelEdit.Delete)
-        )
-        self.scene.signals.NodeRenamed.connect(
-            partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
-        )
-        self.scene.signals.NodeMoved.connect(
-            partial(self.update_model, ModelEntity.Node, ModelEdit.Position)
-        )
-        self.scene.signals.AttrCreated.connect(
-            partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
-        )
-        self.scene.signals.AttrDeleted.connect(
-            partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
-        )
-        self.scene.signals.AttrEdited.connect(
-            partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
-        )
-        self.scene.signals.NodeLayoutChanged.connect(
-            partial(self.update_model, ModelEntity.Graph, ModelEdit.Layout)
-        )
+            self.scene.signals.NodeCreated.connect(
+                partial(self.update_model, ModelEntity.Node, ModelEdit.Create)
+            )
+            self.scene.signals.NodeDeleted.connect(
+                partial(self.update_model, ModelEntity.Node, ModelEdit.Delete)
+            )
+            self.scene.signals.NodeRenamed.connect(
+                partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
+            )
+            self.scene.signals.NodeMoved.connect(
+                partial(
+                    self.update_model, ModelEntity.Node, ModelEdit.Position
+                )
+            )
+            self.scene.signals.AttrCreated.connect(
+                partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
+            )
+            self.scene.signals.AttrDeleted.connect(
+                partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
+            )
+            self.scene.signals.AttrEdited.connect(
+                partial(self.update_model, ModelEntity.Node, ModelEdit.Update)
+            )
+            self.scene.signals.NodeLayoutChanged.connect(
+                partial(self.update_model, ModelEntity.Graph, ModelEdit.Layout)
+            )
 
     @property
     def reference_graph(self):

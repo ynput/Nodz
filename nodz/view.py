@@ -624,11 +624,7 @@ class Nodz(QtWidgets.QGraphicsView):
         if node_factory:
             self._scene.register_factory(node_factory)
         self.api = CoreAPI(self, self._scene)
-        self.model_api = ModelAPI(
-            self,
-            self._scene,
-            adapter if adapter else NodzAdapter(GraphModel()),
-        )
+        self.model_api = ModelAPI(self, self._scene, adapter)
         self.setScene(self._scene)
 
         # Connect scene node signals
