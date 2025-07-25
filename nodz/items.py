@@ -286,6 +286,10 @@ class NodeItem(QtWidgets.QGraphicsItem):
             while len(plug.connections) > 0:
                 plug.connections[0]._remove()
 
+    def setPos(self, pos: QtCore.QPointF):  # type: ignore
+        super().setPos(pos)
+        self.model.position = pos
+
     def boundingRect(self) -> QtCore.QRectF:
         """
         The bounding rect based on the width and height variables.
@@ -459,6 +463,7 @@ class NodeItem(QtWidgets.QGraphicsItem):
         # Emit node moved signal.
         if self._moving:
             self._moving = False
+            self.model.position = self.pos()
             self.scene().signals.NodeMoved.emit(self.model, self.pos())  # type: ignore
         super(NodeItem, self).mouseReleaseEvent(event)
 

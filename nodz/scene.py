@@ -251,7 +251,7 @@ class NodeScene(QtWidgets.QGraphicsScene):
             view = self.views()[0]
             position = view.mapToScene(view.viewport().rect().center())
         if position:
-            node_item.setPos(position - node_item.node_center)
+            node_item.setPos(position)
 
     ##################################################################
     # API

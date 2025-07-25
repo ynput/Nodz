@@ -222,6 +222,10 @@ class ModelAPI:
         entity: ModelEntity = ModelEntity.Graph,
         edit: ModelEdit = ModelEdit.Update,
     ):
+        if not self.adapter:
+            raise RuntimeError(
+                "An adapter MUST be provided to use the model API !"
+            )
         # Build a model corresponding on the requested entity type.
         if entity == ModelEntity.Attr:
             nodz_model = self.adapter.to_attr_model(client_data)
@@ -391,6 +395,10 @@ class ModelAPI:
     def update_model(
         self, entity: ModelEntity, edit: ModelEdit, *data
     ) -> None:
+        if not self.adapter:
+            raise RuntimeError(
+                "An adapter MUST be provided to use the model API !"
+            )
         # get a fresh copy of the client's data
         client_model = self.adapter.to_graph_model(self.adapter.client_model)
 
@@ -444,7 +452,9 @@ class ModelAPI:
             elif edit == ModelEdit.Position:
                 nlog.debug(f"update_model:  Position NODE {data}")
                 model, pos = data
+                print(f"update {model.name} pos: {pos.toTuple()}")
                 client_model.nodes[model.name].position = pos
+                self.adapter.from_graph_model(client_model)
 
         elif entity == ModelEntity.Graph:
             if edit == ModelEdit.Create:

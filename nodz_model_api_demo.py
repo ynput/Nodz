@@ -13,6 +13,8 @@ from nodz.api import (
 )
 from nodz.utils import nlog
 
+TEST_FILE = "nodz_demo_model_graph.json"
+
 # This is a standalone example, so we create a QApplication instance.
 # If you are integrating Nodz into an existing Qt application, you do not need this.
 app = (
@@ -472,11 +474,27 @@ client_model = {
 # Setup and initialization
 ######################################################################
 
-# Create the Nodz view.
+# Create the Nodz view. An adapter MUST be provided to use the mode API.
 nodz = view.Nodz(None)
 nodz.setWindowTitle("Nodz Model API Demo")
 nodz.initialize(node_factory=test_factory, adapter=TestAdapter(client_model))
 nodz.show()
+
+
+@QtCore.Slot(object)  # type: ignore
+def on_keyPressed(key: QtCore.Qt.Key):
+    if key == QtCore.Qt.Key.Key_S:
+        nodz.api.save_graph(TEST_FILE)
+        nlog.info("save")
+    elif key == QtCore.Qt.Key.Key_D:
+        nodz.model_api.load_graph(TEST_FILE)
+        nlog.info("load")
+    elif key == QtCore.Qt.Key.Key_C:
+        nodz.api.clear_graph()
+        nlog.info("clear graph")
+
+
+nodz.signals.KeyPressed.connect(on_keyPressed)
 
 ######################################################################
 # Test Model API
@@ -525,11 +543,14 @@ nodz.model_api.update_view(client_model)
 # Graph
 nlog.info(f"graph evaluation = {nodz.api.evaluate_graph()}")
 
-nodz.api.save_graph(file_path="nodz_demo_model_graph.json")
+# make sure node positions are saved.
+nodz._layout_graph()
+
+nodz.api.save_graph(file_path=TEST_FILE)
 
 nodz.api.clear_graph()
 
-nodz.model_api.load_graph(file_path="nodz_demo_model_graph.json")
+nodz.model_api.load_graph(file_path=TEST_FILE)
 
 
 # test view -> data model communication
@@ -541,7 +562,6 @@ nodz.api.create_attribute(
 )
 nodz.api.edit_node(test_node, "test node renamed")
 
-nodz._layout_graph()
 
 if app:
     # command line stand alone test... run our own event loop
