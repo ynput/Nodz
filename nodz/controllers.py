@@ -1,0 +1,1188 @@
+"""
+Controllers module for Nodz.
+
+This module contains the controller classes for the Nodz graph editor.
+Controllers are responsible for coordinating between models and views,
+handling user interactions, and implementing business logic.
+"""
+
+import os
+import json
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+import functools
+from qtpy import QtCore, QtGui, QtWidgets
+
+from .models import (
+    BaseModel,
+    NodeModel,
+    AttrModel,
+    ConnectionModel,
+    GraphModel,
+)
+from .views import (
+    NodeView,
+    SlotView,
+    PlugView,
+    SocketView,
+    ConnectionView,
+    ViewSignals,
+)
+
+
+class NodzError(Exception):
+    """Base class for all Nodz exceptions."""
+
+    pass
+
+
+class NodeError(NodzError):
+    """Base class for node-related errors."""
+
+    pass
+
+
+class NodeNotFoundError(NodeError):
+    """Raised when a node is not found."""
+
+    def __init__(self, node_name: str):
+        self.node_name = node_name
+        super().__init__(f"Node '{node_name}' not found")
+
+
+class NodeExistsError(NodeError):
+    """Raised when attempting to create a node that already exists."""
+
+    def __init__(self, node_name: str):
+        self.node_name = node_name
+        super().__init__(f"Node '{node_name}' already exists")
+
+
+class AttributeError(NodzError):
+    """Base class for attribute-related errors."""
+
+    pass
+
+
+class AttributeNotFoundError(AttributeError):
+    """Raised when an attribute is not found."""
+
+    def __init__(self, node_name: str, attr_name: str):
+        self.node_name = node_name
+        self.attr_name = attr_name
+        super().__init__(
+            f"Attribute '{attr_name}' not found on node '{node_name}'"
+        )
+
+
+class ConnectionError(NodzError):
+    """Base class for connection-related errors."""
+
+    pass
+
+
+class IncompatibleTypesError(ConnectionError):
+    """Raised when attempting to connect incompatible attribute types."""
+
+    def __init__(self, source_type: Any, target_type: Any):
+        self.source_type = source_type
+        self.target_type = target_type
+        super().__init__(
+            f"Cannot connect incompatible types: {source_type} -> {target_type}"
+        )
+
+
+def validate_node_exists(func):
+    """Decorator to validate that a node exists."""
+
+    @functools.wraps(func)
+    def wrapper(self, node_name, *args, **kwargs):
+        if node_name not in self.graph_model.nodes:
+            raise NodeNotFoundError(node_name)
+        return func(self, node_name, *args, **kwargs)
+
+    return wrapper
+
+
+def validate_attribute_exists(func):
+    """Decorator to validate that an attribute exists on a node."""
+
+    @functools.wraps(func)
+    def wrapper(self, node_name, attr_name, *args, **kwargs):
+        if node_name not in self.graph_model.nodes:
+            raise NodeNotFoundError(node_name)
+        node = self.graph_model.nodes[node_name]
+        if attr_name not in node.attributes:
+            raise AttributeNotFoundError(node_name, attr_name)
+        return func(self, node_name, attr_name, *args, **kwargs)
+
+    return wrapper
+
+
+class BaseController:
+    """Base class for all controllers."""
+
+    def __init__(
+        self,
+        graph_model: GraphModel,
+        scene: QtWidgets.QGraphicsScene,
+        config: Dict[str, Any],
+        signals: ViewSignals,
+    ):
+        """Initialize the controller."""
+        self.graph_model = graph_model
+        self.scene = scene
+        self.config = config
+        self.signals = signals
+
+
+class NodeController(BaseController):
+    """Controller for node operations."""
+
+    def __init__(
+        self,
+        graph_model: GraphModel,
+        scene: QtWidgets.QGraphicsScene,
+        config: Dict[str, Any],
+        signals: ViewSignals,
+    ):
+        """Initialize the node controller."""
+        super().__init__(graph_model, scene, config, signals)
+
+        # Connect signals
+        self.signals.node_moved.connect(self.on_node_moved)
+        self.signals.node_selected.connect(self.on_node_selected)
+        self.signals.node_double_clicked.connect(self.on_node_double_clicked)
+
+    def create_node(
+        self,
+        name: str,
+        preset: str = "node_default",
+        position: Optional[QtCore.QPointF] = None,
+        alternate: bool = True,
+        **kwargs,
+    ) -> NodeModel:
+        """Create a new node."""
+        # Validate
+        if name in self.graph_model.nodes:
+            raise NodeExistsError(name)
+
+        # Create model
+        node_model = NodeModel(name, preset, alternate, position, **kwargs)
+
+        # Add to graph model
+        self.graph_model.add_node(node_model)
+
+        # Create view
+        node_view = NodeView(node_model, self.config, self.signals)
+        self.scene.addItem(node_view)
+
+        # Position the view
+        if position:
+            node_view.setPos(position)
+        else:
+            # Center in view if no position specified
+            view = self.scene.views()[0] if self.scene.views() else None
+            if view:
+                center = view.mapToScene(view.viewport().rect().center())
+                node_view.setPos(center)
+
+        return node_model
+
+    @validate_node_exists
+    def delete_node(self, node_name: str) -> None:
+        """Delete a node."""
+        # Find the node view
+        node_view = self._find_node_view(node_name)
+        if node_view:
+            # Remove from scene
+            self.scene.removeItem(node_view)
+
+        # Remove from model
+        self.graph_model.remove_node(node_name)
+
+    @validate_node_exists
+    def rename_node(self, node_name: str, new_name: str) -> str:
+        """Rename a node."""
+        if new_name in self.graph_model.nodes:
+            raise NodeExistsError(new_name)
+
+        # Rename in model
+        self.graph_model.rename_node(node_name, new_name)
+
+        return new_name
+
+    @validate_node_exists
+    def create_attribute(
+        self,
+        node_name: str,
+        attr_name: str,
+        index: int = -1,
+        preset: str = "attr_default",
+        plug: bool = True,
+        socket: bool = True,
+        data_type: Any = None,
+        plug_max_connections: int = -1,
+        socket_max_connections: int = 1,
+        **kwargs,
+    ) -> None:
+        """Create an attribute on a node."""
+        # Get the node model
+        node_model = self.graph_model.nodes[node_name]
+
+        # Validate
+        if attr_name in node_model.attributes:
+            raise ValueError(
+                f"Attribute '{attr_name}' already exists on node '{node_name}'"
+            )
+
+        # Create attribute model
+        attr_model = AttrModel(
+            attr_name,
+            index,
+            preset,
+            plug,
+            socket,
+            data_type,
+            plug_max_connections,
+            socket_max_connections,
+            **kwargs,
+        )
+
+        # Add to node model
+        node_model.add_attribute(attr_model)
+
+    @validate_attribute_exists
+    def delete_attribute(self, node_name: str, attr_name: str) -> None:
+        """Delete an attribute from a node."""
+        # Get the node model
+        node_model = self.graph_model.nodes[node_name]
+
+        # Remove from node model
+        node_model.remove_attribute(attr_name)
+
+    @validate_attribute_exists
+    def edit_attribute(
+        self,
+        node_name: str,
+        attr_name: str,
+        new_name: Optional[str] = None,
+        new_index: Optional[int] = None,
+    ) -> None:
+        """Edit an attribute."""
+        # Get the node model
+        node_model = self.graph_model.nodes[node_name]
+
+        # Rename if needed
+        if new_name and new_name != attr_name:
+            if new_name in node_model.attributes:
+                raise ValueError(
+                    f"Attribute '{new_name}' already exists on node '{node_name}'"
+                )
+            node_model.rename_attribute(attr_name, new_name)
+            attr_name = new_name
+
+        # Change index if needed
+        if new_index is not None:
+            attr_model = node_model.attributes[attr_name]
+            attr_model.index = new_index
+            node_model.sort_attributes()
+
+    def on_node_moved(self, node_name: str, position: QtCore.QPointF) -> None:
+        """Handle node moved signal."""
+        if node_name in self.graph_model.nodes:
+            # Update model position
+            self.graph_model.nodes[node_name].position = position
+
+            # Signal that connections need to be updated
+            # This will be handled by the ConnectionController
+            self.signals.node_moved.emit(node_name, position)
+
+    def on_node_selected(self, node_name: str, selected: bool) -> None:
+        """Handle node selected signal."""
+        # This could emit a higher-level signal or update application state
+        pass
+
+    def on_node_double_clicked(self, node_name: str) -> None:
+        """Handle node double clicked signal."""
+        # This could open a node editor or perform other actions
+        pass
+
+    def _find_node_view(
+        self, node_name: str
+    ) -> Optional[QtWidgets.QGraphicsItem]:
+        """Find a node view by name."""
+        for item in self.scene.items():
+            if (
+                type(item).__name__ == "NodeView"
+                and hasattr(item, "model")
+                and hasattr(item.model, "name")
+                and item.model.name == node_name
+            ):
+                return item
+        return None
+
+
+class ConnectionController(BaseController):
+    """Controller for connection operations."""
+
+    def __init__(
+        self,
+        graph_model: GraphModel,
+        scene: QtWidgets.QGraphicsScene,
+        config: Dict[str, Any],
+        signals: ViewSignals,
+    ):
+        """Initialize the connection controller."""
+        super().__init__(graph_model, scene, config, signals)
+
+        # Connection being drawn
+        self.temp_connection: Optional[ConnectionView] = None
+
+        # Connect signals
+        self.signals.attr_connection_started.connect(
+            self.on_connection_started
+        )
+        self.signals.attr_connection_dragged.connect(
+            self.on_connection_dragged
+        )
+        self.signals.connection_created.connect(self.on_connection_created)
+        self.signals.connection_deleted.connect(self.on_connection_deleted)
+        self.signals.node_moved.connect(self.on_node_moved)
+
+    def create_connection(
+        self,
+        source_node: str,
+        source_attr: str,
+        target_node: str,
+        target_attr: str,
+    ) -> ConnectionModel:
+        """Create a connection between two node attributes."""
+        # Validate nodes
+        if source_node not in self.graph_model.nodes:
+            raise NodeNotFoundError(source_node)
+        if target_node not in self.graph_model.nodes:
+            raise NodeNotFoundError(target_node)
+
+        # Validate attributes
+        source_node_model = self.graph_model.nodes[source_node]
+        target_node_model = self.graph_model.nodes[target_node]
+
+        if source_attr not in source_node_model.attributes:
+            raise AttributeNotFoundError(source_node, source_attr)
+        if target_attr not in target_node_model.attributes:
+            raise AttributeNotFoundError(target_node, target_attr)
+
+        # Validate compatibility
+        source_attr_model = source_node_model.attributes[source_attr]
+        target_attr_model = target_node_model.attributes[target_attr]
+
+        if not source_attr_model.plug:
+            raise ConnectionError(
+                f"Attribute '{source_attr}' on node '{source_node}' is not a plug"
+            )
+        if not target_attr_model.socket:
+            raise ConnectionError(
+                f"Attribute '{target_attr}' on node '{target_node}' is not a socket"
+            )
+
+        if not AttrModel.is_compatible_type(
+            source_attr_model.data_type, target_attr_model.data_type
+        ):
+            raise IncompatibleTypesError(
+                source_attr_model.data_type, target_attr_model.data_type
+            )
+
+        # Create connection model
+        connection_model = ConnectionModel(
+            source_node, source_attr, target_node, target_attr
+        )
+
+        # Add to graph model
+        self.graph_model.add_connection(connection_model)
+
+        # Create connection view
+        source_view = self._find_plug_view(source_node, source_attr)
+        target_view = self._find_socket_view(target_node, target_attr)
+
+        if source_view and target_view:
+            connection_view = ConnectionView(
+                connection_model,
+                source_view.center(),
+                target_view.center(),
+                self.config,
+                self.signals,
+            )
+            self.scene.addItem(connection_view)
+
+        return connection_model
+
+    def delete_connection(
+        self,
+        source_node: str,
+        source_attr: str,
+        target_node: str,
+        target_attr: str,
+    ) -> None:
+        """Delete a connection."""
+        # Find the connection model
+        connection_model = None
+        for conn in self.graph_model.connections:
+            if (
+                conn.plug_node == source_node
+                and conn.plug_attr == source_attr
+                and conn.socket_node == target_node
+                and conn.socket_attr == target_attr
+            ):
+                connection_model = conn
+                break
+
+        if not connection_model:
+            return
+
+        # Find the connection view
+        connection_view = self._find_connection_view(connection_model)
+        if connection_view:
+            # Remove from scene
+            self.scene.removeItem(connection_view)
+
+        # Remove from model
+        self.graph_model.remove_connection(connection_model)
+
+    def on_connection_started(
+        self, node_name: str, attr_name: str, position: QtCore.QPoint
+    ) -> None:
+        """Handle connection started signal."""
+        # Import SlotView to access the static variable
+        from .views import SlotView
+
+        # Clear any previous snapped target slot
+        SlotView.snapped_target_slot = None
+
+        # Create a temporary connection for visual feedback
+        if self.temp_connection:
+            self.scene.removeItem(self.temp_connection)
+            self.temp_connection = None
+
+        # Determine if the source is a plug or a socket
+        source_node = self.graph_model.nodes.get(node_name)
+        if not source_node or attr_name not in source_node.attributes:
+            return
+
+        source_attr = source_node.attributes[attr_name]
+
+        # Find the source slot view to determine its type
+        source_slot = None
+        if source_attr.plug:
+            source_slot = self._find_plug_view(node_name, attr_name)
+            # Create a temporary connection model with source as plug
+            temp_model = ConnectionModel(node_name, attr_name, "", "")
+        elif source_attr.socket:
+            source_slot = self._find_socket_view(node_name, attr_name)
+            # Create a temporary connection model with source as socket
+            temp_model = ConnectionModel("", "", node_name, attr_name)
+        else:
+            return  # Not a plug or socket
+
+        if not source_slot:
+            return
+
+        # Create a temporary connection view
+        self.temp_connection = ConnectionView(
+            temp_model,
+            QtCore.QPointF(position),
+            QtCore.QPointF(position),
+            self.config,
+            self.signals,
+        )
+        self.scene.addItem(self.temp_connection)
+
+    def on_connection_dragged(self, position: QtCore.QPoint) -> None:
+        """Handle connection dragged signal."""
+        if self.temp_connection:
+            # Update visual feedback for compatible/incompatible slots
+            self._update_slot_compatibility_feedback(position)
+
+            # Find the closest compatible slot
+            closest_slot = self._find_closest_compatible_slot(position)
+
+            # Import SlotView to access the static variable
+            from .views import SlotView
+
+            if closest_slot:
+                # Snap to the closest slot and store it for connection acceptance
+                self.temp_connection.target_point = closest_slot.center()
+                SlotView.snapped_target_slot = closest_slot
+            else:
+                # Update the temporary connection end point to the mouse position
+                self.temp_connection.target_point = QtCore.QPointF(position)
+                SlotView.snapped_target_slot = None
+
+            self.temp_connection.update_path()
+
+    def _update_slot_compatibility_feedback(
+        self, position: QtCore.QPoint
+    ) -> None:
+        """Update visual feedback for compatible/incompatible slots."""
+        if not self.temp_connection or not hasattr(
+            self.temp_connection, "model"
+        ):
+            return
+
+        # Get the source slot type (plug or socket)
+        source_is_plug = self.temp_connection.model.plug_attr != ""
+        source_node_name = (
+            self.temp_connection.model.plug_node
+            if source_is_plug
+            else self.temp_connection.model.socket_node
+        )
+        source_attr_name = (
+            self.temp_connection.model.plug_attr
+            if source_is_plug
+            else self.temp_connection.model.socket_attr
+        )
+
+        # Get the source node and attribute
+        source_node = self.graph_model.nodes.get(source_node_name)
+        if not source_node or source_attr_name not in source_node.attributes:
+            return
+
+        source_attr = source_node.attributes[source_attr_name]
+        source_type = source_attr.data_type
+
+        # Reset all slots to their original appearance
+        self._reset_all_slots_appearance()
+
+        # Find nodes near the mouse cursor
+        hovered_node = None
+        hovered_node_view = None
+
+        # Create a larger area around the mouse cursor for node detection
+        detection_radius = 100  # pixels
+        detection_rect = QtCore.QRectF(
+            position.x() - detection_radius,
+            position.y() - detection_radius,
+            detection_radius * 2,
+            detection_radius * 2,
+        )
+
+        # Get all items in the detection area
+        items_in_area = self.scene.items(detection_rect)
+
+        # Find the closest node in the detection area
+        min_distance = float("inf")
+        for item in items_in_area:
+            if (
+                type(item).__name__ == "NodeView"
+                and hasattr(item, "model")
+                and hasattr(item.model, "name")
+            ):
+                # Calculate distance to node center
+                if hasattr(item, "pos") and hasattr(item, "boundingRect"):
+                    node_center = item.pos() + QtCore.QPointF(
+                        item.boundingRect().width() / 2,
+                        item.boundingRect().height() / 2,
+                    )
+                    distance = (node_center.x() - position.x()) ** 2 + (
+                        node_center.y() - position.y()
+                    ) ** 2
+
+                    if distance < min_distance:
+                        min_distance = distance
+                        hovered_node_view = item
+                        hovered_node = self.graph_model.nodes.get(
+                            item.model.name
+                        )
+
+        # If we found a hovered node, gray out all incompatible slots on it
+        if hovered_node and hovered_node_view:
+            # Gray out all slots of the same type as the source
+            for item in self.scene.items():
+                # Skip items that aren't slots or aren't on the hovered node
+                if type(item).__name__ not in ["PlugView", "SocketView"]:
+                    continue
+
+                if (
+                    not hasattr(item, "parentItem")
+                    or item.parentItem() != hovered_node_view
+                ):
+                    continue
+
+                # Gray out slots of the same type as the source (plug/plug or socket/socket)
+                if (source_is_plug and type(item).__name__ == "PlugView") or (
+                    not source_is_plug and type(item).__name__ == "SocketView"
+                ):
+                    if hasattr(item, "brush"):
+                        item.brush.setColor(
+                            QtGui.QColor(128, 128, 128, 128)
+                        )  # Gray with transparency
+                        item.update()
+                    continue
+
+                # For slots of the opposite type, check data type compatibility
+                if not hasattr(item, "model") or not hasattr(
+                    item.model, "attribute"
+                ):
+                    continue
+
+                attr_name = item.model.attribute
+                if attr_name not in hovered_node.attributes:
+                    continue
+
+                target_attr = hovered_node.attributes[attr_name]
+                target_type = target_attr.data_type
+
+                # Check data type compatibility
+                if source_is_plug:
+                    is_compatible = AttrModel.is_compatible_type(
+                        source_type, target_type
+                    )
+                else:
+                    is_compatible = AttrModel.is_compatible_type(
+                        target_type, source_type
+                    )
+
+                # Gray out incompatible slots
+                if not is_compatible:
+                    if hasattr(item, "brush"):
+                        item.brush.setColor(
+                            QtGui.QColor(128, 128, 128, 128)
+                        )  # Gray with transparency
+                        item.update()
+
+    def _reset_all_slots_appearance(self) -> None:
+        """Reset all slots to their original appearance."""
+        for item in self.scene.items():
+            if (
+                type(item).__name__ in ["PlugView", "SocketView"]
+                and hasattr(item, "model")
+                and hasattr(item, "_create_style")
+            ):
+                item._create_style()  # Reset to original style
+                item.update()
+
+    def _find_closest_compatible_slot(
+        self, position: QtCore.QPoint
+    ) -> Optional[QtWidgets.QGraphicsItem]:
+        """Find the closest compatible slot to the given position."""
+        if not self.temp_connection or not hasattr(
+            self.temp_connection, "model"
+        ):
+            return None
+
+        # Get the source slot type (plug or socket)
+        source_is_plug = self.temp_connection.model.plug_attr != ""
+
+        # Get all items at the position with some tolerance
+        tolerance = 20  # pixels
+        rect = QtCore.QRect(
+            position.x() - tolerance,
+            position.y() - tolerance,
+            tolerance * 2,
+            tolerance * 2,
+        )
+        items = self.scene.items(rect)
+
+        # Filter for compatible slots
+        compatible_slots = []
+        for item in items:
+            # Check if it's a slot view
+            if type(item).__name__ not in ["PlugView", "SocketView"]:
+                continue
+
+            # Check if it's the opposite type of the source slot
+            if (source_is_plug and type(item).__name__ != "SocketView") or (
+                not source_is_plug and type(item).__name__ != "PlugView"
+            ):
+                continue
+
+            # Check if it's not on the same node
+            if (
+                not hasattr(item, "parentItem")
+                or not item.parentItem()
+                or not hasattr(item.parentItem(), "model")
+                or not hasattr(item.parentItem().model, "name")
+            ):
+                continue
+
+            source_node = (
+                self.temp_connection.model.plug_node
+                if source_is_plug
+                else self.temp_connection.model.socket_node
+            )
+            if item.parentItem().model.name == source_node:
+                continue
+
+            # Add to compatible slots
+            compatible_slots.append(item)
+
+        if not compatible_slots:
+            return None
+
+        # Find the closest slot
+        closest_slot = None
+        min_distance = float("inf")
+        for slot in compatible_slots:
+            if not hasattr(slot, "center"):
+                continue
+
+            center = slot.center()
+            distance = (center.x() - position.x()) ** 2 + (
+                center.y() - position.y()
+            ) ** 2
+
+            if distance < min_distance:
+                min_distance = distance
+                closest_slot = slot
+
+        return closest_slot
+
+    def on_connection_created(
+        self,
+        source_node: str,
+        source_attr: str,
+        target_node: str,
+        target_attr: str,
+    ) -> None:
+        """Handle connection created signal."""
+        # Import SlotView to access the static variable
+        from .views import SlotView
+
+        # Reset all slots to their original appearance
+        self._reset_all_slots_appearance()
+
+        # Clear snapped target slot
+        SlotView.snapped_target_slot = None
+
+        # Remove temporary connection
+        if self.temp_connection:
+            self.scene.removeItem(self.temp_connection)
+            self.temp_connection = None
+
+        # If target_node or target_attr is empty, it means the connection is invalid
+        # In this case, we just remove the temporary connection and don't create a new one
+        if not target_node or not target_attr:
+            return
+
+        # Create the actual connection
+        try:
+            self.create_connection(
+                source_node, source_attr, target_node, target_attr
+            )
+        except NodzError as e:
+            # Handle error (could show a message to the user)
+            print(f"Error creating connection: {e}")
+
+    def on_connection_deleted(
+        self,
+        source_node: str,
+        source_attr: str,
+        target_node: str,
+        target_attr: str,
+    ) -> None:
+        """Handle connection deleted signal."""
+        # Reset all slots to their original appearance
+        self._reset_all_slots_appearance()
+
+        self.delete_connection(
+            source_node, source_attr, target_node, target_attr
+        )
+
+    def on_node_moved(self, node_name: str, position: QtCore.QPointF) -> None:
+        """Update connections when a node is moved."""
+        # Find all connections that involve this node
+        for connection in self.graph_model.connections:
+            if (
+                connection.plug_node == node_name
+                or connection.socket_node == node_name
+            ):
+                # Find the connection view
+                connection_view = self._find_connection_view(connection)
+                if connection_view:
+                    # Update source and target points
+                    source_view = self._find_plug_view(
+                        connection.plug_node, connection.plug_attr
+                    )
+                    target_view = self._find_socket_view(
+                        connection.socket_node, connection.socket_attr
+                    )
+
+                    if source_view and target_view:
+                        connection_view.source_point = source_view.center()
+                        connection_view.target_point = target_view.center()
+                        connection_view.update_path()
+
+    def _find_plug_view(
+        self, node_name: str, attr_name: str
+    ) -> Optional[QtWidgets.QGraphicsItem]:
+        """Find a plug view by node and attribute name."""
+        node_view = self._find_node_view(node_name)
+        if (
+            node_view
+            and hasattr(node_view, "plugs")
+            and attr_name in node_view.plugs
+        ):
+            return node_view.plugs[attr_name]
+        return None
+
+    def _find_socket_view(
+        self, node_name: str, attr_name: str
+    ) -> Optional[QtWidgets.QGraphicsItem]:
+        """Find a socket view by node and attribute name."""
+        node_view = self._find_node_view(node_name)
+        if (
+            node_view
+            and hasattr(node_view, "sockets")
+            and attr_name in node_view.sockets
+        ):
+            return node_view.sockets[attr_name]
+        return None
+
+    def _find_node_view(
+        self, node_name: str
+    ) -> Optional[QtWidgets.QGraphicsItem]:
+        """Find a node view by name."""
+        for item in self.scene.items():
+            if (
+                type(item).__name__ == "NodeView"
+                and hasattr(item, "model")
+                and hasattr(item.model, "name")
+                and item.model.name == node_name
+            ):
+                return item
+        return None
+
+    def _find_connection_view(
+        self, connection_model: ConnectionModel
+    ) -> Optional[QtWidgets.QGraphicsItem]:
+        """Find a connection view by model."""
+        for item in self.scene.items():
+            # Check if it's a connection view by checking its class name
+            if (
+                type(item).__name__ == "ConnectionView"
+                and hasattr(item, "model")
+                and hasattr(item.model, "plug_node")
+                and hasattr(item.model, "plug_attr")
+                and hasattr(item.model, "socket_node")
+                and hasattr(item.model, "socket_attr")
+                and item.model.plug_node == connection_model.plug_node
+                and item.model.plug_attr == connection_model.plug_attr
+                and item.model.socket_node == connection_model.socket_node
+                and item.model.socket_attr == connection_model.socket_attr
+            ):
+                return item
+        return None
+
+
+class GraphController(BaseController):
+    """Controller for graph operations."""
+
+    def __init__(
+        self,
+        graph_model: GraphModel,
+        scene: QtWidgets.QGraphicsScene,
+        config: Dict[str, Any],
+        signals: ViewSignals,
+    ):
+        """Initialize the graph controller."""
+        super().__init__(graph_model, scene, config, signals)
+
+    def save_graph(self, file_path: str) -> None:
+        """Save the graph to a file."""
+        # Convert graph model to dictionary
+        graph_dict = self.graph_model.to_dict()
+
+        # Save to file
+        with open(file_path, "w") as f:
+            json.dump(graph_dict, f, indent=4)
+
+    def load_graph(self, file_path: str) -> None:
+        """Load a graph from a file."""
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        # Load from file
+        with open(file_path, "r") as f:
+            graph_dict = json.load(f)
+
+        # Clear current graph
+        self.clear_graph()
+
+        # Create nodes
+        for node_name, node_data in graph_dict["nodes"].items():
+            # Create node model
+            node_model = NodeModel(
+                node_name,
+                node_data["preset"],
+                node_data["alternate"],
+                QtCore.QPointF(
+                    node_data["position"][0], node_data["position"][1]
+                ),
+                **node_data["kwargs"],
+            )
+
+            # Add attributes
+            for attr_name, attr_data in node_data["attributes"].items():
+                attr_model = AttrModel(
+                    attr_name,
+                    attr_data["index"],
+                    attr_data["preset"],
+                    attr_data["plug"],
+                    attr_data["socket"],
+                    attr_data["data_type"],
+                    attr_data["plug_max_connections"],
+                    attr_data["socket_max_connections"],
+                    **attr_data["kwargs"],
+                )
+                node_model.attributes[attr_name] = attr_model
+
+            # Add to graph model
+            self.graph_model.add_node(node_model)
+
+            # Create view
+            node_view = NodeView(node_model, self.config, self.signals)
+            self.scene.addItem(node_view)
+            node_view.setPos(node_model.position)
+
+        # Create connections
+        for conn_data in graph_dict["connections"]:
+            # Create connection model
+            connection_model = ConnectionModel(
+                conn_data["plug_node"],
+                conn_data["plug_attr"],
+                conn_data["socket_node"],
+                conn_data["socket_attr"],
+                **conn_data["kwargs"],
+            )
+
+            # Add to graph model
+            self.graph_model.add_connection(connection_model)
+
+            # Create connection view
+            source_view = self._find_plug_view(
+                connection_model.plug_node, connection_model.plug_attr
+            )
+            target_view = self._find_socket_view(
+                connection_model.socket_node, connection_model.socket_attr
+            )
+
+            if source_view and target_view:
+                connection_view = ConnectionView(
+                    connection_model,
+                    source_view.center(),
+                    target_view.center(),
+                    self.config,
+                    self.signals,
+                )
+                self.scene.addItem(connection_view)
+
+    def clear_graph(self) -> None:
+        """Clear the graph."""
+        # Clear scene
+        self.scene.clear()
+
+        # Clear model
+        self.graph_model = GraphModel()
+
+    def evaluate_graph(self) -> List[Tuple[str, str]]:
+        """Evaluate the graph and return a list of connections."""
+        result = []
+        for conn in self.graph_model.connections:
+            source = f"{conn.plug_node}.{conn.plug_attr}"
+            target = f"{conn.socket_node}.{conn.socket_attr}"
+            result.append((source, target))
+        return result
+
+    def _find_connection_view(
+        self, connection_model: ConnectionModel
+    ) -> Optional[QtWidgets.QGraphicsItem]:
+        """Find a connection view by model."""
+        for item in self.scene.items():
+            # Check if it's a connection view by checking its class name
+            if (
+                type(item).__name__ == "ConnectionView"
+                and hasattr(item, "model")
+                and hasattr(item.model, "plug_node")
+                and hasattr(item.model, "plug_attr")
+                and hasattr(item.model, "socket_node")
+                and hasattr(item.model, "socket_attr")
+                and item.model.plug_node == connection_model.plug_node
+                and item.model.plug_attr == connection_model.plug_attr
+                and item.model.socket_node == connection_model.socket_node
+                and item.model.socket_attr == connection_model.socket_attr
+            ):
+                return item
+        return None
+
+    def _find_plug_view(
+        self, node_name: str, attr_name: str
+    ) -> Optional[QtWidgets.QGraphicsItem]:
+        """Find a plug view by node and attribute name."""
+        node_view = self._find_node_view(node_name)
+        if (
+            node_view
+            and hasattr(node_view, "plugs")
+            and attr_name in node_view.plugs
+        ):
+            return node_view.plugs[attr_name]
+        return None
+
+    def _find_socket_view(
+        self, node_name: str, attr_name: str
+    ) -> Optional[QtWidgets.QGraphicsItem]:
+        """Find a socket view by node and attribute name."""
+        node_view = self._find_node_view(node_name)
+        if (
+            node_view
+            and hasattr(node_view, "sockets")
+            and attr_name in node_view.sockets
+        ):
+            return node_view.sockets[attr_name]
+        return None
+
+    def _find_node_view(
+        self, node_name: str
+    ) -> Optional[QtWidgets.QGraphicsItem]:
+        """Find a node view by name."""
+        for item in self.scene.items():
+            if (
+                type(item).__name__ == "NodeView"
+                and hasattr(item, "model")
+                and hasattr(item.model, "name")
+                and item.model.name == node_name
+            ):
+                return item
+        return None
+
+
+class NodzAPI:
+    """Unified API facade for Nodz."""
+
+    def __init__(
+        self, scene: QtWidgets.QGraphicsScene, config: Dict[str, Any]
+    ):
+        """Initialize the API."""
+        # Create models
+        self.graph_model = GraphModel()
+
+        # Create signals
+        self.signals = ViewSignals()
+
+        # Create controllers
+        self.node_controller = NodeController(
+            self.graph_model, scene, config, self.signals
+        )
+        self.connection_controller = ConnectionController(
+            self.graph_model, scene, config, self.signals
+        )
+        self.graph_controller = GraphController(
+            self.graph_model, scene, config, self.signals
+        )
+
+    # Node operations
+    def create_node(
+        self,
+        name: str,
+        preset: str = "node_default",
+        position: Optional[QtCore.QPointF] = None,
+        alternate: bool = True,
+        **kwargs,
+    ) -> str:
+        """Create a node."""
+        node_model = self.node_controller.create_node(
+            name, preset, position, alternate, **kwargs
+        )
+        return node_model.name
+
+    def delete_node(self, node_name: str) -> None:
+        """Delete a node."""
+        self.node_controller.delete_node(node_name)
+
+    def edit_node(self, node_name: str, new_name: str) -> str:
+        """Edit a node."""
+        return self.node_controller.rename_node(node_name, new_name)
+
+    # Attribute operations
+    def create_attribute(
+        self,
+        node_name: str,
+        name: str,
+        index: int = -1,
+        preset: str = "attr_default",
+        plug: bool = True,
+        socket: bool = True,
+        data_type: Any = None,
+        plug_max_connections: int = -1,
+        socket_max_connections: int = 1,
+        **kwargs,
+    ) -> None:
+        """Create an attribute."""
+        self.node_controller.create_attribute(
+            node_name,
+            name,
+            index,
+            preset,
+            plug,
+            socket,
+            data_type,
+            plug_max_connections,
+            socket_max_connections,
+            **kwargs,
+        )
+
+    def delete_attribute(self, node_name: str, attr_name: str) -> None:
+        """Delete an attribute."""
+        self.node_controller.delete_attribute(node_name, attr_name)
+
+    def edit_attribute(
+        self,
+        node_name: str,
+        attr_name: str,
+        new_name: Optional[str] = None,
+        new_index: Optional[int] = None,
+    ) -> None:
+        """Edit an attribute."""
+        self.node_controller.edit_attribute(
+            node_name, attr_name, new_name, new_index
+        )
+
+    # Connection operations
+    def create_connection(
+        self,
+        source_node: str,
+        source_attr: str,
+        target_node: str,
+        target_attr: str,
+    ) -> None:
+        """Create a connection."""
+        self.connection_controller.create_connection(
+            source_node, source_attr, target_node, target_attr
+        )
+
+    def delete_connection(
+        self,
+        source_node: str,
+        source_attr: str,
+        target_node: str,
+        target_attr: str,
+    ) -> None:
+        """Delete a connection."""
+        self.connection_controller.delete_connection(
+            source_node, source_attr, target_node, target_attr
+        )
+
+    # Graph operations
+    def save_graph(self, file_path: str) -> None:
+        """Save the graph to a file."""
+        self.graph_controller.save_graph(file_path)
+
+    def load_graph(self, file_path: str) -> None:
+        """Load a graph from a file."""
+        self.graph_controller.load_graph(file_path)
+
+    def clear_graph(self) -> None:
+        """Clear the graph."""
+        self.graph_controller.clear_graph()
+
+    def evaluate_graph(self) -> List[Tuple[str, str]]:
+        """Evaluate the graph."""
+        return self.graph_controller.evaluate_graph()
