@@ -27,6 +27,7 @@ from .views import (
     ConnectionView,
     ViewSignals,
 )
+from .utils import json_decoder, json_encoder
 
 
 class NodzError(Exception):
@@ -893,7 +894,7 @@ class GraphController(BaseController):
 
         # Save to file
         with open(file_path, "w") as f:
-            json.dump(graph_dict, f, indent=4)
+            json.dump(graph_dict, f, indent=4, default=json_encoder)
 
     def load_graph(self, file_path: str) -> None:
         """Load a graph from a file."""
@@ -902,7 +903,7 @@ class GraphController(BaseController):
 
         # Load from file
         with open(file_path, "r") as f:
-            graph_dict = json.load(f)
+            graph_dict = json.load(f, object_hook=json_decoder)
 
         # Clear current graph
         self.clear_graph()
@@ -1055,12 +1056,25 @@ class GraphController(BaseController):
 
 
 class NodzAPI:
-    """Unified API facade for Nodz."""
+    """
+    Unified API facade for Nodz.
+
+    This class provides a single, consistent interface for all Nodz operations,
+    hiding the complexity of the underlying MVC architecture from the user.
+    It delegates operations to the appropriate controllers while maintaining
+    a clean and intuitive API.
+    """
 
     def __init__(
         self, scene: QtWidgets.QGraphicsScene, config: Dict[str, Any]
     ):
-        """Initialize the API."""
+        """
+        Initialize the API.
+
+        Args:
+            scene: The QGraphicsScene to operate on
+            config: Configuration dictionary containing styling and behavior settings
+        """
         # Create models
         self.graph_model = GraphModel()
 
@@ -1087,19 +1101,121 @@ class NodzAPI:
         alternate: bool = True,
         **kwargs,
     ) -> str:
-        """Create a node."""
+        """
+        Create a new node in the graph.
+
+        Args:
+            name: Unique name for the node
+            preset: Visual preset to use (must exist in config)
+            position: Position in scene coordinates, or None for auto-positioning
+            alternate: Whether to use alternating row colors for attributes
+            **kwargs: Additional properties to store with the node
+
+        Returns:
+            The name of the created node
+
+        Raises:
+            NodeExistsError: If a node with the same name already exists
+        """
         node_model = self.node_controller.create_node(
             name, preset, position, alternate, **kwargs
         )
         return node_model.name
 
     def delete_node(self, node_name: str) -> None:
-        """Delete a node."""
+        """
+        Delete a node from the graph.
+
+        Args:
+            node_name: Name of the node to delete
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist
+        """
         self.node_controller.delete_node(node_name)
 
-    def edit_node(self, node_name: str, new_name: str) -> str:
-        """Edit a node."""
+    def rename_node(self, node_name: str, new_name: str) -> str:
+        """
+        Rename an existing node.
+
+        Args:
+            node_name: Current name of the node
+            new_name: New name for the node
+
+        Returns:
+            The new name of the node
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist
+            NodeExistsError: If a node with the new name already exists
+        """
         return self.node_controller.rename_node(node_name, new_name)
+
+    def edit_node(self, node_name: str, new_name: str) -> str:
+        """
+        Edit a node (alias for rename_node for backward compatibility).
+
+        Args:
+            node_name: Current name of the node
+            new_name: New name for the node
+
+        Returns:
+            The new name of the node
+        """
+        return self.rename_node(node_name, new_name)
+
+    def get_node_names(self) -> List[str]:
+        """
+        Get a list of all node names in the graph.
+
+        Returns:
+            List of node names
+        """
+        return list(self.graph_model.nodes.keys())
+
+    def node_exists(self, node_name: str) -> bool:
+        """
+        Check if a node exists in the graph.
+
+        Args:
+            node_name: Name of the node to check
+
+        Returns:
+            True if the node exists, False otherwise
+        """
+        return node_name in self.graph_model.nodes
+
+    def get_node_position(self, node_name: str) -> QtCore.QPointF:
+        """
+        Get the position of a node.
+
+        Args:
+            node_name: Name of the node
+
+        Returns:
+            Position of the node in scene coordinates
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist
+        """
+        if node_name not in self.graph_model.nodes:
+            raise NodeNotFoundError(node_name)
+        return self.graph_model.nodes[node_name].position
+
+    def set_node_position(self, node_name: str, position: QtCore.QPointF) -> None:
+        """
+        Set the position of a node.
+
+        Args:
+            node_name: Name of the node
+            position: New position in scene coordinates
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist
+        """
+        if node_name not in self.graph_model.nodes:
+            raise NodeNotFoundError(node_name)
+        self.graph_model.nodes[node_name].position = position
 
     # Attribute operations
     def create_attribute(
@@ -1115,7 +1231,25 @@ class NodzAPI:
         socket_max_connections: int = 1,
         **kwargs,
     ) -> None:
-        """Create an attribute."""
+        """
+        Create an attribute on a node.
+
+        Args:
+            node_name: Name of the node to add the attribute to
+            name: Name of the attribute
+            index: Position index (-1 for end)
+            preset: Visual preset to use
+            plug: Whether this attribute can output connections
+            socket: Whether this attribute can receive connections
+            data_type: Data type for type checking connections
+            plug_max_connections: Maximum outgoing connections (-1 for unlimited)
+            socket_max_connections: Maximum incoming connections (-1 for unlimited)
+            **kwargs: Additional properties to store with the attribute
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist
+            ValueError: If an attribute with the same name already exists
+        """
         self.node_controller.create_attribute(
             node_name,
             name,
@@ -1130,7 +1264,17 @@ class NodzAPI:
         )
 
     def delete_attribute(self, node_name: str, attr_name: str) -> None:
-        """Delete an attribute."""
+        """
+        Delete an attribute from a node.
+
+        Args:
+            node_name: Name of the node
+            attr_name: Name of the attribute to delete
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist
+            AttributeNotFoundError: If the attribute doesn't exist
+        """
         self.node_controller.delete_attribute(node_name, attr_name)
 
     def edit_attribute(
@@ -1140,10 +1284,55 @@ class NodzAPI:
         new_name: Optional[str] = None,
         new_index: Optional[int] = None,
     ) -> None:
-        """Edit an attribute."""
+        """
+        Edit an attribute.
+
+        Args:
+            node_name: Name of the node
+            attr_name: Current name of the attribute
+            new_name: New name for the attribute (optional)
+            new_index: New index position for the attribute (optional)
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist
+            AttributeNotFoundError: If the attribute doesn't exist
+            ValueError: If the new name already exists
+        """
         self.node_controller.edit_attribute(
             node_name, attr_name, new_name, new_index
         )
+
+    def get_node_attributes(self, node_name: str) -> List[str]:
+        """
+        Get a list of attribute names for a node.
+
+        Args:
+            node_name: Name of the node
+
+        Returns:
+            List of attribute names
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist
+        """
+        if node_name not in self.graph_model.nodes:
+            raise NodeNotFoundError(node_name)
+        return list(self.graph_model.nodes[node_name].attributes.keys())
+
+    def attribute_exists(self, node_name: str, attr_name: str) -> bool:
+        """
+        Check if an attribute exists on a node.
+
+        Args:
+            node_name: Name of the node
+            attr_name: Name of the attribute
+
+        Returns:
+            True if the attribute exists, False otherwise
+        """
+        if node_name not in self.graph_model.nodes:
+            return False
+        return attr_name in self.graph_model.nodes[node_name].attributes
 
     # Connection operations
     def create_connection(
@@ -1153,7 +1342,21 @@ class NodzAPI:
         target_node: str,
         target_attr: str,
     ) -> None:
-        """Create a connection."""
+        """
+        Create a connection between two node attributes.
+
+        Args:
+            source_node: Name of the source node (must have a plug attribute)
+            source_attr: Name of the source attribute (must be a plug)
+            target_node: Name of the target node (must have a socket attribute)
+            target_attr: Name of the target attribute (must be a socket)
+
+        Raises:
+            NodeNotFoundError: If either node doesn't exist
+            AttributeNotFoundError: If either attribute doesn't exist
+            ConnectionError: If the attributes are not compatible for connection
+            IncompatibleTypesError: If the data types are not compatible
+        """
         self.connection_controller.create_connection(
             source_node, source_attr, target_node, target_attr
         )
@@ -1165,24 +1368,263 @@ class NodzAPI:
         target_node: str,
         target_attr: str,
     ) -> None:
-        """Delete a connection."""
+        """
+        Delete a connection between two node attributes.
+
+        Args:
+            source_node: Name of the source node
+            source_attr: Name of the source attribute
+            target_node: Name of the target node
+            target_attr: Name of the target attribute
+        """
         self.connection_controller.delete_connection(
             source_node, source_attr, target_node, target_attr
         )
 
+    def get_connections(self) -> List[Tuple[str, str, str, str]]:
+        """
+        Get all connections in the graph.
+
+        Returns:
+            List of tuples (source_node, source_attr, target_node, target_attr)
+        """
+        return [
+            (conn.plug_node, conn.plug_attr, conn.socket_node, conn.socket_attr)
+            for conn in self.graph_model.connections
+        ]
+
+    def connection_exists(
+        self,
+        source_node: str,
+        source_attr: str,
+        target_node: str,
+        target_attr: str,
+    ) -> bool:
+        """
+        Check if a connection exists between two attributes.
+
+        Args:
+            source_node: Name of the source node
+            source_attr: Name of the source attribute
+            target_node: Name of the target node
+            target_attr: Name of the target attribute
+
+        Returns:
+            True if the connection exists, False otherwise
+        """
+        for conn in self.graph_model.connections:
+            if (
+                conn.plug_node == source_node
+                and conn.plug_attr == source_attr
+                and conn.socket_node == target_node
+                and conn.socket_attr == target_attr
+            ):
+                return True
+        return False
+
+    def get_node_connections(self, node_name: str) -> List[Tuple[str, str, str, str]]:
+        """
+        Get all connections involving a specific node.
+
+        Args:
+            node_name: Name of the node
+
+        Returns:
+            List of tuples (source_node, source_attr, target_node, target_attr)
+        """
+        connections = []
+        for conn in self.graph_model.connections:
+            if conn.plug_node == node_name or conn.socket_node == node_name:
+                connections.append(
+                    (conn.plug_node, conn.plug_attr, conn.socket_node, conn.socket_attr)
+                )
+        return connections
+
     # Graph operations
     def save_graph(self, file_path: str) -> None:
-        """Save the graph to a file."""
+        """
+        Save the graph to a JSON file.
+
+        Args:
+            file_path: Path to save the file to
+
+        Raises:
+            IOError: If the file cannot be written
+        """
         self.graph_controller.save_graph(file_path)
 
     def load_graph(self, file_path: str) -> None:
-        """Load a graph from a file."""
+        """
+        Load a graph from a JSON file.
+
+        Args:
+            file_path: Path to load the file from
+
+        Raises:
+            FileNotFoundError: If the file doesn't exist
+            ValueError: If the file format is invalid
+        """
         self.graph_controller.load_graph(file_path)
 
     def clear_graph(self) -> None:
-        """Clear the graph."""
+        """
+        Clear all nodes and connections from the graph.
+        """
         self.graph_controller.clear_graph()
 
     def evaluate_graph(self) -> List[Tuple[str, str]]:
-        """Evaluate the graph."""
+        """
+        Evaluate the graph and return connection information.
+
+        Returns:
+            List of tuples (source, target) where each is "node.attribute"
+        """
         return self.graph_controller.evaluate_graph()
+
+    def get_graph_stats(self) -> Dict[str, int]:
+        """
+        Get statistics about the current graph.
+
+        Returns:
+            Dictionary with 'nodes', 'connections', and 'attributes' counts
+        """
+        total_attributes = sum(
+            len(node.attributes) for node in self.graph_model.nodes.values()
+        )
+        return {
+            "nodes": len(self.graph_model.nodes),
+            "connections": len(self.graph_model.connections),
+            "attributes": total_attributes,
+        }
+
+    def validate_graph(self) -> List[str]:
+        """
+        Validate the graph and return any issues found.
+
+        Returns:
+            List of validation error messages (empty if valid)
+        """
+        errors = []
+
+        # Check for orphaned connections
+        for conn in self.graph_model.connections:
+            if conn.plug_node not in self.graph_model.nodes:
+                errors.append(f"Connection references non-existent plug node: {conn.plug_node}")
+            elif conn.plug_attr not in self.graph_model.nodes[conn.plug_node].attributes:
+                errors.append(f"Connection references non-existent plug attribute: {conn.plug_node}.{conn.plug_attr}")
+
+            if conn.socket_node not in self.graph_model.nodes:
+                errors.append(f"Connection references non-existent socket node: {conn.socket_node}")
+            elif conn.socket_attr not in self.graph_model.nodes[conn.socket_node].attributes:
+                errors.append(f"Connection references non-existent socket attribute: {conn.socket_node}.{conn.socket_attr}")
+
+        return errors
+
+    # Utility methods
+    def get_upstream_nodes(self, node_name: str) -> List[str]:
+        """
+        Get all nodes that connect to the specified node (upstream dependencies).
+
+        Args:
+            node_name: Name of the node
+
+        Returns:
+            List of upstream node names
+        """
+        upstream = set()
+        for conn in self.graph_model.connections:
+            if conn.socket_node == node_name:
+                upstream.add(conn.plug_node)
+        return list(upstream)
+
+    def get_downstream_nodes(self, node_name: str) -> List[str]:
+        """
+        Get all nodes that the specified node connects to (downstream dependencies).
+
+        Args:
+            node_name: Name of the node
+
+        Returns:
+            List of downstream node names
+        """
+        downstream = set()
+        for conn in self.graph_model.connections:
+            if conn.plug_node == node_name:
+                downstream.add(conn.socket_node)
+        return list(downstream)
+
+    def find_cycles(self) -> List[List[str]]:
+        """
+        Find cycles in the graph.
+
+        Returns:
+            List of cycles, where each cycle is a list of node names
+        """
+        # Simple cycle detection using DFS
+        visited = set()
+        rec_stack = set()
+        cycles = []
+
+        def dfs(node, path):
+            if node in rec_stack:
+                # Found a cycle
+                cycle_start = path.index(node)
+                cycles.append(path[cycle_start:] + [node])
+                return
+
+            if node in visited:
+                return
+
+            visited.add(node)
+            rec_stack.add(node)
+
+            # Visit downstream nodes
+            for downstream in self.get_downstream_nodes(node):
+                dfs(downstream, path + [node])
+
+            rec_stack.remove(node)
+
+        # Start DFS from all nodes
+        for node_name in self.graph_model.nodes:
+            if node_name not in visited:
+                dfs(node_name, [])
+
+        return cycles
+
+    def get_execution_order(self) -> List[str]:
+        """
+        Get a topological ordering of nodes for execution.
+
+        Returns:
+            List of node names in execution order
+
+        Raises:
+            ValueError: If the graph contains cycles
+        """
+        # Check for cycles first
+        cycles = self.find_cycles()
+        if cycles:
+            raise ValueError(f"Graph contains cycles: {cycles}")
+
+        # Kahn's algorithm for topological sorting
+        in_degree = {node: 0 for node in self.graph_model.nodes}
+
+        # Calculate in-degrees
+        for conn in self.graph_model.connections:
+            in_degree[conn.socket_node] += 1
+
+        # Start with nodes that have no incoming edges
+        queue = [node for node, degree in in_degree.items() if degree == 0]
+        result = []
+
+        while queue:
+            node = queue.pop(0)
+            result.append(node)
+
+            # Remove this node and update in-degrees
+            for downstream in self.get_downstream_nodes(node):
+                in_degree[downstream] -= 1
+                if in_degree[downstream] == 0:
+                    queue.append(downstream)
+
+        return result

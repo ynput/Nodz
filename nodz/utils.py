@@ -127,6 +127,16 @@ def _load_config(file_path: str) -> dict:
     return data
 
 
+def json_encoder(obj):
+    if isinstance(obj, QtCore.QPointF):
+        obj = (obj.x(), obj.y())
+    elif isinstance(obj, type):
+        obj = str(obj)
+    elif typing.get_origin(obj):
+        obj = str(obj)
+    return obj
+
+
 def _save_data(file_path: str, data: dict) -> None:
     """
     save data as a .json file
@@ -136,15 +146,6 @@ def _save_data(file_path: str, data: dict) -> None:
         data (dict): Data to save.
     """
 
-    def _encoder(obj):
-        if isinstance(obj, QtCore.QPointF):
-            obj = (obj.x(), obj.y())
-        elif isinstance(obj, type):
-            obj = str(obj)
-        elif typing.get_origin(obj):
-            obj = str(obj)
-        return obj
-
     f = open(file_path, "w")
     f.write(
         json.dumps(
@@ -152,12 +153,22 @@ def _save_data(file_path: str, data: dict) -> None:
             sort_keys=True,
             indent=4,
             ensure_ascii=False,
-            default=_encoder,
+            default=json_encoder,
         )
     )
     f.close()
 
     nlog.info("Data successfully saved !")
+
+
+def json_decoder(d: dict):
+    """decode specific fields to avoid code duplication."""
+
+    if "position" in d:
+        d["position"] = QtCore.QPointF(*d["position"])
+    if "data_type" in d:
+        d["data_type"] = str_to_type(d["data_type"])
+    return d
 
 
 def _load_data(file_path: str) -> dict:
@@ -170,17 +181,8 @@ def _load_data(file_path: str) -> dict:
         dict: dict loaded from the file.
     """
 
-    def _decoder(d: dict):
-        """decode specific fields to avoid code duplication."""
-
-        if "position" in d:
-            d["position"] = QtCore.QPointF(*d["position"])
-        if "data_type" in d:
-            d["data_type"] = str_to_type(d["data_type"])
-        return d
-
     with open(file_path) as json_file:
-        j_data = json.load(json_file, object_hook=_decoder)
+        j_data = json.load(json_file, object_hook=json_decoder)
 
     json_file.close()
 

@@ -1,0 +1,242 @@
+{
+    "nodes": {
+        "InputNode": {
+            "name": "InputNode",
+            "preset": "node_preset_1",
+            "alternate": true,
+            "position": [
+                50.0,
+                100.0
+            ],
+            "attributes": {
+                "data_out": {
+                    "attribute": "data_out",
+                    "index": -1,
+                    "preset": "attr_preset_1",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {
+                        "help": "Output data stream"
+                    }
+                },
+                "config": {
+                    "attribute": "config",
+                    "index": -1,
+                    "preset": "attr_preset_2",
+                    "plug": false,
+                    "socket": false,
+                    "data_type": "<class 'dict'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {
+                        "help": "Configuration parameters"
+                    }
+                }
+            },
+            "kwargs": {
+                "description": "Input data source"
+            }
+        },
+        "ProcessNode": {
+            "name": "ProcessNode",
+            "preset": "node_preset_1",
+            "alternate": true,
+            "position": [
+                300.0,
+                100.0
+            ],
+            "attributes": {
+                "data_in": {
+                    "attribute": "data_in",
+                    "index": -1,
+                    "preset": "attr_preset_1",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {
+                        "help": "Input data stream"
+                    }
+                },
+                "processed_out": {
+                    "attribute": "processed_out",
+                    "index": -1,
+                    "preset": "attr_preset_2",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {
+                        "help": "Processed data output"
+                    }
+                },
+                "status": {
+                    "attribute": "status",
+                    "index": -1,
+                    "preset": "attr_preset_3",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'bool'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {
+                        "help": "Processing status"
+                    }
+                }
+            },
+            "kwargs": {
+                "description": "Data processing node"
+            }
+        },
+        "OutputNode": {
+            "name": "OutputNode",
+            "preset": "node_preset_1",
+            "alternate": true,
+            "position": [
+                550.0,
+                100.0
+            ],
+            "attributes": {
+                "data_in": {
+                    "attribute": "data_in",
+                    "index": -1,
+                    "preset": "attr_preset_2",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {
+                        "help": "Input data to save"
+                    }
+                },
+                "status_in": {
+                    "attribute": "status_in",
+                    "index": -1,
+                    "preset": "attr_preset_3",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'bool'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {
+                        "help": "Status input"
+                    }
+                }
+            },
+            "kwargs": {
+                "description": "Output destination"
+            }
+        },
+        "CycleNode1": {
+            "name": "CycleNode1",
+            "preset": "node_default",
+            "alternate": true,
+            "position": [
+                100.0,
+                300.0
+            ],
+            "attributes": {
+                "out": {
+                    "attribute": "out",
+                    "index": -1,
+                    "preset": "attr_default",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "in": {
+                    "attribute": "in",
+                    "index": -1,
+                    "preset": "attr_default",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                }
+            },
+            "kwargs": {}
+        },
+        "CycleNode2": {
+            "name": "CycleNode2",
+            "preset": "node_default",
+            "alternate": true,
+            "position": [
+                300.0,
+                300.0
+            ],
+            "attributes": {
+                "out": {
+                    "attribute": "out",
+                    "index": -1,
+                    "preset": "attr_default",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "in": {
+                    "attribute": "in",
+                    "index": -1,
+                    "preset": "attr_default",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                }
+            },
+            "kwargs": {}
+        }
+    },
+    "connections": [
+        {
+            "plug_node": "InputNode",
+            "plug_attr": "data_out",
+            "socket_node": "ProcessNode",
+            "socket_attr": "data_in",
+            "kwargs": {}
+        },
+        {
+            "plug_node": "ProcessNode",
+            "plug_attr": "processed_out",
+            "socket_node": "OutputNode",
+            "socket_attr": "data_in",
+            "kwargs": {}
+        },
+        {
+            "plug_node": "ProcessNode",
+            "plug_attr": "status",
+            "socket_node": "OutputNode",
+            "socket_attr": "status_in",
+            "kwargs": {}
+        },
+        {
+            "plug_node": "CycleNode1",
+            "plug_attr": "out",
+            "socket_node": "CycleNode2",
+            "socket_attr": "in",
+            "kwargs": {}
+        },
+        {
+            "plug_node": "CycleNode2",
+            "plug_attr": "out",
+            "socket_node": "CycleNode1",
+            "socket_attr": "in",
+            "kwargs": {}
+        }
+    ]
+}
