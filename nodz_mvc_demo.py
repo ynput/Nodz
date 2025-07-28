@@ -270,22 +270,13 @@ nodz.api.create_attribute(
 nodz.api.create_connection("nodeB", "Battr2", "nodeA", "Aattr3")
 nodz.api.create_connection("nodeB", "Battr1", "nodeA", "Aattr4")
 nodz.api.create_connection("nodeC", "Cattr2", "nodeA", "Aattr6")
+nodz.api.create_connection("nodeF", "Fattr1", "nodeD", "Dattr1")
+nodz.api.create_connection("nodeD", "Dattr2", "nodeE", "Eattr3")
+
+nodz.layout_graph()
 
 # Print instructions
 print("\nNodz MVC Demo")
-print("=============")
-print("Keyboard shortcuts:")
-print("  A: Frame all nodes")
-print("  L: Layout graph")
-print("  S: Save graph")
-print("  O: Load graph")
-print("  C: Clear graph")
-print("\nMouse controls:")
-print("  Left click: Select nodes")
-print("  Middle click + drag: Pan view")
-print("  Scroll wheel: Zoom view")
-print("  Left click + drag on plug/socket: Create connection")
-print("  Double click on connection: Delete connection")
 
 # Run application
 if app:

@@ -1,8 +1,6 @@
 from dataclasses import dataclass, field, asdict
 from collections import OrderedDict
 from typing import Any, List, Union, get_origin, get_args
-from enum import Enum
-from copy import deepcopy
 from qtpy import QtCore
 from .utils import str_to_type, nlog
 
@@ -147,82 +145,6 @@ class GraphModel(BaseModel):
             self.connections.append(con)
 
 
-# =============================================================================
-# Data Adapter
-# =============================================================================
-
-
-class ModelEdit(Enum):
-    Create = 0
-    Update = 1
-    Delete = 2
-    Layout = 3
-    Position = 4
-
-
-class ModelEntity(Enum):
-    Attr = 0
-    Node = 1
-    Connection = 2
-    Graph = 3
-
-
-class NodzAdapter:
-    """
-    Abstract adapter class that can be inherited to handle the conversion
-    between a client data model and the nodz data model.
-
-    This allows nodz to display and edit graphs from various sources,
-    i.e. from a list of houdini nodes, a dict, etc.
-    """
-
-    def __init__(self, client_model: Any) -> None:
-        # Read-only reference
-        self._client_model = client_model
-
-    @property
-    def client_model(self):
-        return self._client_model
-
-    def update_client_model(self, value):
-        self._client_model = value
-
-    def to_attr_model(self, data: Any) -> AttrModel:
-        if isinstance(data, AttrModel):
-            return deepcopy(data)
-        raise NotImplementedError()
-
-    def to_node_model(self, data: Any) -> NodeModel:
-        if isinstance(data, NodeModel):
-            return deepcopy(data)
-        raise NotImplementedError()
-
-    def to_connecttion_model(self, data: Any) -> ConnectionModel:
-        if isinstance(data, ConnectionModel):
-            return deepcopy(data)
-        raise NotImplementedError()
-
-    def to_graph_model(self, data: Any) -> GraphModel:
-        if isinstance(data, GraphModel):
-            return deepcopy(data)
-        raise NotImplementedError()
-
-    def from_attr_model(self, data: AttrModel) -> Any:
-        if isinstance(data, AttrModel):
-            return deepcopy(data)
-        raise NotImplementedError()
-
-    def from_node_model(self, data: NodeModel) -> Any:
-        if isinstance(data, NodeModel):
-            return deepcopy(data)
-        raise NotImplementedError()
-
-    def from_connecttion_model(self, data: ConnectionModel) -> Any:
-        if isinstance(data, ConnectionModel):
-            return deepcopy(data)
-        raise NotImplementedError()
-
-    def from_graph_model(self, data: GraphModel) -> Any:
-        if isinstance(data, GraphModel):
-            return deepcopy(data)
-        raise NotImplementedError()
+# Note: ModelEdit, ModelEntity, and NodzAdapter classes have been removed
+# as they are no longer needed with the new MVC architecture and unified API.
+# The functionality has been replaced by the controllers and models in the new architecture.

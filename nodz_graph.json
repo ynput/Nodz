@@ -1,0 +1,361 @@
+{
+    "nodes": {
+        "nodeA": {
+            "name": "nodeA",
+            "preset": "node_preset_1",
+            "alternate": true,
+            "position": [
+                900.0,
+                655.0
+            ],
+            "attributes": {
+                "Aattr1": {
+                    "attribute": "Aattr1",
+                    "index": -1,
+                    "preset": "attr_preset_1",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {
+                        "help": "Just checking this is working!"
+                    }
+                },
+                "Aattr2": {
+                    "attribute": "Aattr2",
+                    "index": -1,
+                    "preset": "attr_preset_1",
+                    "plug": false,
+                    "socket": false,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {
+                        "help": "This attribute is purely decorative."
+                    }
+                },
+                "Aattr3": {
+                    "attribute": "Aattr3",
+                    "index": -1,
+                    "preset": "attr_preset_2",
+                    "plug": true,
+                    "socket": true,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Aattr4": {
+                    "attribute": "Aattr4",
+                    "index": -1,
+                    "preset": "attr_preset_2",
+                    "plug": true,
+                    "socket": true,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Aattr5": {
+                    "attribute": "Aattr5",
+                    "index": -1,
+                    "preset": "attr_preset_3",
+                    "plug": true,
+                    "socket": true,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": 1,
+                    "socket_max_connections": -1,
+                    "kwargs": {}
+                },
+                "Aattr6": {
+                    "attribute": "Aattr6",
+                    "index": -1,
+                    "preset": "attr_preset_3",
+                    "plug": true,
+                    "socket": true,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": 1,
+                    "socket_max_connections": -1,
+                    "kwargs": {}
+                }
+            },
+            "kwargs": {
+                "help": "NodeA has its own special help string!"
+            }
+        },
+        "nodeB": {
+            "name": "nodeB",
+            "preset": "node_preset_1",
+            "alternate": true,
+            "position": [
+                556.0,
+                655.0
+            ],
+            "attributes": {
+                "Battr1": {
+                    "attribute": "Battr1",
+                    "index": -1,
+                    "preset": "attr_preset_1",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Battr2": {
+                    "attribute": "Battr2",
+                    "index": -1,
+                    "preset": "attr_preset_1",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Battr3": {
+                    "attribute": "Battr3",
+                    "index": -1,
+                    "preset": "attr_preset_2",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Battr4": {
+                    "attribute": "Battr4",
+                    "index": -1,
+                    "preset": "attr_preset_3",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": 1,
+                    "socket_max_connections": -1,
+                    "kwargs": {}
+                }
+            },
+            "kwargs": {}
+        },
+        "nodeC": {
+            "name": "nodeC",
+            "preset": "node_preset_1",
+            "alternate": true,
+            "position": [
+                556.0,
+                939.0
+            ],
+            "attributes": {
+                "Cattr1": {
+                    "attribute": "Cattr1",
+                    "index": -1,
+                    "preset": "attr_preset_1",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Cattr2": {
+                    "attribute": "Cattr2",
+                    "index": -1,
+                    "preset": "attr_preset_1",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Cattr3": {
+                    "attribute": "Cattr3",
+                    "index": -1,
+                    "preset": "attr_preset_1",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Cattr4": {
+                    "attribute": "Cattr4",
+                    "index": -1,
+                    "preset": "attr_preset_2",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                }
+            },
+            "kwargs": {}
+        },
+        "nodeD": {
+            "name": "nodeD",
+            "preset": "node_preset_1",
+            "alternate": true,
+            "position": [
+                892.3543984505203,
+                941.5485338498265
+            ],
+            "attributes": {
+                "Dattr1": {
+                    "attribute": "Dattr1",
+                    "index": -1,
+                    "preset": "attr_preset_3",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Dattr2": {
+                    "attribute": "Dattr2",
+                    "index": -1,
+                    "preset": "attr_preset_3",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                }
+            },
+            "kwargs": {}
+        },
+        "nodeE": {
+            "name": "nodeE",
+            "preset": "node_preset_1",
+            "alternate": true,
+            "position": [
+                1244.0,
+                655.0
+            ],
+            "attributes": {
+                "Eattr1": {
+                    "attribute": "Eattr1",
+                    "index": -1,
+                    "preset": "attr_preset_1",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Eattr2": {
+                    "attribute": "Eattr2",
+                    "index": -1,
+                    "preset": "attr_preset_2",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Eattr3": {
+                    "attribute": "Eattr3",
+                    "index": -1,
+                    "preset": "attr_preset_2",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                }
+            },
+            "kwargs": {}
+        },
+        "nodeF": {
+            "name": "nodeF",
+            "preset": "node_preset_1",
+            "alternate": true,
+            "position": [
+                556.0,
+                1223.0
+            ],
+            "attributes": {
+                "Fattr1": {
+                    "attribute": "Fattr1",
+                    "index": -1,
+                    "preset": "attr_preset_1",
+                    "plug": true,
+                    "socket": false,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Fattr2": {
+                    "attribute": "Fattr2",
+                    "index": -1,
+                    "preset": "attr_preset_2",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'str'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                },
+                "Fattr3": {
+                    "attribute": "Fattr3",
+                    "index": -1,
+                    "preset": "attr_preset_2",
+                    "plug": false,
+                    "socket": true,
+                    "data_type": "<class 'int'>",
+                    "plug_max_connections": -1,
+                    "socket_max_connections": 1,
+                    "kwargs": {}
+                }
+            },
+            "kwargs": {}
+        }
+    },
+    "connections": [
+        {
+            "plug_node": "nodeB",
+            "plug_attr": "Battr2",
+            "socket_node": "nodeA",
+            "socket_attr": "Aattr3",
+            "kwargs": {}
+        },
+        {
+            "plug_node": "nodeB",
+            "plug_attr": "Battr1",
+            "socket_node": "nodeA",
+            "socket_attr": "Aattr4",
+            "kwargs": {}
+        },
+        {
+            "plug_node": "nodeC",
+            "plug_attr": "Cattr2",
+            "socket_node": "nodeA",
+            "socket_attr": "Aattr6",
+            "kwargs": {}
+        },
+        {
+            "plug_node": "nodeD",
+            "plug_attr": "Dattr2",
+            "socket_node": "nodeE",
+            "socket_attr": "Eattr3",
+            "kwargs": {}
+        },
+        {
+            "plug_node": "nodeF",
+            "plug_attr": "Fattr1",
+            "socket_node": "nodeD",
+            "socket_attr": "Dattr1",
+            "kwargs": {}
+        }
+    ]
+}
