@@ -375,6 +375,11 @@ class ConnectionController(BaseController):
         # Connection being drawn
         self.temp_connection: Optional[ConnectionView] = None
 
+        # colors
+        self.non_connectable_color = QtGui.QColor(
+            *self.config["non_connectable_color"]
+        )
+
         # Connect signals
         self.signals.attr_connection_started.connect(
             self.on_connection_started
@@ -691,9 +696,7 @@ class ConnectionController(BaseController):
                     not source_is_plug and isinstance(item, SocketView)
                 ):
                     if hasattr(item, "brush"):
-                        item.brush.setColor(
-                            QtGui.QColor(128, 128, 128, 128)
-                        )  # Gray with transparency
+                        item.brush.setColor(self.non_connectable_color)
                         item.update()
                     continue
 
@@ -724,9 +727,7 @@ class ConnectionController(BaseController):
                 # Gray out incompatible slots
                 if not is_compatible:
                     if hasattr(item, "brush"):
-                        item.brush.setColor(
-                            QtGui.QColor(128, 128, 128, 128)
-                        )  # Gray with transparency
+                        item.brush.setColor(self.non_connectable_color)
                         item.update()
 
     def _reset_all_slots_appearance(self) -> None:
