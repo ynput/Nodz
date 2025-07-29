@@ -40,7 +40,37 @@ from .controllers import (
 
 from .main import NodzView, NodzScene, create_nodz_view
 
+__all__ = [
+    "BaseModel",
+    "NodeModel",
+    "AttrModel",
+    "ConnectionModel",
+    "GraphModel",
+    "ModelObserver",
+    "ViewSignals",
+    "NodeView",
+    "SlotView",
+    "PlugView",
+    "SocketView",
+    "ConnectionView",
+    "NodzAPI",
+    "NodeController",
+    "ConnectionController",
+    "GraphController",
+    "NodzError",
+    "NodeError",
+    "NodeNotFoundError",
+    "NodeExistsError",
+    "AttributeError",
+    "AttributeNotFoundError",
+    "ConnectionError",
+    "IncompatibleTypesError",
+    "NodzView",
+    "NodzScene",
+    "create_nodz_view",
+]
+
 # Version information
 __version__ = "2.0.0-beta.1"
-__author__ = "Ynput"
+__author__ = "Ynput / LeGoffLoic"
 __license__ = "MIT"
