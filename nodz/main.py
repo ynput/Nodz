@@ -597,12 +597,6 @@ class NodzView(QtWidgets.QGraphicsView):
             if not event.isAutoRepeat():  # Only on first press, not auto-repeat
                 self._grid_snap_enabled = True
                 self._snap_selected_nodes_to_grid()
-        # Load graph with 'O'
-        elif event.key() == QtCore.Qt.Key.Key_O:
-            self.api.load_graph("nodz_graph.json")
-        # Clear graph with 'C'
-        elif event.key() == QtCore.Qt.Key.Key_C:
-            self.api.clear_graph()
         # Delete selected nodes with Delete or Backspace
         elif event.key() in (
             QtCore.Qt.Key.Key_Delete,
