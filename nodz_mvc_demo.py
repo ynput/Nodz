@@ -276,7 +276,8 @@ nodz.api.create_connection("nodeD", "Dattr2", "nodeE", "Eattr3")
 nodz.layout_graph()
 
 # Print instructions
-print("\nNodz MVC Demo")
+from nodz.utils import nlog
+nlog.info("\nNodz MVC Demo")
 
 # Run application
 if app:

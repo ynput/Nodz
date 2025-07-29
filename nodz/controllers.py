@@ -27,7 +27,13 @@ from .views import (
     ConnectionView,
     ViewSignals,
 )
-from .utils import json_decoder, json_encoder
+from .utils import (
+    json_decoder,
+    json_encoder,
+    nlog,
+    set_logging_level,
+    get_logging_level,
+)
 
 
 class NodzError(Exception):
@@ -771,7 +777,7 @@ class ConnectionController(BaseController):
             )
         except NodzError as e:
             # Handle error (could show a message to the user)
-            print(f"Error creating connection: {e}")
+            nlog.error(f"Error creating connection: {e}")
 
     def on_connection_deleted(
         self,
@@ -1628,3 +1634,27 @@ class NodzAPI:
                     queue.append(downstream)
 
         return result
+
+    # Logging methods
+    def set_logging_level(self, level):
+        """
+        Set the logging level for Nodz.
+
+        Args:
+            level: Logging level (logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL)
+                   or string ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+
+        Example:
+            api.set_logging_level('DEBUG')
+            api.set_logging_level(logging.WARNING)
+        """
+        set_logging_level(level)
+
+    def get_logging_level(self):
+        """
+        Get the current logging level for Nodz.
+
+        Returns:
+            int: Current logging level
+        """
+        return get_logging_level()

@@ -10,6 +10,34 @@ logging.basicConfig(
 nlog = logging.getLogger("Nodz")
 
 
+def set_logging_level(level):
+    """
+    Set the logging level for Nodz.
+
+    Args:
+        level: Logging level (logging.DEBUG, logging.INFO, logging.WARNING,
+               logging.ERROR, logging.CRITICAL) or string ('DEBUG', 'INFO',
+               'WARNING', 'ERROR', 'CRITICAL')
+    """
+    if isinstance(level, str):
+        level = getattr(logging, level.upper())
+
+    nlog.setLevel(level)
+    # Also update the root logger handler level
+    for handler in logging.getLogger().handlers:
+        handler.setLevel(level)
+
+
+def get_logging_level():
+    """
+    Get the current logging level for Nodz.
+
+    Returns:
+        int: Current logging level
+    """
+    return nlog.level
+
+
 # Note: Removed unused utility functions:
 # - _convert_data_to_color
 # - _generate_alternate_color_multiplier
