@@ -121,7 +121,13 @@ class MaxConnectionsExceededError(ConnectionError):
 class DuplicateConnectionError(ConnectionError):
     """Raised when attempting to create a connection that already exists."""
 
-    def __init__(self, source_node: str, source_attr: str, target_node: str, target_attr: str):
+    def __init__(
+        self,
+        source_node: str,
+        source_attr: str,
+        target_node: str,
+        target_attr: str,
+    ):
         self.source_node = source_node
         self.source_attr = source_attr
         self.target_node = target_node
@@ -349,9 +355,7 @@ class NodeController(BaseController):
         # This could open a node editor or perform other actions
         pass
 
-    def _find_node_view(
-        self, node_name: str
-    ) -> Optional[NodeView]:
+    def _find_node_view(self, node_name: str) -> Optional[NodeView]:
         """Find a node view by name."""
         for item in self.scene.items():
             if isinstance(item, NodeView) and item.model.name == node_name:
@@ -457,23 +461,37 @@ class ConnectionController(BaseController):
         # Check maximum connections for source (plug)
         if source_attr_model.plug_max_connections > 0:
             existing_plug_connections = sum(
-                1 for conn in self.graph_model.connections
-                if conn.plug_node == source_node and conn.plug_attr == source_attr
+                1
+                for conn in self.graph_model.connections
+                if conn.plug_node == source_node
+                and conn.plug_attr == source_attr
             )
-            if existing_plug_connections >= source_attr_model.plug_max_connections:
+            if (
+                existing_plug_connections
+                >= source_attr_model.plug_max_connections
+            ):
                 raise MaxConnectionsExceededError(
-                    source_node, source_attr, source_attr_model.plug_max_connections
+                    source_node,
+                    source_attr,
+                    source_attr_model.plug_max_connections,
                 )
 
         # Check maximum connections for target (socket)
         if target_attr_model.socket_max_connections > 0:
             existing_socket_connections = sum(
-                1 for conn in self.graph_model.connections
-                if conn.socket_node == target_node and conn.socket_attr == target_attr
+                1
+                for conn in self.graph_model.connections
+                if conn.socket_node == target_node
+                and conn.socket_attr == target_attr
             )
-            if existing_socket_connections >= target_attr_model.socket_max_connections:
+            if (
+                existing_socket_connections
+                >= target_attr_model.socket_max_connections
+            ):
                 raise MaxConnectionsExceededError(
-                    target_node, target_attr, target_attr_model.socket_max_connections
+                    target_node,
+                    target_attr,
+                    target_attr_model.socket_max_connections,
                 )
 
         # Create connection model
@@ -775,7 +793,9 @@ class ConnectionController(BaseController):
             # Check if it's not on the same node
             try:
                 parent_node = item.parent_node_view()
-                if not hasattr(parent_node, "model") or not hasattr(parent_node.model, "name"):
+                if not hasattr(parent_node, "model") or not hasattr(
+                    parent_node.model, "name"
+                ):
                     continue
             except (AttributeError, TypeError):
                 continue
@@ -914,9 +934,7 @@ class ConnectionController(BaseController):
             return node_view.sockets[attr_name]
         return None
 
-    def _find_node_view(
-        self, node_name: str
-    ) -> Optional[NodeView]:
+    def _find_node_view(self, node_name: str) -> Optional[NodeView]:
         """Find a node view by name."""
         for item in self.scene.items():
             if isinstance(item, NodeView) and item.model.name == node_name:
@@ -1101,9 +1119,7 @@ class GraphController(BaseController):
             return node_view.sockets[attr_name]
         return None
 
-    def _find_node_view(
-        self, node_name: str
-    ) -> Optional[NodeView]:
+    def _find_node_view(self, node_name: str) -> Optional[NodeView]:
         """Find a node view by name."""
         for item in self.scene.items():
             if isinstance(item, NodeView) and item.model.name == node_name:
