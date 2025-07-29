@@ -319,12 +319,7 @@ class NodeController(BaseController):
     ) -> Optional[QtWidgets.QGraphicsItem]:
         """Find a node view by name."""
         for item in self.scene.items():
-            if (
-                type(item).__name__ == "NodeView"
-                and hasattr(item, "model")
-                and hasattr(item.model, "name")
-                and item.model.name == node_name
-            ):
+            if isinstance(item, NodeView) and item.model.name == node_name:
                 return item
         return None
 
@@ -578,11 +573,7 @@ class ConnectionController(BaseController):
         # Find the closest node in the detection area
         min_distance = float("inf")
         for item in items_in_area:
-            if (
-                type(item).__name__ == "NodeView"
-                and hasattr(item, "model")
-                and hasattr(item.model, "name")
-            ):
+            if isinstance(item, NodeView):
                 # Calculate distance to node center
                 if hasattr(item, "pos") and hasattr(item, "boundingRect"):
                     node_center = item.pos() + QtCore.QPointF(
@@ -605,7 +596,7 @@ class ConnectionController(BaseController):
             # Gray out all slots of the same type as the source
             for item in self.scene.items():
                 # Skip items that aren't slots or aren't on the hovered node
-                if type(item).__name__ not in ["PlugView", "SocketView"]:
+                if not isinstance(item, (PlugView, SocketView)):
                     continue
 
                 if (
@@ -614,9 +605,10 @@ class ConnectionController(BaseController):
                 ):
                     continue
 
-                # Gray out slots of the same type as the source (plug/plug or socket/socket)
-                if (source_is_plug and type(item).__name__ == "PlugView") or (
-                    not source_is_plug and type(item).__name__ == "SocketView"
+                # Gray out slots of the same type as the source (plug/plug or
+                # socket/socket)
+                if (source_is_plug and isinstance(item, PlugView)) or (
+                    not source_is_plug and isinstance(item, SocketView)
                 ):
                     if hasattr(item, "brush"):
                         item.brush.setColor(
@@ -659,11 +651,7 @@ class ConnectionController(BaseController):
     def _reset_all_slots_appearance(self) -> None:
         """Reset all slots to their original appearance."""
         for item in self.scene.items():
-            if (
-                type(item).__name__ in ["PlugView", "SocketView"]
-                and hasattr(item, "model")
-                and hasattr(item, "_create_style")
-            ):
+            if isinstance(item, (PlugView, SocketView)):
                 item._create_style()  # Reset to original style
                 item.update()
 
@@ -693,12 +681,12 @@ class ConnectionController(BaseController):
         compatible_slots = []
         for item in items:
             # Check if it's a slot view
-            if type(item).__name__ not in ["PlugView", "SocketView"]:
+            if not isinstance(item, (PlugView, SocketView)):
                 continue
 
             # Check if it's the opposite type of the source slot
-            if (source_is_plug and type(item).__name__ != "SocketView") or (
-                not source_is_plug and type(item).__name__ != "PlugView"
+            if (source_is_plug and not isinstance(item, SocketView)) or (
+                not source_is_plug and not isinstance(item, PlugView)
             ):
                 continue
 
@@ -849,12 +837,7 @@ class ConnectionController(BaseController):
     ) -> Optional[QtWidgets.QGraphicsItem]:
         """Find a node view by name."""
         for item in self.scene.items():
-            if (
-                type(item).__name__ == "NodeView"
-                and hasattr(item, "model")
-                and hasattr(item.model, "name")
-                and item.model.name == node_name
-            ):
+            if isinstance(item, NodeView):
                 return item
         return None
 
@@ -865,12 +848,7 @@ class ConnectionController(BaseController):
         for item in self.scene.items():
             # Check if it's a connection view by checking its class name
             if (
-                type(item).__name__ == "ConnectionView"
-                and hasattr(item, "model")
-                and hasattr(item.model, "plug_node")
-                and hasattr(item.model, "plug_attr")
-                and hasattr(item.model, "socket_node")
-                and hasattr(item.model, "socket_attr")
+                isinstance(item, ConnectionView)
                 and item.model.plug_node == connection_model.plug_node
                 and item.model.plug_attr == connection_model.plug_attr
                 and item.model.socket_node == connection_model.socket_node
@@ -1006,12 +984,7 @@ class GraphController(BaseController):
         for item in self.scene.items():
             # Check if it's a connection view by checking its class name
             if (
-                type(item).__name__ == "ConnectionView"
-                and hasattr(item, "model")
-                and hasattr(item.model, "plug_node")
-                and hasattr(item.model, "plug_attr")
-                and hasattr(item.model, "socket_node")
-                and hasattr(item.model, "socket_attr")
+                isinstance(item, ConnectionView)
                 and item.model.plug_node == connection_model.plug_node
                 and item.model.plug_attr == connection_model.plug_attr
                 and item.model.socket_node == connection_model.socket_node
@@ -1051,12 +1024,7 @@ class GraphController(BaseController):
     ) -> Optional[QtWidgets.QGraphicsItem]:
         """Find a node view by name."""
         for item in self.scene.items():
-            if (
-                type(item).__name__ == "NodeView"
-                and hasattr(item, "model")
-                and hasattr(item.model, "name")
-                and item.model.name == node_name
-            ):
+            if isinstance(item, NodeView) and item.model.name == node_name:
                 return item
         return None
 

@@ -830,7 +830,7 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
         # Find all connection views in the scene
         for item in self.scene().items():
             # Check if it's a connection view
-            if type(item).__name__ != "ConnectionView":
+            if not isinstance(item, ConnectionView):
                 continue
 
             # Check if this connection is connected to this node

@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional, Union
 from qtpy import QtCore, QtGui, QtWidgets
 
 from .models import GraphModel
-from .views import ViewSignals
+from .views import ViewSignals, NodeView, ConnectionView
 from .controllers import NodzAPI
 
 
@@ -77,7 +77,7 @@ class NodzScene(QtWidgets.QGraphicsScene):
         # Find all connection views in the scene
         for item in self.items():
             # Check if it's a connection view
-            if type(item).__name__ != "ConnectionView":
+            if not isinstance(item, ConnectionView):
                 continue
 
             # Check if it has the necessary attributes
@@ -695,10 +695,7 @@ class NodzView(QtWidgets.QGraphicsView):
         selected_nodes = [
             item
             for item in self.nodz_scene.selectedItems()
-            if isinstance(item, QtWidgets.QGraphicsItem)
-            and hasattr(item, "model")
-            and hasattr(item.model, "name")
-            and type(item).__name__ == "NodeView"
+            if isinstance(item, NodeView)
         ]
 
         if not selected_nodes:
@@ -732,12 +729,7 @@ class NodzView(QtWidgets.QGraphicsView):
         # Get all connections
         connections = []
         for item in self.nodz_scene.items():
-            if (
-                type(item).__name__ == "ConnectionView"
-                and hasattr(item, "model")
-                and hasattr(item.model, "plug_node")
-                and hasattr(item.model, "socket_node")
-            ):
+            if isinstance(item, ConnectionView):
                 connections.append(
                     (item.model.plug_node, item.model.socket_node)
                 )
@@ -884,7 +876,7 @@ class NodzView(QtWidgets.QGraphicsView):
         # Find all connection views in the scene
         for item in self.nodz_scene.items():
             # Check if it's a connection view
-            if type(item).__name__ != "ConnectionView":
+            if not isinstance(item, ConnectionView):
                 continue
 
             # Check if it has the necessary attributes
@@ -917,16 +909,13 @@ class NodzView(QtWidgets.QGraphicsView):
         # Get all selected nodes
         selected_nodes = set()
         for item in self.nodz_scene.selectedItems():
-            if (isinstance(item, QtWidgets.QGraphicsItem)
-                and hasattr(item, "model")
-                and hasattr(item.model, "name")
-                and type(item).__name__ == "NodeView"):
+            if isinstance(item, NodeView):
                 selected_nodes.add(item.model.name)
 
         # Find all connection views and update their Z values
         for item in self.nodz_scene.items():
             # Check if it's a connection view
-            if type(item).__name__ != "ConnectionView":
+            if not isinstance(item, ConnectionView):
                 continue
 
             # Check if it has the necessary attributes
@@ -954,7 +943,7 @@ class NodzView(QtWidgets.QGraphicsView):
         # Find all connection views in the scene
         for item in self.nodz_scene.items():
             # Check if it's a connection view
-            if type(item).__name__ != "ConnectionView":
+            if not isinstance(item, ConnectionView):
                 continue
 
             # Check if it has the necessary attributes
@@ -974,11 +963,7 @@ class NodzView(QtWidgets.QGraphicsView):
             target_node = None
 
             for node_item in self.nodz_scene.items():
-                if (
-                    type(node_item).__name__ != "NodeView"
-                    or not hasattr(node_item, "model")
-                    or not hasattr(node_item.model, "name")
-                ):
+                if not isinstance(node_item, NodeView):
                     continue
 
                 if node_item.model.name == item.model.plug_node:
@@ -1022,10 +1007,7 @@ class NodzView(QtWidgets.QGraphicsView):
         selected_nodes = [
             item
             for item in self.nodz_scene.selectedItems()
-            if isinstance(item, QtWidgets.QGraphicsItem)
-            and hasattr(item, "model")
-            and hasattr(item.model, "name")
-            and type(item).__name__ == "NodeView"
+            if isinstance(item, NodeView)
         ]
 
         for node in selected_nodes:
