@@ -188,6 +188,9 @@ class NodzView(QtWidgets.QGraphicsView):
         self._show_help = True
         self._viewport_help_document = None
 
+        # Grid snapping state
+        self._grid_snap_enabled = False
+
         # Rubberband selection
         self.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)  # We'll handle rubberband manually
         self.rubberband_origin = QtCore.QPoint()
@@ -565,7 +568,14 @@ class NodzView(QtWidgets.QGraphicsView):
             )
             super().mouseMoveEvent(event)
         else:
-            super().mouseMoveEvent(event)
+            # If grid snapping is enabled and we're dragging nodes, snap them to grid
+            if self._grid_snap_enabled and event.buttons() & QtCore.Qt.MouseButton.LeftButton:
+                # Let the default move happen first
+                super().mouseMoveEvent(event)
+                # Then snap any selected nodes to grid
+                self._snap_selected_nodes_to_grid()
+            else:
+                super().mouseMoveEvent(event)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         """Handle key press events."""
@@ -582,9 +592,11 @@ class NodzView(QtWidgets.QGraphicsView):
         # Layout graph with 'L'
         elif event.key() == QtCore.Qt.Key.Key_L:
             self.layout_graph()
-        # Save graph with 'S'
+        # Enable grid snapping with 'S' (hold down)
         elif event.key() == QtCore.Qt.Key.Key_S:
-            self.api.save_graph("nodz_graph.json")
+            if not event.isAutoRepeat():  # Only on first press, not auto-repeat
+                self._grid_snap_enabled = True
+                self._snap_selected_nodes_to_grid()
         # Load graph with 'O'
         elif event.key() == QtCore.Qt.Key.Key_O:
             self.api.load_graph("nodz_graph.json")
@@ -599,6 +611,15 @@ class NodzView(QtWidgets.QGraphicsView):
             self.delete_selected()
         else:
             super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event: QtGui.QKeyEvent) -> None:
+        """Handle key release events."""
+        # Disable grid snapping when 'S' is released
+        if event.key() == QtCore.Qt.Key.Key_S:
+            if not event.isAutoRepeat():  # Only on actual release, not auto-repeat
+                self._grid_snap_enabled = False
+        else:
+            super().keyReleaseEvent(event)
 
     def _apply_viewport_margin(self, rect: QtCore.QRectF) -> None:
         """
@@ -998,6 +1019,39 @@ class NodzView(QtWidgets.QGraphicsView):
 
         # Update connection Z values after updating paths
         self._update_connection_z_values()
+
+    def _snap_selected_nodes_to_grid(self) -> None:
+        """Snap all selected nodes to the grid."""
+        grid_size = self.config["grid_size"]
+
+        # Get all selected node views
+        selected_nodes = [
+            item
+            for item in self.nodz_scene.selectedItems()
+            if isinstance(item, QtWidgets.QGraphicsItem)
+            and hasattr(item, "model")
+            and hasattr(item.model, "name")
+            and type(item).__name__ == "NodeView"
+        ]
+
+        for node in selected_nodes:
+            # Get current position
+            current_pos = node.pos()
+
+            # Calculate snapped position
+            snapped_x = round(current_pos.x() / grid_size) * grid_size
+            snapped_y = round(current_pos.y() / grid_size) * grid_size
+            snapped_pos = QtCore.QPointF(snapped_x, snapped_y)
+
+            # Set the snapped position
+            node.setPos(snapped_pos)
+
+            # Update model position if it exists
+            if hasattr(node, "model") and hasattr(node.model, "_position"):
+                node.model._position = snapped_pos
+
+        # Update all connections after snapping
+        self._update_all_connections()
 
 
 def create_nodz_view(
