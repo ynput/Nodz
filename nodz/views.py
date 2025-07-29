@@ -399,6 +399,12 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
         self.source_point = source_point
         self.target_point = target_point
 
+        # Connection end grab zones (for disconnecting by dragging ends)
+        self._grab_radius = config.get("connection_grab_radius", 15.0)
+        self._is_dragging_end = False
+        self._dragging_source = False  # True if dragging source end, False if target end
+        self._drag_start_pos = QtCore.QPointF()
+
         # Setup
         self.setZValue(0)
         self._create_style()
@@ -440,28 +446,115 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
         path.cubicTo(ctrl1, ctrl2, self.target_point)
         self.setPath(path)
 
+    def _restore_original_endpoints(self) -> None:
+        """Restore connection endpoints to their original slot positions."""
+        # Find the source and target slots to get their current positions
+        if not self.scene():
+            return
+
+        # Find source slot (plug)
+        for item in self.scene().items():
+            if isinstance(item, NodeView) and item.model.name == self.model.plug_node:
+                if self.model.plug_attr in item.plugs:
+                    plug = item.plugs[self.model.plug_attr]
+                    self.source_point = plug.center()
+                break
+
+        # Find target slot (socket)
+        for item in self.scene().items():
+            if isinstance(item, NodeView) and item.model.name == self.model.socket_node:
+                if self.model.socket_attr in item.sockets:
+                    socket = item.sockets[self.model.socket_attr]
+                    self.target_point = socket.center()
+                break
+
+        # Update the path with restored endpoints
+        self.update_path()
+
     def mousePressEvent(
         self, event: QtWidgets.QGraphicsSceneMouseEvent
     ) -> None:
         """Handle mouse press events."""
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            # Bring connection to front
-            self.setZValue(1)
+            # Check if clicking near connection ends for disconnection
+            click_pos = event.pos()
+
+            # Check if clicking near source end
+            source_distance = (click_pos - self.mapFromScene(self.source_point)).manhattanLength()
+            target_distance = (click_pos - self.mapFromScene(self.target_point)).manhattanLength()
+
+            if source_distance <= self._grab_radius:
+                # Start dragging source end
+                self._is_dragging_end = True
+                self._dragging_source = True
+                self._drag_start_pos = click_pos
+                self.setZValue(2)  # Bring to front during drag
+                event.accept()
+                return
+            elif target_distance <= self._grab_radius:
+                # Start dragging target end
+                self._is_dragging_end = True
+                self._dragging_source = False
+                self._drag_start_pos = click_pos
+                self.setZValue(2)  # Bring to front during drag
+                event.accept()
+                return
+            else:
+                # Normal connection click - bring to front
+                self.setZValue(1)
+
         super().mousePressEvent(event)
 
-    def mouseDoubleClickEvent(
+    def mouseMoveEvent(
         self, event: QtWidgets.QGraphicsSceneMouseEvent
     ) -> None:
-        """Delete connection on double click."""
-        if event.button() == QtCore.Qt.MouseButton.LeftButton:
-            # Emit signal for controller to handle
-            self.signals.connection_deleted.emit(
-                self.model.plug_node,
-                self.model.plug_attr,
-                self.model.socket_node,
-                self.model.socket_attr,
-            )
-        super().mouseDoubleClickEvent(event)
+        """Handle mouse move events."""
+        if self._is_dragging_end:
+            # Update the dragged end position
+            new_pos = self.mapToScene(event.pos())
+
+            if self._dragging_source:
+                self.source_point = new_pos
+            else:
+                self.target_point = new_pos
+
+            # Update the connection path
+            self.update_path()
+            event.accept()
+            return
+
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(
+        self, event: QtWidgets.QGraphicsSceneMouseEvent
+    ) -> None:
+        """Handle mouse release events."""
+        if event.button() == QtCore.Qt.MouseButton.LeftButton and self._is_dragging_end:
+            # Check if we dragged far enough to disconnect
+            drag_distance = (event.pos() - self._drag_start_pos).manhattanLength()
+            disconnect_threshold = self._grab_radius * 2  # Must drag at least 2x grab radius
+
+            if drag_distance >= disconnect_threshold:
+                # Disconnect the connection
+                self.signals.connection_deleted.emit(
+                    self.model.plug_node,
+                    self.model.plug_attr,
+                    self.model.socket_node,
+                    self.model.socket_attr,
+                )
+            else:
+                # Snap back to original position if not dragged far enough
+                self._restore_original_endpoints()
+
+            # Reset drag state
+            self._is_dragging_end = False
+            self._dragging_source = False
+            self.setZValue(0)  # Return to normal Z level
+            event.accept()
+            return
+
+        super().mouseReleaseEvent(event)
+
 
 
 class NodeView(QtWidgets.QGraphicsItem, ModelObserver):

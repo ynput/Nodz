@@ -27,6 +27,7 @@
     "node_border": 2,
     "node_attr_height": 30,
     "connection_width": 2,
+    "connection_grab_radius": 15,
 
     // Default colors > Edit values BUT do not delete.
     "alternate_value": 20,
