@@ -837,7 +837,7 @@ class ConnectionController(BaseController):
     ) -> Optional[QtWidgets.QGraphicsItem]:
         """Find a node view by name."""
         for item in self.scene.items():
-            if isinstance(item, NodeView):
+            if isinstance(item, NodeView) and item.model.name == node_name:
                 return item
         return None
 

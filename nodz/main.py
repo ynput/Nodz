@@ -11,7 +11,7 @@ from typing import Any, Dict, Optional, Union
 from qtpy import QtCore, QtGui, QtWidgets
 
 from .models import GraphModel
-from .views import ViewSignals, NodeView, ConnectionView
+from .views import ViewSignals, NodeView, ConnectionView, SlotType
 from .controllers import NodzAPI
 
 
@@ -107,14 +107,14 @@ class NodzScene(QtWidgets.QGraphicsScene):
 
             if (
                 hasattr(slot, "slot_type")
-                and slot.slot_type.name == "PLUG"
+                and slot.slot_type == SlotType.PLUG
                 and item.model.plug_node == node_name
                 and item.model.plug_attr == attr_name
             ):
                 connections.append(item)
             elif (
                 hasattr(slot, "slot_type")
-                and slot.slot_type.name == "SOCKET"
+                and slot.slot_type == SlotType.SOCKET
                 and item.model.socket_node == node_name
                 and item.model.socket_attr == attr_name
             ):

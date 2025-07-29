@@ -9,6 +9,7 @@ with no data manipulation logic.
 from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
 from enum import Enum
 from qtpy import QtCore, QtGui, QtWidgets
+from qtpy.QtCore import Signal # type: ignore
 
 from .models import (
     BaseModel,
@@ -128,11 +129,13 @@ class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
             if isinstance(self, PlugView)
             else self.model.socket_max_connections
         )
-        if (
-            max_connections > 0
-            and len(self.scene().get_slot_connections(self)) >= max_connections
-        ):
-            return False
+        if max_connections > 0:
+            # Get connections for this slot
+            connections = []
+            if self.scene():
+                connections = self.scene().get_slot_connections(self)
+            if len(connections) >= max_connections:
+                return False
 
         # Check type compatibility
         if not AttrModel.is_compatible_type(
