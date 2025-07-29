@@ -762,9 +762,9 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
         """Adjust a color by a factor."""
         color = QtGui.QColor(*color_str)
         mult = color.lightness() / 255.0
-        color.setRed(max(0, color.red() - factor * mult))
-        color.setGreen(max(0, color.green() - factor * mult))
-        color.setBlue(max(0, color.blue() - factor * mult))
+        color.setRed(max(0, int(color.red() - factor * mult)))
+        color.setGreen(max(0, int(color.green() - factor * mult)))
+        color.setBlue(max(0, int(color.blue() - factor * mult)))
         return color.name()
 
     def mouseDoubleClickEvent(
