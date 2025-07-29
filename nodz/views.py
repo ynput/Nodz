@@ -31,21 +31,21 @@ class ViewSignals(QtCore.QObject):
     """Signals emitted by view components."""
 
     # Node signals
-    node_moved = QtCore.Signal(str, QtCore.QPointF)  # node_name, position
-    node_selected = QtCore.Signal(str, bool)  # node_name, selected
-    node_double_clicked = QtCore.Signal(str)  # node_name
+    node_moved = Signal(str, QtCore.QPointF)  # node_name, position
+    node_selected = Signal(str, bool)  # node_name, selected
+    node_double_clicked = Signal(str)  # node_name
 
     # Attribute signals
-    attr_connection_started = QtCore.Signal(
+    attr_connection_started = Signal(
         str, str, QtCore.QPoint
     )  # node_name, attr_name, position
-    attr_connection_dragged = QtCore.Signal(QtCore.QPoint)  # position
+    attr_connection_dragged = Signal(QtCore.QPoint)  # position
 
     # Connection signals
-    connection_created = QtCore.Signal(
+    connection_created = Signal(
         str, str, str, str
     )  # source_node, source_attr, target_node, target_attr
-    connection_deleted = QtCore.Signal(
+    connection_deleted = Signal(
         str, str, str, str
     )  # source_node, source_attr, target_node, target_attr
 
