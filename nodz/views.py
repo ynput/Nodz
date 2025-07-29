@@ -36,6 +36,9 @@ class ViewSignals(QtCore.QObject):
     node_selected = Signal(str, bool)  # node_name, selected
     node_double_clicked = Signal(str)  # node_name
 
+    # Selection signals
+    selection_cleared = Signal()  # emitted when all selection is cleared
+
     # Attribute signals
     attr_connection_started = Signal(
         str, str, QtCore.QPoint
@@ -402,7 +405,9 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
         # Connection end grab zones (for disconnecting by dragging ends)
         self._grab_radius = config.get("connection_grab_radius", 15.0)
         self._is_dragging_end = False
-        self._dragging_source = False  # True if dragging source end, False if target end
+        self._dragging_source = (
+            False  # True if dragging source end, False if target end
+        )
         self._drag_start_pos = QtCore.QPointF()
 
         # Setup
@@ -454,7 +459,10 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
 
         # Find source slot (plug)
         for item in self.scene().items():
-            if isinstance(item, NodeView) and item.model.name == self.model.plug_node:
+            if (
+                isinstance(item, NodeView)
+                and item.model.name == self.model.plug_node
+            ):
                 if self.model.plug_attr in item.plugs:
                     plug = item.plugs[self.model.plug_attr]
                     self.source_point = plug.center()
@@ -462,7 +470,10 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
 
         # Find target slot (socket)
         for item in self.scene().items():
-            if isinstance(item, NodeView) and item.model.name == self.model.socket_node:
+            if (
+                isinstance(item, NodeView)
+                and item.model.name == self.model.socket_node
+            ):
                 if self.model.socket_attr in item.sockets:
                     socket = item.sockets[self.model.socket_attr]
                     self.target_point = socket.center()
@@ -480,8 +491,12 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
             click_pos = event.pos()
 
             # Check if clicking near source end
-            source_distance = (click_pos - self.mapFromScene(self.source_point)).manhattanLength()
-            target_distance = (click_pos - self.mapFromScene(self.target_point)).manhattanLength()
+            source_distance = (
+                click_pos - self.mapFromScene(self.source_point)
+            ).manhattanLength()
+            target_distance = (
+                click_pos - self.mapFromScene(self.target_point)
+            ).manhattanLength()
 
             if source_distance <= self._grab_radius:
                 # Start dragging source end
@@ -529,10 +544,17 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
         self, event: QtWidgets.QGraphicsSceneMouseEvent
     ) -> None:
         """Handle mouse release events."""
-        if event.button() == QtCore.Qt.MouseButton.LeftButton and self._is_dragging_end:
+        if (
+            event.button() == QtCore.Qt.MouseButton.LeftButton
+            and self._is_dragging_end
+        ):
             # Check if we dragged far enough to disconnect
-            drag_distance = (event.pos() - self._drag_start_pos).manhattanLength()
-            disconnect_threshold = self._grab_radius * 2  # Must drag at least 2x grab radius
+            drag_distance = (
+                event.pos() - self._drag_start_pos
+            ).manhattanLength()
+            disconnect_threshold = (
+                self._grab_radius * 2
+            )  # Must drag at least 2x grab radius
 
             if drag_distance >= disconnect_threshold:
                 # Disconnect the connection
@@ -554,7 +576,6 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
             return
 
         super().mouseReleaseEvent(event)
-
 
 
 class NodeView(QtWidgets.QGraphicsItem, ModelObserver):

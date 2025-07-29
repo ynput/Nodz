@@ -480,6 +480,8 @@ class NodzView(QtWidgets.QGraphicsView):
                         & QtCore.Qt.KeyboardModifier.ControlModifier
                     ):
                         self.nodz_scene.clearSelection()
+                        # Emit signal when selection is cleared
+                        self.api.signals.selection_cleared.emit()
 
                 # Start rubberband selection
                 self.rubberband_origin = pos
