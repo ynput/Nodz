@@ -8,7 +8,7 @@ handling user interactions, and implementing business logic.
 
 import os
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 import functools
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -316,7 +316,7 @@ class NodeController(BaseController):
 
     def _find_node_view(
         self, node_name: str
-    ) -> Optional[QtWidgets.QGraphicsItem]:
+    ) -> Optional[NodeView]:
         """Find a node view by name."""
         for item in self.scene.items():
             if isinstance(item, NodeView) and item.model.name == node_name:
@@ -603,10 +603,11 @@ class ConnectionController(BaseController):
                 if not isinstance(item, (PlugView, SocketView)):
                     continue
 
-                if (
-                    not hasattr(item, "parentItem")
-                    or item.parentItem() != hovered_node_view
-                ):
+                try:
+                    parent_node = item.parent_node_view()
+                    if parent_node != hovered_node_view:
+                        continue
+                except (AttributeError, TypeError):
                     continue
 
                 # Gray out slots of the same type as the source (plug/plug or
@@ -662,7 +663,7 @@ class ConnectionController(BaseController):
 
     def _find_closest_compatible_slot(
         self, position: QtCore.QPoint
-    ) -> Optional[QtWidgets.QGraphicsItem]:
+    ) -> Optional[Union[PlugView, SocketView]]:
         """Find the closest compatible slot to the given position."""
         if not self.temp_connection or not hasattr(
             self.temp_connection, "model"
@@ -696,12 +697,11 @@ class ConnectionController(BaseController):
                 continue
 
             # Check if it's not on the same node
-            if (
-                not hasattr(item, "parentItem")
-                or not item.parentItem()
-                or not hasattr(item.parentItem(), "model")
-                or not hasattr(item.parentItem().model, "name")
-            ):
+            try:
+                parent_node = item.parent_node_view()
+                if not hasattr(parent_node, "model") or not hasattr(parent_node.model, "name"):
+                    continue
+            except (AttributeError, TypeError):
                 continue
 
             source_node = (
@@ -709,7 +709,7 @@ class ConnectionController(BaseController):
                 if source_is_plug
                 else self.temp_connection.model.socket_node
             )
-            if item.parentItem().model.name == source_node:
+            if parent_node.model.name == source_node:
                 continue
 
             # Add to compatible slots
@@ -814,7 +814,7 @@ class ConnectionController(BaseController):
 
     def _find_plug_view(
         self, node_name: str, attr_name: str
-    ) -> Optional[QtWidgets.QGraphicsItem]:
+    ) -> Optional[PlugView]:
         """Find a plug view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if (
@@ -827,7 +827,7 @@ class ConnectionController(BaseController):
 
     def _find_socket_view(
         self, node_name: str, attr_name: str
-    ) -> Optional[QtWidgets.QGraphicsItem]:
+    ) -> Optional[SocketView]:
         """Find a socket view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if (
@@ -840,7 +840,7 @@ class ConnectionController(BaseController):
 
     def _find_node_view(
         self, node_name: str
-    ) -> Optional[QtWidgets.QGraphicsItem]:
+    ) -> Optional[NodeView]:
         """Find a node view by name."""
         for item in self.scene.items():
             if isinstance(item, NodeView) and item.model.name == node_name:
@@ -849,7 +849,7 @@ class ConnectionController(BaseController):
 
     def _find_connection_view(
         self, connection_model: ConnectionModel
-    ) -> Optional[QtWidgets.QGraphicsItem]:
+    ) -> Optional[ConnectionView]:
         """Find a connection view by model."""
         for item in self.scene.items():
             # Check if it's a connection view by checking its class name
@@ -1001,7 +1001,7 @@ class GraphController(BaseController):
 
     def _find_plug_view(
         self, node_name: str, attr_name: str
-    ) -> Optional[QtWidgets.QGraphicsItem]:
+    ) -> Optional[PlugView]:
         """Find a plug view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if (
@@ -1014,7 +1014,7 @@ class GraphController(BaseController):
 
     def _find_socket_view(
         self, node_name: str, attr_name: str
-    ) -> Optional[QtWidgets.QGraphicsItem]:
+    ) -> Optional[SocketView]:
         """Find a socket view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if (
@@ -1027,7 +1027,7 @@ class GraphController(BaseController):
 
     def _find_node_view(
         self, node_name: str
-    ) -> Optional[QtWidgets.QGraphicsItem]:
+    ) -> Optional[NodeView]:
         """Find a node view by name."""
         for item in self.scene.items():
             if isinstance(item, NodeView) and item.model.name == node_name:

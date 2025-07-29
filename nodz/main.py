@@ -10,8 +10,7 @@ import sys
 from typing import Any, Dict, Optional, Union
 from qtpy import QtCore, QtGui, QtWidgets
 
-from .models import GraphModel
-from .views import ViewSignals, NodeView, ConnectionView, SlotType
+from .views import NodeView, ConnectionView, SlotType
 from .controllers import NodzAPI
 
 
@@ -155,10 +154,10 @@ class LineRubberBand(QtWidgets.QRubberBand):
 
         # Convert global coordinates to local widget coordinates
         local_start = self.mapFromGlobal(
-            self.parent().mapToGlobal(self.start_point)
+            self.parent().mapToGlobal(self.start_point)  # type: ignore
         )
         local_end = self.mapFromGlobal(
-            self.parent().mapToGlobal(self.end_point)
+            self.parent().mapToGlobal(self.end_point)  # type: ignore
         )
 
         # Draw the line
@@ -703,9 +702,7 @@ class NodzView(QtWidgets.QGraphicsView):
         selected_items = [
             item
             for item in self.nodz_scene.selectedItems()
-            if isinstance(item, QtWidgets.QGraphicsItem)
-            and hasattr(item, "model")
-            and hasattr(item.model, "name")
+            if isinstance(item, NodeView)
         ]
 
         if not selected_items:
@@ -758,9 +755,7 @@ class NodzView(QtWidgets.QGraphicsView):
         node_views = [
             item
             for item in self.nodz_scene.items()
-            if isinstance(item, QtWidgets.QGraphicsItem)
-            and hasattr(item, "model")
-            and hasattr(item.model, "name")
+            if isinstance(item, NodeView)
         ]
 
         if not node_views:

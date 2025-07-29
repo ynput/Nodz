@@ -1,4 +1,3 @@
-import json
 import logging
 import typing
 from qtpy import QtCore

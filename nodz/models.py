@@ -6,9 +6,8 @@ Models are responsible only for data storage and validation,
 with no UI or rendering logic.
 """
 
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Union, get_origin, get_args
 from collections import OrderedDict
-from dataclasses import dataclass, field
 from qtpy import QtCore
 
 
@@ -156,7 +155,6 @@ class AttrModel(BaseModel):
         Returns:
             bool: True if compatible, False otherwise.
         """
-        from typing import Any as TypingAny, Union, get_origin, get_args
 
         if str(plug_type) == "typing.Any" or str(socket_type) == "typing.Any":
             return True

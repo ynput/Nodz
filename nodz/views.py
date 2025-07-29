@@ -9,7 +9,7 @@ with no data manipulation logic.
 from typing import Any, Dict, Optional
 from enum import Enum
 from qtpy import QtCore, QtGui, QtWidgets
-from qtpy.QtCore import Signal # type: ignore
+from qtpy.QtCore import Signal  # type: ignore
 
 from .models import (
     BaseModel,
@@ -133,7 +133,7 @@ class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
             # Get connections for this slot
             connections = []
             if self.scene():
-                connections = self.scene().get_slot_connections(self)
+                connections = self.scene().get_slot_connections(self)  # type: ignore
             if len(connections) >= max_connections:
                 return False
 
