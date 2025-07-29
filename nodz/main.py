@@ -1127,6 +1127,9 @@ class NodzView(QtWidgets.QGraphicsView):
                     node.setPos(position)
                     positioned_nodes.add(node)
 
+                    # Emit node_moved signal for programmatic positioning
+                    self.api.signals.node_moved.emit(node.model.name, position)
+
                     # Move to next vertical position
                     y_position += node_height + vertical_spacing
 
