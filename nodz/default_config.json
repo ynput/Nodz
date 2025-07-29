@@ -1,18 +1,18 @@
 {
     // General > Edit values BUT do not delete.
-    "scene_width": 2000,
-    "scene_height": 2000,
+    "scene_width": 4000,
+    "scene_height": 4000,
     "grid_size": 36,
     "antialiasing": true,
     "antialiasing_boost": true,
     "smooth_pixmap": true,
 
     // Viewport focus margins
-    "viewport_margins": 30,
+    "viewport_margins": 40,
 
     // nodes spacing when automatically laid out.
-    "horizontal_node_spacing": 75,
-    "vertical_node_spacing": 35,
+    "horizontal_node_spacing": 80,
+    "vertical_node_spacing": 40,
 
     "node_font": "Arial",
     "node_font_size": 12,

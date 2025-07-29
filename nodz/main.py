@@ -7,11 +7,12 @@ It demonstrates how to use the MVC architecture to create a Nodz application.
 
 import os
 import sys
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, Optional, Union, List
 from qtpy import QtCore, QtGui, QtWidgets
 
 from .views import NodeView, ConnectionView, SlotType
 from .controllers import NodzAPI
+from .utils import nlog
 
 
 DEFAULT_CONFIG_PATH = os.path.join(
@@ -749,167 +750,393 @@ class NodzView(QtWidgets.QGraphicsView):
             if hasattr(node.model, "name"):
                 self.api.delete_node(node.model.name)
 
+    def _center_graph_in_scene(self):
+        """
+        Move all nodes to the center of the scene.
+        """
+        # Center the graph in the scene
+        scene_center = self.scene().sceneRect().center()
+        graph_center = self.scene().itemsBoundingRect().center()
+        offset = scene_center - graph_center
+
+        node_views = self._get_all_node_views()
+
+        for node in node_views:
+            node.setPos(node.pos() + offset)
+
+        self._update_all_connections()
+
     def layout_graph(self) -> None:
-        """Layout the graph automatically based on node ranking."""
-        # Get all node views
-        node_views = [
+        """
+        Organize nodes in the graph according to their connections using a
+        hierarchical layout.
+
+        This method arranges nodes in columns based on their dependency
+        relationships, with root nodes (no incoming connections) on the left
+        and dependent nodes arranged in subsequent columns to the right.
+
+        Raises:
+            ValueError: If the scene or configuration is invalid
+        """
+        try:
+            node_views = self._get_all_node_views()
+            if not node_views:
+                return
+
+            # Build node mapping and connection data
+            name_to_views = self._build_node_mapping(node_views)
+            if not name_to_views:
+                return
+
+            node_connections = self._analyze_node_connections(name_to_views)
+
+            # Find nodes that have no incoming connections (root nodes)
+            root_nodes = self._find_root_nodes(name_to_views, node_connections)
+            if not root_nodes:
+                # If no root nodes found, treat all nodes as roots (disconnected graph)
+                root_nodes = list(name_to_views.values())
+
+            # Layout each root node hierarchy
+            layout_config = self._get_layout_config()
+            self._layout_node_hierarchies(
+                root_nodes, name_to_views, node_connections, layout_config
+            )
+
+            # Update visual elements
+            self._finalize_layout()
+
+        except Exception as e:
+            nlog.error(f"Error during graph layout: {e}")
+            # Fallback: just center the graph without changing positions
+            self._center_graph_in_scene()
+
+    def _get_all_node_views(self) -> List[NodeView]:
+        """Get all NodeView items from the scene."""
+        return [
             item
             for item in self.nodz_scene.items()
             if isinstance(item, NodeView)
         ]
 
-        if not node_views:
-            return
+    def _build_node_mapping(
+        self, node_views: List[NodeView]
+    ) -> Dict[str, NodeView]:
+        """
+        Build a mapping from node names to NodeView objects.
 
-        # Create a mapping from node name to node view
-        node_view_map = {
-            node_view.model.name: node_view for node_view in node_views
+        Args:
+            node_views: List of NodeView objects
+
+        Returns:
+            Dictionary mapping node names to NodeView objects
+
+        Raises:
+            ValueError: If nodes have invalid models or duplicate names
+        """
+        name_to_views = {}
+
+        for node in node_views:
+            node_name = node.model.name
+            if not node_name:
+                nlog.warning("Node has empty name, skipping")
+                continue
+
+            if node_name in name_to_views:
+                nlog.warning(
+                    f"Duplicate node name '{node_name}', using latest instance"
+                )
+
+            name_to_views[node_name] = node
+
+        return name_to_views
+
+    def _analyze_node_connections(
+        self, name_to_views: Dict[str, NodeView]
+    ) -> Dict[str, Dict[str, List]]:
+        """
+        Analyze all connections in the scene and categorize them by node.
+
+        Args:
+            name_to_views: Mapping of node names to NodeView objects
+
+        Returns:
+            Dict mapping node names to their connection data:
+            {
+                "node_name": {
+                    "plugs": [list of outgoing connections],
+                    "sockets": [list of incoming connections]
+                }
+            }
+        """
+        node_connections = {
+            name: {"plugs": [], "sockets": []} for name in name_to_views.keys()
         }
 
-        # Get all connections
-        connections = []
+        # Collect all connection views from the scene
         for item in self.nodz_scene.items():
-            if isinstance(item, ConnectionView):
-                connections.append(
-                    (item.model.plug_node, item.model.socket_node)
+            if not isinstance(item, ConnectionView):
+                continue
+
+            plug_node = item.model.plug_node
+            socket_node = item.model.socket_node
+
+            # Validate node names exist in our mapping
+            if plug_node not in name_to_views:
+                nlog.warning(
+                    f"Connection references unknown plug node '{plug_node}', skipping"
+                )
+                continue
+
+            if socket_node not in name_to_views:
+                nlog.warning(
+                    f"Connection references unknown socket node '{socket_node}', skipping"
+                )
+                continue
+
+            # Add connection to the appropriate node's lists
+            node_connections[plug_node]["plugs"].append(item)
+            node_connections[socket_node]["sockets"].append(item)
+
+        return node_connections
+
+    def _find_root_nodes(
+        self,
+        name_to_views: Dict[str, NodeView],
+        node_connections: Dict[str, Dict[str, List]],
+    ) -> List[NodeView]:
+        """
+        Find root nodes (nodes with no incoming connections).
+
+        Args:
+            name_to_views: Mapping of node names to NodeView objects
+            node_connections: Connection data for each node
+
+        Returns:
+            List of NodeView objects that are root nodes
+        """
+        root_nodes = [
+            node
+            for name, node in name_to_views.items()
+            if len(node_connections[name]["plugs"]) == 0
+        ]
+        return root_nodes
+
+    def _get_layout_config(self) -> Dict[str, float]:
+        """
+        Get layout configuration values with fallback defaults.
+
+        Returns:
+            Dictionary with horizontal_spacing and vertical_spacing values
+        """
+        try:
+            horizontal_spacing = self.config.get(
+                "horizontal_node_spacing", 80.0
+            )
+            vertical_spacing = self.config.get("vertical_node_spacing", 40.0)
+
+            return {
+                "horizontal_spacing": float(horizontal_spacing),
+                "vertical_spacing": float(vertical_spacing),
+            }
+        except (KeyError, TypeError, ValueError) as e:
+            nlog.warning(f"Error reading layout config: {e}, using defaults")
+            return {"horizontal_spacing": 80.0, "vertical_spacing": 40.0}
+
+    def _layout_node_hierarchies(
+        self,
+        root_nodes: List[NodeView],
+        name_to_views: Dict[str, NodeView],
+        node_connections: Dict[str, Dict[str, List]],
+        layout_config: Dict[str, float],
+    ) -> None:
+        """
+        Layout each root node hierarchy separately.
+
+        Args:
+            root_nodes: List of root nodes to layout
+            name_to_views: Mapping of node names to NodeView objects
+            node_connections: Connection data for each node
+            layout_config: Layout spacing configuration
+        """
+        start_x_position = layout_config["horizontal_spacing"]
+        current_y_offset = 0
+
+        for root_node in root_nodes:
+            # Build the hierarchy tree for this root node
+            hierarchy_levels = self._build_node_hierarchy(
+                root_node, name_to_views, node_connections
+            )
+
+            # Position nodes in this hierarchy
+            max_y_position = self._position_hierarchy_nodes(
+                hierarchy_levels,
+                start_x_position,
+                current_y_offset,
+                layout_config,
+                root_nodes[0].base_width,
+            )
+
+            # Update y offset for next root node hierarchy
+            current_y_offset = max_y_position
+
+    def _build_node_hierarchy(
+        self,
+        root_node: NodeView,
+        name_to_views: Dict[str, NodeView],
+        node_connections: Dict[str, Dict[str, List]],
+    ) -> List[List[tuple]]:
+        """
+        Build a hierarchical representation of nodes starting from a root node.
+
+        Args:
+            root_node: The root node to start from
+            name_to_views: Mapping of node names to NodeView objects
+            node_connections: Connection data for each node
+
+        Returns:
+            List of levels, where each level contains tuples of (node, width, height)
+        """
+        # Initialize with root node at level 0
+        hierarchy_levels = [
+            [(root_node, root_node.base_width, root_node.height)]
+        ]
+
+        current_level = 0
+        while current_level >= 0:
+            has_connections_at_level = False
+
+            # Process each node at the current level
+            for node, _, _ in hierarchy_levels[current_level]:
+                # Find all nodes connected to this node's sockets
+                connected_nodes = self._find_connected_nodes(
+                    node, name_to_views, node_connections
                 )
 
-        # Calculate node ranks
-        ranks = {}
-        incoming_connections = {
-            node_name: 0 for node_name in node_view_map.keys()
-        }
+                if connected_nodes:
+                    has_connections_at_level = True
 
-        # Count incoming connections for each node
-        for source, target in connections:
-            if target in incoming_connections:
-                incoming_connections[target] += 1
+                    # Ensure next level exists
+                    if len(hierarchy_levels) <= current_level + 1:
+                        hierarchy_levels.append([])
 
-        # Assign rank 0 to nodes with no incoming connections
-        rank = 0
-        remaining_nodes = set(node_view_map.keys())
+                    # Add connected nodes to next level
+                    for connected_node in connected_nodes:
+                        hierarchy_levels[current_level + 1].append(
+                            (
+                                connected_node,
+                                connected_node.base_width,
+                                connected_node.height,
+                            )
+                        )
 
-        while remaining_nodes:
-            # Find nodes with no incoming connections
-            current_rank_nodes = [
-                node
-                for node in remaining_nodes
-                if incoming_connections[node] == 0
-            ]
+            # Move to next level if there were connections, otherwise stop
+            current_level = (
+                current_level + 1 if has_connections_at_level else -1
+            )
 
-            if not current_rank_nodes:
-                # Handle cycles by assigning the current rank to a node and
-                # decrementing its incoming count
-                node = next(iter(remaining_nodes))
-                ranks[node] = rank
-                remaining_nodes.remove(node)
+        return hierarchy_levels
 
-                # Decrement incoming count for nodes connected to this node
-                for source, target in connections:
-                    if source == node and target in remaining_nodes:
-                        incoming_connections[target] -= 1
-            else:
-                # Assign current rank to nodes
-                for node in current_rank_nodes:
-                    ranks[node] = rank
-                    remaining_nodes.remove(node)
+    def _find_connected_nodes(
+        self,
+        node: NodeView,
+        name_to_views: Dict[str, NodeView],
+        node_connections: Dict[str, Dict[str, List]],
+    ) -> List[NodeView]:
+        """
+        Find all nodes connected to the given node's sockets.
 
-                # Decrement incoming count for nodes connected to current
-                # rank nodes
-                for source, target in connections:
-                    if (
-                        source in current_rank_nodes
-                        and target in remaining_nodes
-                    ):
-                        incoming_connections[target] -= 1
+        Args:
+            node: The node to find connections for
+            name_to_views: Mapping of node names to NodeView objects
+            node_connections: Connection data for each node
 
-                # Move to next rank
-                rank += 1
+        Returns:
+            List of NodeView objects connected to this node
+        """
+        connected_nodes = []
 
-        # Group nodes by rank
-        nodes_by_rank = {}
-        for node_name, node_rank in ranks.items():
-            if node_rank not in nodes_by_rank:
-                nodes_by_rank[node_rank] = []
-            nodes_by_rank[node_rank].append(node_name)
+        node_name = node.model.name
+        if node_name not in node_connections:
+            nlog.warning(f"Node '{node_name}' not found in connection data")
+            return connected_nodes
 
-        # Layout nodes in columns based on rank
-        grid_size = self.config["grid_size"]
-        max_width = 0
-        max_height = 0
+        # Check each socket attribute of the node
+        try:
+            for attribute_name, socket in node.sockets.items():
+                if attribute_name not in node.model.attributes:
+                    continue
 
-        # Find maximum node dimensions
-        for node_view in node_views:
-            rect = node_view.boundingRect()
-            max_width = max(max_width, rect.width())
-            max_height = max(max_height, rect.height())
+                # Find connections to this socket
+                for connection in node_connections[node_name]["sockets"]:
+                    source_node_name = connection.model.plug_node
+                    if source_node_name in name_to_views:
+                        source_node = name_to_views[source_node_name]
+                        connected_nodes.append(source_node)
+                    else:
+                        nlog.warning(
+                            f"Connected node '{source_node_name}' not found in node mapping"
+                        )
 
-        # Add padding
-        column_width = max_width + grid_size * 4
-        row_height = max_height + grid_size * 2
+        except (AttributeError, KeyError, TypeError) as e:
+            nlog.warning(
+                f"Error finding connected nodes for '{node_name}': {e}"
+            )
 
-        # Position nodes
-        for rank, nodes in sorted(nodes_by_rank.items()):
-            # Sort nodes within the same rank (optional)
-            nodes.sort()
+        return connected_nodes
 
-            # Position nodes in this rank
-            for i, node_name in enumerate(nodes):
-                node_view = node_view_map[node_name]
+    def _position_hierarchy_nodes(
+        self,
+        hierarchy_levels: List[List[tuple]],
+        start_x: float,
+        start_y: float,
+        layout_config: Dict[str, float],
+        base_node_width: float,
+    ) -> float:
+        """
+        Position nodes within a hierarchy based on their levels.
 
-                # Calculate position
-                x = rank * column_width
-                y = i * row_height
+        Args:
+            hierarchy_levels: List of levels with node data
+            start_x: Starting X position
+            start_y: Starting Y position
+            layout_config: Layout spacing configuration
+            base_node_width: Width of nodes for spacing calculations
 
-                # Set position
-                node_view.setPos(x, y)
+        Returns:
+            Maximum Y position used
+        """
+        max_y_position = 0
+        positioned_nodes = set()
 
-                # Update model position directly without triggering
-                # notifications
-                if hasattr(node_view.model, "_position"):
-                    node_view.model._position = QtCore.QPointF(x, y)
+        horizontal_spacing = layout_config["horizontal_spacing"]
+        vertical_spacing = layout_config["vertical_spacing"]
 
-        # Calculate the bounding rectangle of all nodes
-        min_x = min_y = float("inf")
-        max_x = max_y = float("-inf")
+        for level_index, level_nodes in enumerate(hierarchy_levels):
+            # Calculate X position for this level (moving left to right)
+            x_position = start_x - level_index * (
+                base_node_width + horizontal_spacing
+            )
+            y_position = start_y + vertical_spacing
 
-        for node_view in node_views:
-            rect = node_view.boundingRect()
-            pos = node_view.pos()
-            min_x = min(min_x, pos.x())
-            min_y = min(min_y, pos.y())
-            max_x = max(max_x, pos.x() + rect.width())
-            max_y = max(max_y, pos.y() + rect.height())
+            # Position each node in this level
+            for node, _, node_height in level_nodes:
+                if node not in positioned_nodes:
+                    position = QtCore.QPointF(x_position, y_position)
+                    node.setPos(position)
+                    positioned_nodes.add(node)
 
-        # Calculate the center of the nodes
-        nodes_center_x = (min_x + max_x) / 2
-        nodes_center_y = (min_y + max_y) / 2
+                    # Move to next vertical position
+                    y_position += node_height + vertical_spacing
 
-        # Calculate the center of the scene
-        scene_center_x = self.nodz_scene.sceneRect().width() / 2
-        scene_center_y = self.nodz_scene.sceneRect().height() / 2
+            max_y_position = max(max_y_position, y_position)
 
-        # Calculate the offset to center the nodes
-        offset_x = scene_center_x - nodes_center_x
-        offset_y = scene_center_y - nodes_center_y
+        return max_y_position
 
-        # Apply the offset to all nodes
-        for node_view in node_views:
-            pos = node_view.pos()
-            node_view.setPos(pos.x() + offset_x, pos.y() + offset_y)
-
-            # Update model position directly without triggering notifications
-            if hasattr(node_view, "model") and hasattr(
-                node_view.model, "_position"
-            ):
-                node_view.model._position = QtCore.QPointF(
-                    pos.x() + offset_x, pos.y() + offset_y
-                )
-
-        # Update all connections
+    def _finalize_layout(self) -> None:
+        """Update connections, center graph, and refresh the view."""
         self._update_all_connections()
-
-        # Frame all nodes
+        self.scene().update()
+        self._center_graph_in_scene()
         self.frame_all()
 
     def _find_intersecting_connections(
