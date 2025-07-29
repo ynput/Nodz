@@ -682,9 +682,7 @@ class ConnectionController(BaseController):
                         item.boundingRect().width() / 2,
                         item.boundingRect().height() / 2,
                     )
-                    distance = (node_center.x() - position.x()) ** 2 + (
-                        node_center.y() - position.y()
-                    ) ** 2
+                    distance = (node_center - position).manhattanLength()
 
                     if distance < min_distance:
                         min_distance = distance
@@ -821,10 +819,7 @@ class ConnectionController(BaseController):
             if not hasattr(slot, "center"):
                 continue
 
-            center = slot.center()
-            distance = (center.x() - position.x()) ** 2 + (
-                center.y() - position.y()
-            ) ** 2
+            distance = (slot.center() - position).manhattanLength()
 
             if distance < min_distance:
                 min_distance = distance
