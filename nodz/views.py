@@ -938,6 +938,9 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
                 if hasattr(self.model, "_position"):
                     self.model._position = self.pos()
 
+                # Emit node_moved signal
+                self.signals.node_moved.emit(self.model.name, self.pos())
+
                 # Update connections attached to this node
                 self._update_connected_paths()
             super().mouseReleaseEvent(event)
