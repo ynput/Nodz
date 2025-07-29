@@ -6,7 +6,7 @@ Views are responsible only for rendering and user interaction,
 with no data manipulation logic.
 """
 
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, Optional
 from enum import Enum
 from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Signal # type: ignore
@@ -207,7 +207,8 @@ class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
                 super().mouseReleaseEvent(event)
                 return
 
-            # Use snapped target slot if available, otherwise find item at release position
+            # Use snapped target slot if available, otherwise find item at
+            # release position
             target = SlotView.snapped_target_slot
             if not target:
                 target = self.scene().itemAt(
@@ -215,7 +216,9 @@ class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
                 )
 
             # If target is a compatible slot, create connection
-            if isinstance(target, SlotView) and target.can_connect_to(SlotView.source_slot):
+            if isinstance(target, SlotView) and target.can_connect_to(
+                SlotView.source_slot
+            ):
                 # Determine source and target based on slot types
                 source_is_plug = isinstance(SlotView.source_slot, PlugView)
                 target_is_socket = isinstance(target, SocketView)
@@ -249,8 +252,10 @@ class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
                     source_node, source_attr, target_node, target_attr
                 )
             else:
-                # If target is not a compatible slot, emit a signal to delete the temporary connection
-                # We use empty strings for target_node and target_attr to indicate an invalid connection
+                # If target is not a compatible slot, emit a signal to delete
+                # the temporary connection.
+                # We use empty strings for target_node and target_attr to
+                # indicate an invalid connection.
                 try:
                     source_node = (
                         SlotView.source_slot.parent_node_view().model.name
@@ -261,7 +266,7 @@ class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
                     self.signals.connection_created.emit(
                         source_node, source_attr, "", ""
                     )
-                except:
+                except Exception:
                     # Handle any errors that might occur
                     pass
 
@@ -814,7 +819,8 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             if self._moving:
                 self._moving = False
-                # Directly update the model's internal position attribute without triggering notifications
+                # Directly update the model's internal position attribute
+                # without triggering notifications
                 if hasattr(self.model, "_position"):
                     self.model._position = self.pos()
 

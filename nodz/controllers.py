@@ -8,12 +8,11 @@ handling user interactions, and implementing business logic.
 
 import os
 import json
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple
 import functools
 from qtpy import QtCore, QtGui, QtWidgets
 
 from .models import (
-    BaseModel,
     NodeModel,
     AttrModel,
     ConnectionModel,
@@ -21,7 +20,6 @@ from .models import (
 )
 from .views import (
     NodeView,
-    SlotView,
     PlugView,
     SocketView,
     ConnectionView,
@@ -94,7 +92,8 @@ class IncompatibleTypesError(ConnectionError):
         self.source_type = source_type
         self.target_type = target_type
         super().__init__(
-            f"Cannot connect incompatible types: {source_type} -> {target_type}"
+            "Cannot connect incompatible types: "
+            f"{source_type} -> {target_type}"
         )
 
 
@@ -283,7 +282,8 @@ class NodeController(BaseController):
         if new_name and new_name != attr_name:
             if new_name in node_model.attributes:
                 raise ValueError(
-                    f"Attribute '{new_name}' already exists on node '{node_name}'"
+                    f"Attribute '{new_name}' already exists on node "
+                    f"'{node_name}'"
                 )
             node_model.rename_attribute(attr_name, new_name)
             attr_name = new_name
@@ -380,11 +380,13 @@ class ConnectionController(BaseController):
 
         if not source_attr_model.plug:
             raise ConnectionError(
-                f"Attribute '{source_attr}' on node '{source_node}' is not a plug"
+                f"Attribute '{source_attr}' on node '{source_node}' "
+                "is not a plug"
             )
         if not target_attr_model.socket:
             raise ConnectionError(
-                f"Attribute '{target_attr}' on node '{target_node}' is not a socket"
+                f"Attribute '{target_attr}' on node '{target_node}' "
+                "is not a socket"
             )
 
         if not AttrModel.is_compatible_type(
@@ -511,11 +513,13 @@ class ConnectionController(BaseController):
             from .views import SlotView
 
             if closest_slot:
-                # Snap to the closest slot and store it for connection acceptance
+                # Snap to the closest slot and store it for connection
+                # acceptance
                 self.temp_connection.target_point = closest_slot.center()
                 SlotView.snapped_target_slot = closest_slot
             else:
-                # Update the temporary connection end point to the mouse position
+                # Update the temporary connection end point to the mouse
+                # position
                 self.temp_connection.target_point = QtCore.QPointF(position)
                 SlotView.snapped_target_slot = None
 
@@ -617,7 +621,8 @@ class ConnectionController(BaseController):
                         item.update()
                     continue
 
-                # For slots of the opposite type, check data type compatibility
+                # For slots of the opposite type, check data type
+                # compatibility
                 if not hasattr(item, "model") or not hasattr(
                     item.model, "attribute"
                 ):
@@ -753,8 +758,9 @@ class ConnectionController(BaseController):
             self.scene.removeItem(self.temp_connection)
             self.temp_connection = None
 
-        # If target_node or target_attr is empty, it means the connection is invalid
-        # In this case, we just remove the temporary connection and don't create a new one
+        # If target_node or target_attr is empty, it means the connection
+        # is invalid. In this case, we just remove the temporary connection
+        # and don't create a new one.
         if not target_node or not target_attr:
             return
 
@@ -1047,7 +1053,8 @@ class NodzAPI:
 
         Args:
             scene: The QGraphicsScene to operate on
-            config: Configuration dictionary containing styling and behavior settings
+            config: Configuration dictionary containing styling and behavior
+                    settings.
         """
         # Create models
         self.graph_model = GraphModel()
@@ -1081,7 +1088,8 @@ class NodzAPI:
         Args:
             name: Unique name for the node
             preset: Visual preset to use (must exist in config)
-            position: Position in scene coordinates, or None for auto-positioning
+            position: Position in scene coordinates, or None for
+                      auto-positioning.
             alternate: Whether to use alternating row colors for attributes
             **kwargs: Additional properties to store with the node
 
@@ -1176,7 +1184,9 @@ class NodzAPI:
             raise NodeNotFoundError(node_name)
         return self.graph_model.nodes[node_name].position
 
-    def set_node_position(self, node_name: str, position: QtCore.QPointF) -> None:
+    def set_node_position(
+        self, node_name: str, position: QtCore.QPointF
+    ) -> None:
         """
         Set the position of a node.
 
@@ -1216,8 +1226,10 @@ class NodzAPI:
             plug: Whether this attribute can output connections
             socket: Whether this attribute can receive connections
             data_type: Data type for type checking connections
-            plug_max_connections: Maximum outgoing connections (-1 for unlimited)
-            socket_max_connections: Maximum incoming connections (-1 for unlimited)
+            plug_max_connections: Maximum outgoing connections
+                                  (-1 for unlimited)
+            socket_max_connections: Maximum incoming connections
+                                    (-1 for unlimited)
             **kwargs: Additional properties to store with the attribute
 
         Raises:
@@ -1328,7 +1340,8 @@ class NodzAPI:
         Raises:
             NodeNotFoundError: If either node doesn't exist
             AttributeNotFoundError: If either attribute doesn't exist
-            ConnectionError: If the attributes are not compatible for connection
+            ConnectionError: If the attributes are not compatible for
+                             connection
             IncompatibleTypesError: If the data types are not compatible
         """
         self.connection_controller.create_connection(
@@ -1363,7 +1376,12 @@ class NodzAPI:
             List of tuples (source_node, source_attr, target_node, target_attr)
         """
         return [
-            (conn.plug_node, conn.plug_attr, conn.socket_node, conn.socket_attr)
+            (
+                conn.plug_node,
+                conn.plug_attr,
+                conn.socket_node,
+                conn.socket_attr,
+            )
             for conn in self.graph_model.connections
         ]
 
@@ -1396,7 +1414,9 @@ class NodzAPI:
                 return True
         return False
 
-    def get_node_connections(self, node_name: str) -> List[Tuple[str, str, str, str]]:
+    def get_node_connections(
+        self, node_name: str
+    ) -> List[Tuple[str, str, str, str]]:
         """
         Get all connections involving a specific node.
 
@@ -1410,7 +1430,12 @@ class NodzAPI:
         for conn in self.graph_model.connections:
             if conn.plug_node == node_name or conn.socket_node == node_name:
                 connections.append(
-                    (conn.plug_node, conn.plug_attr, conn.socket_node, conn.socket_attr)
+                    (
+                        conn.plug_node,
+                        conn.plug_attr,
+                        conn.socket_node,
+                        conn.socket_attr,
+                    )
                 )
         return connections
 
@@ -1483,21 +1508,40 @@ class NodzAPI:
         # Check for orphaned connections
         for conn in self.graph_model.connections:
             if conn.plug_node not in self.graph_model.nodes:
-                errors.append(f"Connection references non-existent plug node: {conn.plug_node}")
-            elif conn.plug_attr not in self.graph_model.nodes[conn.plug_node].attributes:
-                errors.append(f"Connection references non-existent plug attribute: {conn.plug_node}.{conn.plug_attr}")
+                errors.append(
+                    "Connection references non-existent plug node: "
+                    f"{conn.plug_node}"
+                )
+            elif (
+                conn.plug_attr
+                not in self.graph_model.nodes[conn.plug_node].attributes
+            ):
+                errors.append(
+                    "Connection references non-existent plug attribute: "
+                    f"{conn.plug_node}.{conn.plug_attr}"
+                )
 
             if conn.socket_node not in self.graph_model.nodes:
-                errors.append(f"Connection references non-existent socket node: {conn.socket_node}")
-            elif conn.socket_attr not in self.graph_model.nodes[conn.socket_node].attributes:
-                errors.append(f"Connection references non-existent socket attribute: {conn.socket_node}.{conn.socket_attr}")
+                errors.append(
+                    "Connection references non-existent socket node: "
+                    f"{conn.socket_node}"
+                )
+            elif (
+                conn.socket_attr
+                not in self.graph_model.nodes[conn.socket_node].attributes
+            ):
+                errors.append(
+                    "Connection references non-existent socket attribute: "
+                    f"{conn.socket_node}.{conn.socket_attr}"
+                )
 
         return errors
 
     # Utility methods
     def get_upstream_nodes(self, node_name: str) -> List[str]:
         """
-        Get all nodes that connect to the specified node (upstream dependencies).
+        Get all nodes that connect to the specified node
+        (upstream dependencies).
 
         Args:
             node_name: Name of the node
@@ -1513,7 +1557,8 @@ class NodzAPI:
 
     def get_downstream_nodes(self, node_name: str) -> List[str]:
         """
-        Get all nodes that the specified node connects to (downstream dependencies).
+        Get all nodes that the specified node connects to
+        (downstream dependencies).
 
         Args:
             node_name: Name of the node
@@ -1609,8 +1654,9 @@ class NodzAPI:
         Set the logging level for Nodz.
 
         Args:
-            level: Logging level (logging.DEBUG, logging.INFO, logging.WARNING, logging.ERROR, logging.CRITICAL)
-                   or string ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
+            level: Logging level (logging.DEBUG, logging.INFO, logging.WARNING,
+                   logging.ERROR, logging.CRITICAL) or string ('DEBUG', 'INFO',
+                   'WARNING', 'ERROR', 'CRITICAL')
 
         Example:
             api.set_logging_level('DEBUG')

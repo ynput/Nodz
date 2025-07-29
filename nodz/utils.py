@@ -38,14 +38,6 @@ def get_logging_level():
     return nlog.level
 
 
-# Note: Removed unused utility functions:
-# - _convert_data_to_color
-# - _generate_alternate_color_multiplier
-# - _create_pointer_bounding_box
-# - _load_config (replaced by main.py implementation)
-# These functions were not used by the current MVC architecture.
-
-
 def json_encoder(obj):
     if isinstance(obj, QtCore.QPointF):
         obj = (obj.x(), obj.y())
@@ -64,9 +56,6 @@ def json_decoder(d: dict):
     if "data_type" in d:
         d["data_type"] = str_to_type(d["data_type"])
     return d
-
-# Note: Removed unused functions _save_data and _load_data
-# These are now handled by the controllers in the new MVC architecture.
 
 
 def str_to_type(val: typing.Union[str, type]):

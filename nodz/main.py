@@ -154,8 +154,12 @@ class LineRubberBand(QtWidgets.QRubberBand):
         painter.setPen(pen)
 
         # Convert global coordinates to local widget coordinates
-        local_start = self.mapFromGlobal(self.parent().mapToGlobal(self.start_point))
-        local_end = self.mapFromGlobal(self.parent().mapToGlobal(self.end_point))
+        local_start = self.mapFromGlobal(
+            self.parent().mapToGlobal(self.start_point)
+        )
+        local_end = self.mapFromGlobal(
+            self.parent().mapToGlobal(self.end_point)
+        )
 
         # Draw the line
         painter.drawLine(local_start, local_end)
@@ -192,11 +196,15 @@ class NodzView(QtWidgets.QGraphicsView):
         self._grid_snap_enabled = False
 
         # Rubberband selection
-        self.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)  # We'll handle rubberband manually
+        self.setDragMode(
+            QtWidgets.QGraphicsView.DragMode.NoDrag
+        )  # We'll handle rubberband manually
         self.rubberband_origin = QtCore.QPoint()
         self.rubberband_rect = QtCore.QRect()
         self.is_rubberband_active = False
-        self.selection_operation = QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+        self.selection_operation = (
+            QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+        )
         self.selection_mode = "replace"  # "replace" or "subtract"
         self.rubber_band = QtWidgets.QRubberBand(
             QtWidgets.QRubberBand.Shape.Rectangle, self
@@ -224,13 +232,15 @@ class NodzView(QtWidgets.QGraphicsView):
                 self.multi_line_pattern = re.compile(r"/\*.*?\*/", re.DOTALL)
 
             def strip_comments(self, text: str) -> str:
-                """Strip C-style comments from text and replace with empty lines."""
+                """Strip C-style comments from text and replace with empty
+                lines."""
 
                 # First, handle multi-line comments
                 def replace_with_newlines(match):
                     # Count the number of newlines in the comment
                     newlines = match.group(0).count("\n")
-                    # Replace with the same number of newlines to preserve line numbers
+                    # Replace with the same number of newlines to preserve
+                    # line numbers
                     return "\n" * newlines if newlines > 0 else ""
 
                 text = self.multi_line_pattern.sub(replace_with_newlines, text)
@@ -384,7 +394,9 @@ class NodzView(QtWidgets.QGraphicsView):
             # If clicking on an item
             if item and isinstance(item, QtWidgets.QGraphicsItem):
                 # Store current selection for Shift or Ctrl click
-                currently_selected = [i for i in self.nodz_scene.selectedItems()]
+                currently_selected = [
+                    i for i in self.nodz_scene.selectedItems()
+                ]
 
                 # Determine selection operation based on modifiers
                 if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier:
@@ -408,7 +420,8 @@ class NodzView(QtWidgets.QGraphicsView):
                     was_selected = item.isSelected()
                     item.setSelected(not was_selected)
 
-                    # Make sure previously selected items stay selected (except the toggled one)
+                    # Make sure previously selected items stay selected
+                    # (except the toggled one)
                     for selected_item in currently_selected:
                         if selected_item != item:
                             selected_item.setSelected(True)
@@ -431,26 +444,41 @@ class NodzView(QtWidgets.QGraphicsView):
             else:
                 # Store current selection if using Shift or Ctrl
                 self.previously_selected = []
-                if (modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier or
-                    modifiers & QtCore.Qt.KeyboardModifier.ControlModifier):
-                    self.previously_selected = [item for item in self.nodz_scene.selectedItems()]
+                if (
+                    modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier
+                    or modifiers & QtCore.Qt.KeyboardModifier.ControlModifier
+                ):
+                    self.previously_selected = [
+                        item for item in self.nodz_scene.selectedItems()
+                    ]
 
                 # Determine selection operation based on modifiers
                 if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier:
                     # Shift: add to selection
-                    self.selection_operation = QtCore.Qt.ItemSelectionOperation.AddToSelection
+                    self.selection_operation = (
+                        QtCore.Qt.ItemSelectionOperation.AddToSelection
+                    )
                 elif modifiers & QtCore.Qt.KeyboardModifier.ControlModifier:
-                    # Ctrl: subtract from selection (handled manually since there's no RemoveFromSelection)
+                    # Ctrl: subtract from selection (handled manually since
+                    # there's no RemoveFromSelection)
                     self.selection_mode = "subtract"
-                    self.selection_operation = QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+                    self.selection_operation = (
+                        QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+                    )
                 else:
                     # Normal: replace selection
                     self.selection_mode = "replace"
-                    self.selection_operation = QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+                    self.selection_operation = (
+                        QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+                    )
 
-                    # Clear selection if starting a new rubberband without modifiers
-                    if not (modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier or
-                            modifiers & QtCore.Qt.KeyboardModifier.ControlModifier):
+                    # Clear selection if starting a new rubberband without
+                    # modifiers
+                    if not (
+                        modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier
+                        or modifiers
+                        & QtCore.Qt.KeyboardModifier.ControlModifier
+                    ):
                         self.nodz_scene.clearSelection()
 
                 # Start rubberband selection
@@ -490,7 +518,9 @@ class NodzView(QtWidgets.QGraphicsView):
             scene_end = self.mapToScene(self.line_end)
 
             # Find connections that intersect with the line
-            connections_to_cut = self._find_intersecting_connections(scene_start, scene_end)
+            connections_to_cut = self._find_intersecting_connections(
+                scene_start, scene_end
+            )
 
             # Disconnect the intersecting connections
             for connection in connections_to_cut:
@@ -499,7 +529,7 @@ class NodzView(QtWidgets.QGraphicsView):
                         connection.model.plug_node,
                         connection.model.plug_attr,
                         connection.model.socket_node,
-                        connection.model.socket_attr
+                        connection.model.socket_attr,
                     )
 
             event.accept()
@@ -517,7 +547,10 @@ class NodzView(QtWidgets.QGraphicsView):
             # Get items in the rubber band
             items_in_rubber_band = self.nodz_scene.items(scene_rect)
 
-            if self.selection_operation == QtCore.Qt.ItemSelectionOperation.AddToSelection:
+            if (
+                self.selection_operation
+                == QtCore.Qt.ItemSelectionOperation.AddToSelection
+            ):
                 # Restore previous selection
                 for item in self.previously_selected:
                     item.setSelected(True)
@@ -538,7 +571,9 @@ class NodzView(QtWidgets.QGraphicsView):
                 self.nodz_scene.setSelectionArea(path)
 
             # Reset selection operation to default
-            self.selection_operation = QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+            self.selection_operation = (
+                QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+            )
             self.previously_selected = []
 
             # Update connection Z values after selection change
@@ -568,8 +603,12 @@ class NodzView(QtWidgets.QGraphicsView):
             )
             super().mouseMoveEvent(event)
         else:
-            # If grid snapping is enabled and we're dragging nodes, snap them to grid
-            if self._grid_snap_enabled and event.buttons() & QtCore.Qt.MouseButton.LeftButton:
+            # If grid snapping is enabled and we're dragging nodes, snap them
+            # to grid
+            if (
+                self._grid_snap_enabled
+                and event.buttons() & QtCore.Qt.MouseButton.LeftButton
+            ):
                 # Let the default move happen first
                 super().mouseMoveEvent(event)
                 # Then snap any selected nodes to grid
@@ -594,7 +633,9 @@ class NodzView(QtWidgets.QGraphicsView):
             self.layout_graph()
         # Enable grid snapping with 'S' (hold down)
         elif event.key() == QtCore.Qt.Key.Key_S:
-            if not event.isAutoRepeat():  # Only on first press, not auto-repeat
+            if (
+                not event.isAutoRepeat()
+            ):  # Only on first press, not auto-repeat
                 self._grid_snap_enabled = True
                 self._snap_selected_nodes_to_grid()
         # Delete selected nodes with Delete or Backspace
@@ -610,14 +651,17 @@ class NodzView(QtWidgets.QGraphicsView):
         """Handle key release events."""
         # Disable grid snapping when 'S' is released
         if event.key() == QtCore.Qt.Key.Key_S:
-            if not event.isAutoRepeat():  # Only on actual release, not auto-repeat
+            if (
+                not event.isAutoRepeat()
+            ):  # Only on actual release, not auto-repeat
                 self._grid_snap_enabled = False
         else:
             super().keyReleaseEvent(event)
 
     def _apply_viewport_margin(self, rect: QtCore.QRectF) -> None:
         """
-        Apply viewport margins to a rectangle, converting from viewport space to scene space.
+        Apply viewport margins to a rectangle, converting from viewport space
+        to scene space.
 
         Args:
             rect (QtCore.QRectF): The rectangle to adjust with margins.
@@ -635,7 +679,8 @@ class NodzView(QtWidgets.QGraphicsView):
         scene_point1 = self.mapToScene(viewport_point1)
         scene_point2 = self.mapToScene(viewport_point2)
 
-        # Calculate the scene margin (distance between the two points in scene coordinates)
+        # Calculate the scene margin (distance between the two points in scene
+        # coordinates)
         scene_margin = max(
             abs(scene_point2.x() - scene_point1.x()),
             abs(scene_point2.y() - scene_point1.y()),
@@ -758,7 +803,8 @@ class NodzView(QtWidgets.QGraphicsView):
             ]
 
             if not current_rank_nodes:
-                # Handle cycles by assigning the current rank to a node and decrementing its incoming count
+                # Handle cycles by assigning the current rank to a node and
+                # decrementing its incoming count
                 node = next(iter(remaining_nodes))
                 ranks[node] = rank
                 remaining_nodes.remove(node)
@@ -773,7 +819,8 @@ class NodzView(QtWidgets.QGraphicsView):
                     ranks[node] = rank
                     remaining_nodes.remove(node)
 
-                # Decrement incoming count for nodes connected to current rank nodes
+                # Decrement incoming count for nodes connected to current
+                # rank nodes
                 for source, target in connections:
                     if (
                         source in current_rank_nodes
@@ -822,7 +869,8 @@ class NodzView(QtWidgets.QGraphicsView):
                 # Set position
                 node_view.setPos(x, y)
 
-                # Update model position directly without triggering notifications
+                # Update model position directly without triggering
+                # notifications
                 if hasattr(node_view.model, "_position"):
                     node_view.model._position = QtCore.QPointF(x, y)
 
@@ -869,7 +917,9 @@ class NodzView(QtWidgets.QGraphicsView):
         # Frame all nodes
         self.frame_all()
 
-    def _find_intersecting_connections(self, line_start: QtCore.QPointF, line_end: QtCore.QPointF) -> list:
+    def _find_intersecting_connections(
+        self, line_start: QtCore.QPointF, line_end: QtCore.QPointF
+    ) -> list:
         """Find all connections that intersect with the given line."""
         intersecting_connections = []
 
@@ -880,7 +930,11 @@ class NodzView(QtWidgets.QGraphicsView):
                 continue
 
             # Check if it has the necessary attributes
-            if not hasattr(item, "model") or not hasattr(item, "source_point") or not hasattr(item, "target_point"):
+            if (
+                not hasattr(item, "model")
+                or not hasattr(item, "source_point")
+                or not hasattr(item, "target_point")
+            ):
                 continue
 
             # Get connection endpoints
@@ -888,21 +942,36 @@ class NodzView(QtWidgets.QGraphicsView):
             conn_end = item.target_point
 
             # Check if the line intersects with the connection
-            if self._lines_intersect(line_start, line_end, conn_start, conn_end):
+            if self._lines_intersect(
+                line_start, line_end, conn_start, conn_end
+            ):
                 intersecting_connections.append(item)
 
         return intersecting_connections
 
-    def _lines_intersect(self, line1_start: QtCore.QPointF, line1_end: QtCore.QPointF,
-                        line2_start: QtCore.QPointF, line2_end: QtCore.QPointF) -> bool:
-        """Check if two line segments intersect using the cross product method."""
+    def _lines_intersect(
+        self,
+        line1_start: QtCore.QPointF,
+        line1_end: QtCore.QPointF,
+        line2_start: QtCore.QPointF,
+        line2_end: QtCore.QPointF,
+    ) -> bool:
+        """Check if two line segments intersect using the cross product
+        method."""
+
         def ccw(A, B, C):
             """Check if three points are in counter-clockwise order."""
-            return (C.y() - A.y()) * (B.x() - A.x()) > (B.y() - A.y()) * (C.x() - A.x())
+            return (C.y() - A.y()) * (B.x() - A.x()) > (B.y() - A.y()) * (
+                C.x() - A.x()
+            )
 
-        # Two line segments intersect if the endpoints of each segment are on opposite sides of the other segment
-        return (ccw(line1_start, line2_start, line2_end) != ccw(line1_end, line2_start, line2_end) and
-                ccw(line1_start, line1_end, line2_start) != ccw(line1_start, line1_end, line2_end))
+        # Two line segments intersect if the endpoints of each segment are on
+        # opposite sides of the other segment
+        return ccw(line1_start, line2_start, line2_end) != ccw(
+            line1_end, line2_start, line2_end
+        ) and ccw(line1_start, line1_end, line2_start) != ccw(
+            line1_start, line1_end, line2_end
+        )
 
     def _update_connection_z_values(self) -> None:
         """Update Z values of connections based on node selection."""
@@ -922,21 +991,25 @@ class NodzView(QtWidgets.QGraphicsView):
             if not hasattr(item, "model"):
                 continue
 
-            if (not hasattr(item.model, "plug_node")
-                or not hasattr(item.model, "socket_node")):
+            if not hasattr(item.model, "plug_node") or not hasattr(
+                item.model, "socket_node"
+            ):
                 continue
 
-            # Check if either end of the connection is connected to a selected node
+            # Check if either end of the connection is connected to a selected
+            # node
             is_connected_to_selected = (
-                item.model.plug_node in selected_nodes or
-                item.model.socket_node in selected_nodes
+                item.model.plug_node in selected_nodes
+                or item.model.socket_node in selected_nodes
             )
 
             # Set Z value based on selection
             if is_connected_to_selected:
                 item.setZValue(2)  # Raise above normal connections and nodes
             else:
-                item.setZValue(-1)  # Default Z value for unselected connections
+                item.setZValue(
+                    -1
+                )  # Default Z value for unselected connections
 
     def _update_all_connections(self) -> None:
         """Update all connection paths in the scene."""

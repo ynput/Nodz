@@ -485,11 +485,13 @@ class GraphModel(BaseModel):
 
         if conn.plug_attr not in plug_node.attributes:
             raise ValueError(
-                f"Plug attribute '{conn.plug_attr}' does not exist on node '{conn.plug_node}'"
+                f"Plug attribute '{conn.plug_attr}' does not exist on node "
+                f"'{conn.plug_node}'"
             )
         if conn.socket_attr not in socket_node.attributes:
             raise ValueError(
-                f"Socket attribute '{conn.socket_attr}' does not exist on node '{conn.socket_node}'"
+                f"Socket attribute '{conn.socket_attr}' does not exist on "
+                f"node '{conn.socket_node}'"
             )
 
         self._connections.append(conn)
