@@ -97,6 +97,41 @@ class IncompatibleTypesError(ConnectionError):
         )
 
 
+class SelfConnectionError(ConnectionError):
+    """Raised when attempting to connect a node to itself."""
+
+    def __init__(self, node_name: str):
+        self.node_name = node_name
+        super().__init__(f"Cannot connect node '{node_name}' to itself")
+
+
+class MaxConnectionsExceededError(ConnectionError):
+    """Raised when attempting to exceed maximum connections for an attribute."""
+
+    def __init__(self, node_name: str, attr_name: str, max_connections: int):
+        self.node_name = node_name
+        self.attr_name = attr_name
+        self.max_connections = max_connections
+        super().__init__(
+            f"Maximum connections ({max_connections}) exceeded for "
+            f"attribute '{attr_name}' on node '{node_name}'"
+        )
+
+
+class DuplicateConnectionError(ConnectionError):
+    """Raised when attempting to create a connection that already exists."""
+
+    def __init__(self, source_node: str, source_attr: str, target_node: str, target_attr: str):
+        self.source_node = source_node
+        self.source_attr = source_attr
+        self.target_node = target_node
+        self.target_attr = target_attr
+        super().__init__(
+            f"Connection already exists: {source_node}.{source_attr} -> "
+            f"{target_node}.{target_attr}"
+        )
+
+
 def validate_node_exists(func):
     """Decorator to validate that a node exists."""
 
@@ -359,13 +394,17 @@ class ConnectionController(BaseController):
         target_attr: str,
     ) -> ConnectionModel:
         """Create a connection between two node attributes."""
-        # Validate nodes
+        # Validate nodes exist
         if source_node not in self.graph_model.nodes:
             raise NodeNotFoundError(source_node)
         if target_node not in self.graph_model.nodes:
             raise NodeNotFoundError(target_node)
 
-        # Validate attributes
+        # Validate no self-connection
+        if source_node == target_node:
+            raise SelfConnectionError(source_node)
+
+        # Validate attributes exist
         source_node_model = self.graph_model.nodes[source_node]
         target_node_model = self.graph_model.nodes[target_node]
 
@@ -374,10 +413,11 @@ class ConnectionController(BaseController):
         if target_attr not in target_node_model.attributes:
             raise AttributeNotFoundError(target_node, target_attr)
 
-        # Validate compatibility
+        # Get attribute models
         source_attr_model = source_node_model.attributes[source_attr]
         target_attr_model = target_node_model.attributes[target_attr]
 
+        # Validate plug/socket compatibility
         if not source_attr_model.plug:
             raise ConnectionError(
                 f"Attribute '{source_attr}' on node '{source_node}' "
@@ -389,12 +429,47 @@ class ConnectionController(BaseController):
                 "is not a socket"
             )
 
+        # Validate data type compatibility
         if not AttrModel.is_compatible_type(
             source_attr_model.data_type, target_attr_model.data_type
         ):
             raise IncompatibleTypesError(
                 source_attr_model.data_type, target_attr_model.data_type
             )
+
+        # Check for duplicate connection
+        for existing_conn in self.graph_model.connections:
+            if (
+                existing_conn.plug_node == source_node
+                and existing_conn.plug_attr == source_attr
+                and existing_conn.socket_node == target_node
+                and existing_conn.socket_attr == target_attr
+            ):
+                raise DuplicateConnectionError(
+                    source_node, source_attr, target_node, target_attr
+                )
+
+        # Check maximum connections for source (plug)
+        if source_attr_model.plug_max_connections > 0:
+            existing_plug_connections = sum(
+                1 for conn in self.graph_model.connections
+                if conn.plug_node == source_node and conn.plug_attr == source_attr
+            )
+            if existing_plug_connections >= source_attr_model.plug_max_connections:
+                raise MaxConnectionsExceededError(
+                    source_node, source_attr, source_attr_model.plug_max_connections
+                )
+
+        # Check maximum connections for target (socket)
+        if target_attr_model.socket_max_connections > 0:
+            existing_socket_connections = sum(
+                1 for conn in self.graph_model.connections
+                if conn.socket_node == target_node and conn.socket_attr == target_attr
+            )
+            if existing_socket_connections >= target_attr_model.socket_max_connections:
+                raise MaxConnectionsExceededError(
+                    target_node, target_attr, target_attr_model.socket_max_connections
+                )
 
         # Create connection model
         connection_model = ConnectionModel(
