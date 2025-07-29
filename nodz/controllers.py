@@ -195,6 +195,8 @@ class NodeController(BaseController):
         """Initialize the node controller."""
         super().__init__(graph_model, scene, config, signals)
 
+        self._updating_node_position = False
+
         # Connect signals
         self.signals.node_moved.connect(self.on_node_moved)
         self.signals.node_selected.connect(self.on_node_selected)
@@ -337,13 +339,25 @@ class NodeController(BaseController):
 
     def on_node_moved(self, node_name: str, position: QtCore.QPointF) -> None:
         """Handle node moved signal."""
-        if node_name in self.graph_model.nodes:
-            # Update model position
-            self.graph_model.nodes[node_name].position = position
+        if self._updating_node_position:
+            return
 
-            # Signal that connections need to be updated
-            # This will be handled by the ConnectionController
-            self.signals.node_moved.emit(node_name, position)
+        try:
+            self._updating_node_position = True
+
+            # Update model position directly without triggering observers
+            if node_name in self.graph_model.nodes:
+                node_model = self.graph_model.nodes[node_name]
+                # Directly set the internal position without triggering
+                # notifications
+                node_model._position = position
+
+            # Don't emit the signal again to prevent our handler from being
+            # called. The original method would emit the signal, causing our
+            # handler to run
+
+        finally:
+            self._updating_node_position = False
 
     def on_node_selected(self, node_name: str, selected: bool) -> None:
         """Handle node selected signal."""
