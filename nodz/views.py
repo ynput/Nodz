@@ -918,9 +918,8 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
         if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
             self._moving = True
             super().mouseMoveEvent(event)
-
-            # Update connections during the move
-            self._update_connected_paths()
+            # Connection updates will be handled by ConnectionController via
+            # node_moved signal
         else:
             # Pass other mouse buttons (like middle) to the parent view
             event.ignore()
@@ -938,11 +937,9 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
                 if hasattr(self.model, "_position"):
                     self.model._position = self.pos()
 
-                # Emit node_moved signal
+                # Emit node_moved signal - ConnectionController will handle
+                # connection updates
                 self.signals.node_moved.emit(self.model.name, self.pos())
-
-                # Update connections attached to this node
-                self._update_connected_paths()
             super().mouseReleaseEvent(event)
         else:
             # Pass other mouse buttons (like middle) to the parent view

@@ -896,26 +896,30 @@ class ConnectionController(BaseController):
     def on_node_moved(self, node_name: str, position: QtCore.QPointF) -> None:
         """Update connections when a node is moved."""
         # Find all connections that involve this node
+        connections_to_update = []
         for connection in self.graph_model.connections:
             if (
                 connection.plug_node == node_name
                 or connection.socket_node == node_name
             ):
-                # Find the connection view
-                connection_view = self._find_connection_view(connection)
-                if connection_view:
-                    # Update source and target points
-                    source_view = self._find_plug_view(
-                        connection.plug_node, connection.plug_attr
-                    )
-                    target_view = self._find_socket_view(
-                        connection.socket_node, connection.socket_attr
-                    )
+                connections_to_update.append(connection)
 
-                    if source_view and target_view:
-                        connection_view.source_point = source_view.center()
-                        connection_view.target_point = target_view.center()
-                        connection_view.update_path()
+        # Update all affected connections
+        for connection in connections_to_update:
+            connection_view = self._find_connection_view(connection)
+            if connection_view:
+                # Update source and target points
+                source_view = self._find_plug_view(
+                    connection.plug_node, connection.plug_attr
+                )
+                target_view = self._find_socket_view(
+                    connection.socket_node, connection.socket_attr
+                )
+
+                if source_view and target_view:
+                    connection_view.source_point = source_view.center()
+                    connection_view.target_point = target_view.center()
+                    connection_view.update_path()
 
     def _find_plug_view(
         self, node_name: str, attr_name: str

@@ -618,6 +618,9 @@ class NodzView(QtWidgets.QGraphicsView):
             else:
                 super().mouseMoveEvent(event)
 
+            # Update all connections after any node movement
+            self._update_all_connections()
+
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
         """Handle key press events."""
         # Frame all nodes with 'A'
