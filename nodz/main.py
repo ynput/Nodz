@@ -764,7 +764,9 @@ class NodzView(QtWidgets.QGraphicsView):
         node_views = self._get_all_node_views()
 
         for node in node_views:
-            node.setPos(node.pos() + offset)
+            scene_pos = node.pos() + offset
+            node.setPos(scene_pos)
+            self.api.signals.node_moved.emit(node.model.name, scene_pos)
 
         self._update_all_connections()
 
