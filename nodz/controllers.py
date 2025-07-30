@@ -1074,8 +1074,9 @@ class GraphController(BaseController):
         # Clear scene
         self.scene.clear()
 
-        # Clear model
-        self.graph_model = GraphModel()
+        # Clear model data while keeping the same instance
+        self.graph_model.nodes.clear()
+        self.graph_model.connections.clear()
 
     def evaluate_graph(self) -> List[Tuple[str, str]]:
         """Evaluate the graph and return a list of connections."""
