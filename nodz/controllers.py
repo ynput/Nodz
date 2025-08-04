@@ -641,8 +641,8 @@ class ConnectionController(BaseController):
         self, position: QtCore.QPoint
     ) -> None:
         """Update visual feedback for compatible/incompatible slots."""
-        if not self.temp_connection or not hasattr(
-            self.temp_connection, "model"
+        if not self.temp_connection or not isinstance(
+            self.temp_connection, ConnectionView
         ):
             return
 
@@ -691,19 +691,16 @@ class ConnectionController(BaseController):
         for item in items_in_area:
             if isinstance(item, NodeView):
                 # Calculate distance to node center
-                if hasattr(item, "pos") and hasattr(item, "boundingRect"):
-                    node_center = item.pos() + QtCore.QPointF(
-                        item.boundingRect().width() / 2,
-                        item.boundingRect().height() / 2,
-                    )
-                    distance = (node_center - position).manhattanLength()
+                node_center = item.pos() + QtCore.QPointF(
+                    item.boundingRect().width() / 2,
+                    item.boundingRect().height() / 2,
+                )
+                distance = (node_center - position).manhattanLength()
 
-                    if distance < min_distance:
-                        min_distance = distance
-                        hovered_node_view = item
-                        hovered_node = self.graph_model.nodes.get(
-                            item.model.name
-                        )
+                if distance < min_distance:
+                    min_distance = distance
+                    hovered_node_view = item
+                    hovered_node = self.graph_model.nodes.get(item.model.name)
 
         # If we found a hovered node, gray out all incompatible slots on it
         if hovered_node and hovered_node_view:
@@ -725,16 +722,14 @@ class ConnectionController(BaseController):
                 if (source_is_plug and isinstance(item, PlugView)) or (
                     not source_is_plug and isinstance(item, SocketView)
                 ):
-                    if hasattr(item, "brush"):
-                        item.brush.setColor(self.non_connectable_color)
-                        item.update()
+                    item.brush.setColor(self.non_connectable_color)
+                    item.update()
                     continue
 
                 # For slots of the opposite type, check data type
-                # compatibility
-                if not hasattr(item, "model") or not hasattr(
-                    item.model, "attribute"
-                ):
+                # compatibility - PlugView and SocketView should always have
+                # model and attribute
+                if not hasattr(item.model, "attribute"):
                     continue
 
                 attr_name = item.model.attribute
@@ -756,9 +751,8 @@ class ConnectionController(BaseController):
 
                 # Gray out incompatible slots
                 if not is_compatible:
-                    if hasattr(item, "brush"):
-                        item.brush.setColor(self.non_connectable_color)
-                        item.update()
+                    item.brush.setColor(self.non_connectable_color)
+                    item.update()
 
     def _reset_all_slots_appearance(self) -> None:
         """Reset all slots to their original appearance."""
@@ -771,8 +765,8 @@ class ConnectionController(BaseController):
         self, position: QtCore.QPoint
     ) -> Optional[Union[PlugView, SocketView]]:
         """Find the closest compatible slot to the given position."""
-        if not self.temp_connection or not hasattr(
-            self.temp_connection, "model"
+        if not self.temp_connection or not isinstance(
+            self.temp_connection, ConnectionView
         ):
             return None
 
@@ -805,9 +799,7 @@ class ConnectionController(BaseController):
             # Check if it's not on the same node
             try:
                 parent_node = item.parent_node_view()
-                if not hasattr(parent_node, "model") or not hasattr(
-                    parent_node.model, "name"
-                ):
+                if not isinstance(parent_node, NodeView):
                     continue
             except (AttributeError, TypeError):
                 continue
@@ -830,9 +822,6 @@ class ConnectionController(BaseController):
         closest_slot = None
         min_distance = float("inf")
         for slot in compatible_slots:
-            if not hasattr(slot, "center"):
-                continue
-
             distance = (slot.center() - position).manhattanLength()
 
             if distance < min_distance:
@@ -926,11 +915,7 @@ class ConnectionController(BaseController):
     ) -> Optional[PlugView]:
         """Find a plug view by node and attribute name."""
         node_view = self._find_node_view(node_name)
-        if (
-            node_view
-            and hasattr(node_view, "plugs")
-            and attr_name in node_view.plugs
-        ):
+        if isinstance(node_view, NodeView) and attr_name in node_view.plugs:
             return node_view.plugs[attr_name]
         return None
 
@@ -939,11 +924,7 @@ class ConnectionController(BaseController):
     ) -> Optional[SocketView]:
         """Find a socket view by node and attribute name."""
         node_view = self._find_node_view(node_name)
-        if (
-            node_view
-            and hasattr(node_view, "sockets")
-            and attr_name in node_view.sockets
-        ):
+        if isinstance(node_view, NodeView) and attr_name in node_view.sockets:
             return node_view.sockets[attr_name]
         return None
 
@@ -1112,11 +1093,7 @@ class GraphController(BaseController):
     ) -> Optional[PlugView]:
         """Find a plug view by node and attribute name."""
         node_view = self._find_node_view(node_name)
-        if (
-            node_view
-            and hasattr(node_view, "plugs")
-            and attr_name in node_view.plugs
-        ):
+        if isinstance(node_view, NodeView) and attr_name in node_view.plugs:
             return node_view.plugs[attr_name]
         return None
 
@@ -1125,11 +1102,7 @@ class GraphController(BaseController):
     ) -> Optional[SocketView]:
         """Find a socket view by node and attribute name."""
         node_view = self._find_node_view(node_name)
-        if (
-            node_view
-            and hasattr(node_view, "sockets")
-            and attr_name in node_view.sockets
-        ):
+        if isinstance(node_view, NodeView) and attr_name in node_view.sockets:
             return node_view.sockets[attr_name]
         return None
 

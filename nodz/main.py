@@ -10,7 +10,7 @@ import sys
 from typing import Any, Dict, Optional, Union, List
 from qtpy import QtCore, QtGui, QtWidgets
 
-from .views import NodeView, ConnectionView, SlotType
+from .views import NodeView, ConnectionView, PlugView, SocketView, SlotView
 from .controllers import NodzAPI
 from .utils import nlog
 
@@ -70,7 +70,7 @@ class NodzScene(QtWidgets.QGraphicsScene):
             painter.setPen(pen)
             painter.drawLines(lines)
 
-    def get_slot_connections(self, slot) -> list:
+    def get_slot_connections(self, slot: SlotView) -> list:
         """Get all connections attached to a slot."""
         connections = []
 
@@ -81,40 +81,31 @@ class NodzScene(QtWidgets.QGraphicsScene):
                 continue
 
             # Check if it has the necessary attributes
-            if not hasattr(item, "model"):
-                continue
-
-            if (
-                not hasattr(item.model, "plug_node")
-                or not hasattr(item.model, "plug_attr")
-                or not hasattr(item.model, "socket_node")
-                or not hasattr(item.model, "socket_attr")
-            ):
+            if not isinstance(item, ConnectionView):
                 continue
 
             # Check if this connection is connected to the slot
-            if (
-                not hasattr(slot, "parentItem")
-                or not hasattr(slot.parentItem(), "model")
-                or not hasattr(slot.parentItem().model, "name")
-                or not hasattr(slot, "model")
-                or not hasattr(slot.model, "attribute")
-            ):
+            if not hasattr(slot, "parentItem") or not slot.parentItem():
                 continue
 
-            node_name = slot.parentItem().model.name
+            parent = slot.parentItem()
+            if not isinstance(parent, NodeView):
+                continue
+
+            if not isinstance(slot, SlotView):
+                continue
+
+            node_name = parent.model.name
             attr_name = slot.model.attribute
 
             if (
-                hasattr(slot, "slot_type")
-                and slot.slot_type == SlotType.PLUG
+                isinstance(slot, PlugView)
                 and item.model.plug_node == node_name
                 and item.model.plug_attr == attr_name
             ):
                 connections.append(item)
             elif (
-                hasattr(slot, "slot_type")
-                and slot.slot_type == SlotType.SOCKET
+                isinstance(slot, SocketView)
                 and item.model.socket_node == node_name
                 and item.model.socket_attr == attr_name
             ):
@@ -526,7 +517,7 @@ class NodzView(QtWidgets.QGraphicsView):
 
             # Disconnect the intersecting connections
             for connection in connections_to_cut:
-                if hasattr(connection, "model"):
+                if isinstance(connection, ConnectionView):
                     self.api.delete_connection(
                         connection.model.plug_node,
                         connection.model.plug_attr,
@@ -752,8 +743,7 @@ class NodzView(QtWidgets.QGraphicsView):
 
         # Delete each selected node using the API
         for node in selected_nodes:
-            if hasattr(node.model, "name"):
-                self.api.delete_node(node.model.name)
+            self.api.delete_node(node.model.name)
 
     def _center_graph_in_scene(self):
         """
@@ -1161,12 +1151,8 @@ class NodzView(QtWidgets.QGraphicsView):
             if not isinstance(item, ConnectionView):
                 continue
 
-            # Check if it has the necessary attributes
-            if (
-                not hasattr(item, "model")
-                or not hasattr(item, "source_point")
-                or not hasattr(item, "target_point")
-            ):
+            # Check if it's a ConnectionView
+            if not isinstance(item, ConnectionView):
                 continue
 
             # Get connection endpoints
@@ -1219,13 +1205,8 @@ class NodzView(QtWidgets.QGraphicsView):
             if not isinstance(item, ConnectionView):
                 continue
 
-            # Check if it has the necessary attributes
-            if not hasattr(item, "model"):
-                continue
-
-            if not hasattr(item.model, "plug_node") or not hasattr(
-                item.model, "socket_node"
-            ):
+            # Check if it's a ConnectionView
+            if not isinstance(item, ConnectionView):
                 continue
 
             # Check if either end of the connection is connected to a selected
@@ -1251,16 +1232,8 @@ class NodzView(QtWidgets.QGraphicsView):
             if not isinstance(item, ConnectionView):
                 continue
 
-            # Check if it has the necessary attributes
-            if not hasattr(item, "model") or not hasattr(item, "update_path"):
-                continue
-
-            if (
-                not hasattr(item.model, "plug_node")
-                or not hasattr(item.model, "plug_attr")
-                or not hasattr(item.model, "socket_node")
-                or not hasattr(item.model, "socket_attr")
-            ):
+            # Check if it's a ConnectionView
+            if not isinstance(item, ConnectionView):
                 continue
 
             # Find the source and target views
@@ -1281,22 +1254,18 @@ class NodzView(QtWidgets.QGraphicsView):
 
             # Update connection endpoints
             if (
-                source_node
-                and hasattr(source_node, "plugs")
+                isinstance(source_node, NodeView)
                 and item.model.plug_attr in source_node.plugs
             ):
                 plug = source_node.plugs[item.model.plug_attr]
-                if hasattr(plug, "center"):
-                    item.source_point = plug.center()
+                item.source_point = plug.center()
 
             if (
-                target_node
-                and hasattr(target_node, "sockets")
+                isinstance(target_node, NodeView)
                 and item.model.socket_attr in target_node.sockets
             ):
                 socket = target_node.sockets[item.model.socket_attr]
-                if hasattr(socket, "center"):
-                    item.target_point = socket.center()
+                item.target_point = socket.center()
 
             # Update the path
             item.update_path()
@@ -1328,7 +1297,7 @@ class NodzView(QtWidgets.QGraphicsView):
             node.setPos(snapped_pos)
 
             # Update model position if it exists
-            if hasattr(node, "model") and hasattr(node.model, "_position"):
+            if isinstance(node, NodeView):
                 node.model._position = snapped_pos
 
         # Update all connections after snapping

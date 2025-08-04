@@ -934,8 +934,7 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
                 self._moving = False
                 # Directly update the model's internal position attribute
                 # without triggering notifications
-                if hasattr(self.model, "_position"):
-                    self.model._position = self.pos()
+                self.model._position = self.pos()
 
                 # Emit node_moved signal - ConnectionController will handle
                 # connection updates
@@ -957,11 +956,7 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
                 continue
 
             # Check if this connection is connected to this node
-            if (
-                not hasattr(item, "model")
-                or not hasattr(item.model, "plug_node")
-                or not hasattr(item.model, "socket_node")
-            ):
+            if not isinstance(item, ConnectionView):
                 continue
 
             if (
@@ -982,5 +977,4 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
                     item.target_point = socket.center()
 
             # Update the path
-            if hasattr(item, "update_path"):
-                item.update_path()
+            item.update_path()
