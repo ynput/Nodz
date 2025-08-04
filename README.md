@@ -1,6 +1,6 @@
-![Screenshot](nodz.png)
-
 # Nodz - Node-Based Graph Editor
+
+![Screenshot](nodz.png)
 
 Nodz is a sophisticated, user-friendly Python library for creating node-based graphs with a clean MVC architecture. It provides a visual interface for building and managing complex node networks with type-safe connections between nodes through attributes (plugs and sockets).
 
@@ -59,11 +59,13 @@ Nodz is built with a clean **Model-View-Controller (MVC)** architecture that pro
 ## Requirements
 
 The following needs to be installed:
+
 - Python 3.9+
 - pip
 - pipenv (optional, but recommended)
 
 ### Dependencies
+
 - `qtpy` - Qt abstraction layer
 - `PySide6` - Qt bindings for Python
 
@@ -128,6 +130,7 @@ The configuration file is automatically loaded, and you can create custom preset
 ## Features
 
 ### Interactive Features
+
 - **Multi-selection**: Shift/Ctrl+click for additive/subtractive selection
 - **Connection Management**: Visual connection drawing with real-time compatibility feedback
 - **Grid Snapping**: Hold 'S' to snap nodes to grid
@@ -136,6 +139,7 @@ The configuration file is automatically loaded, and you can create custom preset
 - **Viewport Controls**: 'A' to frame all, 'F' to frame selection, 'H' to toggle help
 
 ### Keyboard Shortcuts
+
 ```
 Del/Backspace : Delete selected nodes
 F             : Frame selected items (or all items if nothing selected)
@@ -147,6 +151,7 @@ Alt+Drag      : Cut connections with line
 ```
 
 ### Advanced Features
+
 - **Type-safe Connections**: Automatic validation of data types between plugs and sockets
 - **Graph Analysis**: Cycle detection, execution order calculation, dependency tracking
 - **Save/Load**: Complete graph serialization to JSON format
@@ -158,6 +163,7 @@ Alt+Drag      : Cut connections with line
 Nodz provides a comprehensive unified API through the `NodzAPI` class that handles all graph operations:
 
 ### Node Operations
+
 ```python
 # Create nodes
 node_name = api.create_node(name, preset="node_default", position=None, alternate=True, **kwargs)
@@ -174,6 +180,7 @@ api.set_node_position(node_name, QtCore.QPointF(x, y))
 ```
 
 ### Attribute Operations
+
 ```python
 # Create attributes
 api.create_attribute(
@@ -197,6 +204,7 @@ exists = api.attribute_exists(node_name, attr_name)
 ```
 
 ### Connection Operations
+
 ```python
 # Create connections
 api.create_connection(source_node, source_attr, target_node, target_attr)
@@ -209,6 +217,7 @@ node_connections = api.get_node_connections(node_name)
 ```
 
 ### Graph Operations
+
 ```python
 # Save/Load
 api.save_graph(file_path)
@@ -222,6 +231,7 @@ errors = api.validate_graph()  # Returns list of validation error messages
 ```
 
 ### Advanced Graph Analysis
+
 ```python
 # Dependency analysis
 upstream_nodes = api.get_upstream_nodes(node_name)
@@ -239,6 +249,7 @@ except ValueError:
 ```
 
 ### Utility Methods
+
 ```python
 # Logging control
 api.set_logging_level('DEBUG')  # or logging.DEBUG
@@ -278,6 +289,7 @@ except NodzError as e:
 ## Examples
 
 See the demo files for comprehensive examples:
+
 - [`nodz_mvc_demo.py`](nodz_mvc_demo.py) - Basic MVC architecture demonstration
 - [`nodz_unified_api_demo.py`](nodz_unified_api_demo.py) - Comprehensive API usage examples
 
@@ -293,6 +305,7 @@ Nodz can be easily integrated into larger applications:
 ## Use Cases
 
 Nodz is perfect for applications requiring visual node-based interfaces:
+
 - **Visual Programming Environments**
 - **Data Processing Pipelines**
 - **Shader/Material Editors**
@@ -304,6 +317,7 @@ Nodz is perfect for applications requiring visual node-based interfaces:
 ## Contributing
 
 Contributions are welcome! Please ensure:
+
 - One pull request per issue
 - Follow the existing code style and architecture patterns
 - Add tests for new functionality
