@@ -1,144 +1,314 @@
 ![Screenshot](nodz.png)
 
-Nodz is a very user friendly python library to create nodes based graphs. It can be connected to anything you want as long as it understands python. Nodz does not hold any data other than its own graphics and attributes types as it is used by the graphics.
-Nods provides you with a very simple way to read your graph, it outputs connections as strings ('Node1.attribute1', 'node2.attribute5')
+# Nodz - Node-Based Graph Editor
 
-Nodz is partially customizable via a configuration file that let you change colors and the shape of nodes.
+Nodz is a sophisticated, user-friendly Python library for creating node-based graphs with a clean MVC architecture. It provides a visual interface for building and managing complex node networks with type-safe connections between nodes through attributes (plugs and sockets).
 
+Nodz is designed to be highly extensible and can be integrated into any Python application that needs visual node-based editing capabilities. The library outputs connections as structured data, making it easy to integrate with your application's data processing pipeline.
+
+Nodz is fully customizable via configuration files that allow you to change colors, shapes, and behavior of nodes and connections.
 
 ***If you find any errors/bugs/flaws or anything bad, feel free to let me know so I can fix it for the next persons that would like to download nodz.***
 
 ***PLEASE MAKE SURE TO CREATE 1 PULL REQUEST PER ISSUE ! THIS IS EASIER AND CLEANER TO PROCESS***
 
-Nodz in under the [MIT license](LICENSE.txt).
+Nodz is under the [MIT license](LICENSE.txt).
 
 [WATCH DEMO HERE](https://vimeo.com/219933604)
 
+## Architecture
 
+Nodz is built with a clean **Model-View-Controller (MVC)** architecture that provides excellent separation of concerns and maintainability:
 
+### Core Architecture Components
 
+```
+┌──────────────────┐    ┌─────────────────┐    ┌──────────────────┐
+│     Models       │    │     Views       │    │   Controllers    │
+│                  │    │                 │    │                  │
+│ • NodeModel      │◄──►│ • NodeView      │◄──►│ • NodeController │
+│ • AttrModel      │    │ • PlugView      │    │ • ConnectionCtrl │
+│ • ConnectionModel│    │ • SocketView    │    │ • GraphController│
+│ • GraphModel     │    │ • ConnectionView│    │ • NodzAPI        │
+└──────────────────┘    └─────────────────┘    └──────────────────┘
+         ▲                       ▲                       ▲
+         │                       │                       │
+         └───────────────────────┼───────────────────────┘
+                                 │
+                        ┌─────────────────┐
+                        │   Observer      │
+                        │   Pattern       │
+                        └─────────────────┘
+```
 
-###
-## Requirement
-The following needs to be installed!
+### Design Patterns Used
+
+- **MVC Pattern**: Clean separation between data (Models), presentation (Views), and business logic (Controllers)
+- **Observer Pattern**: Models automatically notify Views of changes through the observer system
+- **Facade Pattern**: `NodzAPI` provides a unified interface hiding the complexity of the underlying architecture
+- **Signal/Slot Pattern**: Qt-based event system for loose coupling between components
+
+### Key Architectural Features
+
+- **Type Safety**: Comprehensive type checking system for connections between nodes
+- **Real-time Updates**: Observer pattern ensures views stay synchronized with model changes
+- **Extensible Design**: Plugin-ready architecture with preset system for customization
+- **Performance Optimized**: Efficient Qt-based rendering with proper Z-ordering and selective updates
+- **Error Handling**: Comprehensive exception hierarchy with descriptive error messages
+
+## Requirements
+
+The following needs to be installed:
+- Python 3.9+
 - pip
-- pipenv
+- pipenv (optional, but recommended)
 
+### Dependencies
+- `qtpy` - Qt abstraction layer
+- `PySide6` - Qt bindings for Python
 
-
-
-###
 ## Installation
-- `git clone`
-- `cd location`
-- `pipenv install`
-- enjoy! :)
 
+```bash
+git clone <repository-url>
+cd nodz
+pipenv install  # or pip install -e .
+```
 
+## Quick Start
 
+```python
+from nodz.main import create_nodz_view
+from qtpy import QtCore, QtWidgets
+import sys
 
-###
-## Configuration file
+# Create application
+app = QtWidgets.QApplication(sys.argv)
 
-Nodz comes with a default [configuration file](default_config.json), it is specified what can be removed and what can't be.
-If this file stays in the default location, it is auto loaded BUT you still need to apply it to Nodz (look at [nodz_demo.py](nodz_demo.py) lines 5/6)
-Be careful when editing it, if you are missing a "**,**" it will error. So don't screw up. :smile:
+# Create Nodz view
+nodz = create_nodz_view()
+nodz.setWindowTitle("My Node Editor")
+nodz.resize(1000, 700)
+nodz.show()
 
+# Access the unified API
+api = nodz.api
 
+# Create nodes
+input_node = api.create_node("Input", position=QtCore.QPointF(100, 100))
+process_node = api.create_node("Process", position=QtCore.QPointF(300, 100))
+output_node = api.create_node("Output", position=QtCore.QPointF(500, 100))
 
+# Create attributes
+api.create_attribute(input_node, "data_out", plug=True, socket=False, data_type=str)
+api.create_attribute(process_node, "data_in", plug=False, socket=True, data_type=str)
+api.create_attribute(process_node, "result_out", plug=True, socket=False, data_type=str)
+api.create_attribute(output_node, "data_in", plug=False, socket=True, data_type=str)
 
-###
+# Create connections
+api.create_connection("Input", "data_out", "Process", "data_in")
+api.create_connection("Process", "result_out", "Output", "data_in")
+
+# Run application
+sys.exit(app.exec_())
+```
+
+## Configuration
+
+Nodz comes with a default [configuration file](nodz/default_config.json) that controls the visual appearance and behavior of the node editor. The configuration file supports:
+
+- Node and attribute visual presets
+- Colors, fonts, and styling
+- Grid settings and viewport behavior
+- Connection appearance and behavior
+- Keyboard shortcuts and interaction settings
+
+The configuration file is automatically loaded, and you can create custom presets for different node types and visual themes.
+
 ## Features
 
-Nodz comes by default with few features, you can toggle the grid visibility and the auto snap mode + some hotkeys. Hotkeys are at the moment based on Autodesk Maya because I developped this library for my personnal use in this specific software but I'm planning on adding that part in the configuration file so everyone can set different hotkeys.
+### Interactive Features
+- **Multi-selection**: Shift/Ctrl+click for additive/subtractive selection
+- **Connection Management**: Visual connection drawing with real-time compatibility feedback
+- **Grid Snapping**: Hold 'S' to snap nodes to grid
+- **Auto Layout**: Press 'L' for automatic hierarchical layout
+- **Connection Cutting**: Alt+drag to cut multiple connections at once
+- **Viewport Controls**: 'A' to frame all, 'F' to frame selection, 'H' to toggle help
+
+### Keyboard Shortcuts
+```
+Del/Backspace : Delete selected nodes
+F             : Frame selected items (or all items if nothing selected)
+A             : Frame all nodes in view
+L             : Auto-layout graph hierarchically
+S (hold)      : Snap selected nodes to grid
+H             : Toggle help overlay
+Alt+Drag      : Cut connections with line
+```
+
+### Advanced Features
+- **Type-safe Connections**: Automatic validation of data types between plugs and sockets
+- **Graph Analysis**: Cycle detection, execution order calculation, dependency tracking
+- **Save/Load**: Complete graph serialization to JSON format
+- **Undo/Redo Ready**: Architecture supports command pattern implementation
+- **Plugin System**: Extensible preset system for custom node types
+
+## Unified API Reference
+
+Nodz provides a comprehensive unified API through the `NodzAPI` class that handles all graph operations:
+
+### Node Operations
+```python
+# Create nodes
+node_name = api.create_node(name, preset="node_default", position=None, alternate=True, **kwargs)
+
+# Manage nodes
+api.delete_node(node_name)
+api.rename_node(old_name, new_name)
+nodes = api.get_node_names()
+exists = api.node_exists(node_name)
+
+# Position management
+position = api.get_node_position(node_name)
+api.set_node_position(node_name, QtCore.QPointF(x, y))
+```
+
+### Attribute Operations
+```python
+# Create attributes
+api.create_attribute(
+    node_name,
+    attr_name,
+    index=-1,
+    preset="attr_default",
+    plug=True,
+    socket=True,
+    data_type=None,
+    plug_max_connections=-1,
+    socket_max_connections=1,
+    **kwargs
+)
+
+# Manage attributes
+api.delete_attribute(node_name, attr_name)
+api.edit_attribute(node_name, attr_name, new_name=None, new_index=None)
+attrs = api.get_node_attributes(node_name)
+exists = api.attribute_exists(node_name, attr_name)
+```
+
+### Connection Operations
+```python
+# Create connections
+api.create_connection(source_node, source_attr, target_node, target_attr)
+
+# Manage connections
+api.delete_connection(source_node, source_attr, target_node, target_attr)
+connections = api.get_connections()  # Returns list of (src_node, src_attr, tgt_node, tgt_attr)
+exists = api.connection_exists(source_node, source_attr, target_node, target_attr)
+node_connections = api.get_node_connections(node_name)
+```
+
+### Graph Operations
+```python
+# Save/Load
+api.save_graph(file_path)
+api.load_graph(file_path)
+api.clear_graph()
+
+# Analysis
+stats = api.get_graph_stats()  # Returns {"nodes": count, "connections": count, "attributes": count}
+evaluation = api.evaluate_graph()  # Returns list of ("source.attr", "target.attr") tuples
+errors = api.validate_graph()  # Returns list of validation error messages
+```
+
+### Advanced Graph Analysis
+```python
+# Dependency analysis
+upstream_nodes = api.get_upstream_nodes(node_name)
+downstream_nodes = api.get_downstream_nodes(node_name)
+
+# Cycle detection
+cycles = api.find_cycles()  # Returns list of cycles (each cycle is a list of node names)
+
+# Execution order
+try:
+    execution_order = api.get_execution_order()  # Returns topologically sorted node list
+except ValueError:
+    # Graph contains cycles
+    pass
+```
+
+### Utility Methods
+```python
+# Logging control
+api.set_logging_level('DEBUG')  # or logging.DEBUG
+level = api.get_logging_level()
+
+# Viewport control (when using NodzView)
+framing = api.get_viewport_framing()
+api.set_viewport_framing(framing)
+```
+
+## Error Handling
+
+Nodz provides a comprehensive exception hierarchy for robust error handling:
 
 ```python
-nodz.gridVisToggle = True
-nodz.gridSnapToggle = False
+from nodz.controllers import (
+    NodzError,              # Base exception
+    NodeError,              # Node-related errors
+    NodeNotFoundError,      # Node doesn't exist
+    NodeExistsError,        # Node already exists
+    AttributeError,         # Attribute-related errors
+    AttributeNotFoundError, # Attribute doesn't exist
+    ConnectionError,        # Connection-related errors
+    IncompatibleTypesError, # Type mismatch in connections
+)
+
+try:
+    api.create_connection("NodeA", "output", "NodeB", "input")
+except NodeNotFoundError as e:
+    print(f"Node not found: {e.node_name}")
+except IncompatibleTypesError as e:
+    print(f"Type mismatch: {e.source_type} -> {e.target_type}")
+except NodzError as e:
+    print(f"General error: {e}")
 ```
 
-```
-del : delete the selected nodes
-f   : zoom focus on selected items, all the items if nothing is selected
-s   : snap the selected node on the grid
+## Examples
 
-```
+See the demo files for comprehensive examples:
+- [`nodz_mvc_demo.py`](nodz_mvc_demo.py) - Basic MVC architecture demonstration
+- [`nodz_unified_api_demo.py`](nodz_unified_api_demo.py) - Comprehensive API usage examples
 
+## Integration
 
+Nodz can be easily integrated into larger applications:
 
+1. **Embedding**: The `NodzView` can be embedded in any Qt application
+2. **Data Binding**: Connect graph evaluation to your data processing pipeline
+3. **Custom Presets**: Define application-specific node and attribute presets
+4. **Signal Handling**: Connect to the comprehensive signal system for application integration
 
-###
-## API
+## Use Cases
 
-Nodz has a very simple API of 12 methods.
-For more information on each method, please read [nodz_main.py](nodz_main.py) as it has all the documentation required.
+Nodz is perfect for applications requiring visual node-based interfaces:
+- **Visual Programming Environments**
+- **Data Processing Pipelines**
+- **Shader/Material Editors**
+- **Workflow Automation Tools**
+- **Scientific Computing Interfaces**
+- **Audio/Video Processing Tools**
+- **Game Logic Editors**
 
-Initialize
-```python
-def loadConfig(filePath=defautConfigPath)
-def initialize()
-```
-Nodes
-```python
-def createNode(name, preset, position, alternate)
-def deleteNode(node)
-def editNode(node, newName)
-```
-Attributes
-```python
-def createAttribute(node, name, index, preset, plug, socket, dataType, plugMaxConnections, socketMaxConnections)
-def deleteAttribute(node, index)
-def editAttribute( node, index, newName, newIndex)
-```
-Connections
-```python
-def createConnection(sourceNode, sourceAttr, targetNode, targetAttr)
-```
-Graph
-```python
-def saveGraph(filePath)
-def loadGraph(filePath)
-def evaluateGraph()
-def clearGraph()
-```
+## Contributing
 
-###
-## Signals
+Contributions are welcome! Please ensure:
+- One pull request per issue
+- Follow the existing code style and architecture patterns
+- Add tests for new functionality
+- Update documentation as needed
 
-Nodz also offers you some signals, most of them can feel redundant considering the design of the library but I'm sure some of you will find a use for it. It's better to have them just in case than not having them.
-**They are absolutly not mandatory in order for nodz to work.**
+## License
 
-Nodes
-```python
-signal_NodeCreated(nodeName)
-signal_NodeDeleted([nodeNames])
-signal_NodeEdited(oldName, newName)
-signal_NodeSelected([nodeNames])
-signal_NodeMoved(nodeName, nodePos)
-signal_NodeDoubleClicked(nodeName)
-```
-Attributes
-```Python
-signal_AttrCreated(nodeName, attrIndex)
-signal_AttrDeleted(nodeName, attrIndex)
-signal_AttrEdited(nodeName, oldIndex, newIndex)
-```
-Connections
-```python
-signal_PlugConnected(srcNodeName, plugAttribute, dstNodeName, socketAttribue)
-signal_PlugDisconnected(srcNodeName, plugAttribute, dstNodeName, socketAttribue)
-signal_SocketConnected(srcNodeName, plugAttribute, dstNodeName, socketAttribue)
-signal_SocketDisconnected(srcNodeName, plugAttribute, dstNodeName, socketAttribue)
-```
-Graph
-```python
-signal_GraphSaved()
-signal_GraphLoaded()
-signal_GraphCleared()
-```
-View
-```Python
-signal_KeyPressed(key)
-signal_Dropped(drop position)
-```
-
+Nodz is released under the [MIT License](LICENSE.txt).
