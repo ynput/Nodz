@@ -1303,6 +1303,54 @@ class NodzView(QtWidgets.QGraphicsView):
         # Update all connections after snapping
         self._update_all_connections()
 
+    def get_viewport_framing(self) -> Dict[str, Any]:
+        """
+        Get the current viewport framing settings.
+
+        Returns:
+            Dictionary containing the visible scene rectangle that can be
+            used with fitInView() to restore the current view.
+        """
+        # Get the currently visible scene rectangle
+        viewport_rect = self.viewport().rect()
+        visible_scene_rect = self.mapToScene(viewport_rect).boundingRect()
+
+        return {
+            'visible_rect': [
+                visible_scene_rect.x(),
+                visible_scene_rect.y(),
+                visible_scene_rect.width(),
+                visible_scene_rect.height()
+            ]
+        }
+
+    def set_viewport_framing(self, framing_data: Dict[str, Any]) -> None:
+        """
+        Restore the viewport framing settings.
+
+        Args:
+            framing_data: Dictionary containing viewport settings as returned by
+                         get_viewport_framing()
+        """
+        if not isinstance(framing_data, dict):
+            raise ValueError("framing_data must be a dictionary")
+
+        if 'visible_rect' not in framing_data:
+            raise ValueError("framing_data must contain 'visible_rect'")
+
+        visible_rect_list = framing_data['visible_rect']
+        if not isinstance(visible_rect_list, list) or len(visible_rect_list) != 4:
+            raise ValueError("'visible_rect' must be a list of 4 numbers [x, y, width, height]")
+
+        # Create QRectF from the stored rectangle
+        visible_rect = QtCore.QRectF(
+            visible_rect_list[0], visible_rect_list[1],
+            visible_rect_list[2], visible_rect_list[3]
+        )
+
+        # Use fitInView to restore the exact view
+        self.fitInView(visible_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+
 
 def create_nodz_view(
     parent: Optional[QtWidgets.QWidget] = None,

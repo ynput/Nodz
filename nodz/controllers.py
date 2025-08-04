@@ -1751,3 +1751,77 @@ class NodzAPI:
             int: Current logging level
         """
         return get_logging_level()
+
+    # Viewport/Framing methods
+    def get_viewport_framing(self) -> Dict[str, Any]:
+        """
+        Get the current viewport framing settings.
+
+        This captures the currently visible scene rectangle, allowing the exact
+        same view to be restored later using QGraphicsView.fitInView().
+
+        Returns:
+            Dictionary containing:
+            - 'visible_rect': The currently visible scene rectangle as [x, y, width, height]
+
+        Example:
+            # Save current viewport state
+            framing = api.get_viewport_framing()
+
+            # Later restore it
+            api.set_viewport_framing(framing)
+        """
+        # Get the view from the scene via the graph controller
+        views = self.graph_controller.scene.views()
+        if not views:
+            raise RuntimeError("No views available for the scene")
+
+        view = views[0]  # Get the first (and typically only) view
+
+        # Check if it's a NodzView with our viewport methods
+        if hasattr(view, "get_viewport_framing"):
+            return view.get_viewport_framing()
+        else:
+            raise RuntimeError(
+                "View does not support viewport framing operations"
+            )
+
+    def set_viewport_framing(self, framing_data: Dict[str, Any]) -> None:
+        """
+        Restore the viewport framing settings.
+
+        This restores a previously saved view state by using QGraphicsView.fitInView()
+        with the stored visible rectangle.
+
+        Args:
+            framing_data: Dictionary containing viewport settings as returned by
+                         get_viewport_framing()
+
+        Raises:
+            ValueError: If framing_data is invalid or missing required fields
+            RuntimeError: If no views are available or view doesn't support framing
+
+        Example:
+            # Save viewport state before loading a new graph
+            saved_framing = api.get_viewport_framing()
+
+            # Load new graph
+            api.load_graph("new_graph.json")
+
+            # Restore previous viewport state
+            api.set_viewport_framing(saved_framing)
+        """
+        # Get the view from the scene via the graph controller
+        views = self.graph_controller.scene.views()
+        if not views:
+            raise RuntimeError("No views available for the scene")
+
+        view = views[0]  # Get the first (and typically only) view
+
+        # Check if it's a NodzView with our viewport methods
+        if hasattr(view, "set_viewport_framing"):
+            view.set_viewport_framing(framing_data)
+        else:
+            raise RuntimeError(
+                "View does not support viewport framing operations"
+            )
