@@ -22,23 +22,64 @@ Nodz is built with a clean **Model-View-Controller (MVC)** architecture that pro
 
 ### Core Architecture Components
 
-```
-┌──────────────────┐    ┌─────────────────┐    ┌──────────────────┐
-│     Models       │    │     Views       │    │   Controllers    │
-│                  │    │                 │    │                  │
-│ • NodeModel      │◄──►│ • NodeView      │◄──►│ • NodeController │
-│ • AttrModel      │    │ • PlugView      │    │ • ConnectionCtrl │
-│ • ConnectionModel│    │ • SocketView    │    │ • GraphController│
-│ • GraphModel     │    │ • ConnectionView│    │ • NodzAPI        │
-└──────────────────┘    └─────────────────┘    └──────────────────┘
-         ▲                       ▲                       ▲
-         │                       │                       │
-         └───────────────────────┼───────────────────────┘
-                                 │
-                        ┌─────────────────┐
-                        │   Observer      │
-                        │   Pattern       │
-                        └─────────────────┘
+```mermaid
+graph TD
+    subgraph Models ["🗃️ Models Layer"]
+        NM(NodeModel)
+        AM(AttrModel)
+        CM(ConnectionModel)
+        GM(GraphModel)
+    end
+
+    subgraph Views ["🎨 Views Layer"]
+        NV(NodeView)
+        PV(PlugView)
+        SV(SocketView)
+        CV(ConnectionView)
+        NSV(NodzScene)
+        NZV(NodzView)
+    end
+
+    subgraph Controllers ["🎮 Controllers Layer"]
+        NC(NodeController)
+        CC(ConnectionController)
+        GC(GraphController)
+        API(NodzAPI)
+    end
+
+    subgraph Patterns ["🔄 Design Patterns"]
+        OP(Observer Pattern)
+        SIG(Signal/Slot System)
+    end
+
+    %% MVC Relationships
+    Models -.->|Observer Pattern| Views
+    Views <-->|Signals| Controllers
+    Controllers -->|Updates| Models
+
+    %% API Facade
+    API -->|Coordinates| NC
+    API -->|Coordinates| CC
+    API -->|Coordinates| GC
+
+    %% Observer Pattern
+    OP -.->|Notifies| Views
+    Models -.->|Uses| OP
+
+    %% Signal System
+    Views -->|Emits| SIG
+    SIG -->|Routes to| Controllers
+
+    %% Styling
+    classDef modelClass color:#000000,fill:#abe5ff,stroke:#01579b,stroke-width:2px
+    classDef viewClass color:#000000,fill:#EBA4F5,stroke:#4a148c,stroke-width:2px
+    classDef controllerClass color:#000000,fill:#A4F5A4,stroke:#1b5e20,stroke-width:2px
+    classDef patternClass color:#000000,fill:#FFDFAB,stroke:#e65100,stroke-width:2px
+
+    class NM,AM,CM,GM modelClass
+    class NV,PV,SV,CV,NSV,NZV viewClass
+    class NC,CC,GC,API controllerClass
+    class OP,SIG patternClass
 ```
 
 ### Design Patterns Used
