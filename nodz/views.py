@@ -35,6 +35,7 @@ class ViewSignals(QtCore.QObject):
     node_moved = Signal(str, QtCore.QPointF)  # node_name, position
     node_selected = Signal(str, bool)  # node_name, selected
     node_double_clicked = Signal(str)  # node_name
+    node_deleted = Signal(str)  # node_name
 
     # Selection signals
     selection_cleared = Signal()  # emitted when all selection is cleared

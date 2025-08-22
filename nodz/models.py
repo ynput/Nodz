@@ -425,15 +425,6 @@ class GraphModel(BaseModel):
 
         node = self._nodes.pop(name)
 
-        # Remove connections associated with this node
-        connections_to_remove = []
-        for conn in self._connections:
-            if conn.plug_node == name or conn.socket_node == name:
-                connections_to_remove.append(conn)
-
-        for conn in connections_to_remove:
-            self._connections.remove(conn)
-
         self._notify_change("nodes", node, None)
 
     def update_node(self, name: str, node: NodeModel) -> None:

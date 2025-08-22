@@ -249,6 +249,9 @@ class NodeController(BaseController):
         # Remove from model
         self.graph_model.remove_node(node_name)
 
+        # Emit node deleted signal
+        self.signals.node_deleted.emit(node_name)
+
     @validate_node_exists
     def rename_node(self, node_name: str, new_name: str) -> str:
         """Rename a node."""
@@ -408,6 +411,7 @@ class ConnectionController(BaseController):
         self.signals.connection_created.connect(self.on_connection_created)
         self.signals.connection_deleted.connect(self.on_connection_deleted)
         self.signals.node_moved.connect(self.on_node_moved)
+        self.signals.node_deleted.connect(self.on_node_deleted)
 
     def create_connection(
         self,
@@ -909,6 +913,25 @@ class ConnectionController(BaseController):
                     connection_view.source_point = source_view.center()
                     connection_view.target_point = target_view.center()
                     connection_view.update_path()
+
+    def on_node_deleted(self, node_name: str) -> None:
+        """Handle node deleted signal."""
+        # Find all connections that involve this node
+        connections_to_remove = []
+        for conn in self.graph_model.connections:
+            if conn.plug_node == node_name or conn.socket_node == node_name:
+                connections_to_remove.append(conn)
+
+        # Remove each connection properly (both model and view)
+        for conn in connections_to_remove:
+            # Find the connection view
+            connection_view = self._find_connection_view(conn)
+            if connection_view:
+                # Remove from scene
+                self.scene.removeItem(connection_view)
+
+            # Remove from model
+            self.graph_model.remove_connection(conn)
 
     def _find_plug_view(
         self, node_name: str, attr_name: str
