@@ -72,15 +72,15 @@ class NodzScene(QtWidgets.QGraphicsScene):
 
     def get_slot_connections(self, slot: SlotView) -> list:
         """Get all connections attached to a slot."""
+
+        if not isinstance(slot, SlotView):
+            raise TypeError(f"slot MUST be a SlotView, not {slot}")
+
         connections = []
 
         # Find all connection views in the scene
         for item in self.items():
             # Check if it's a connection view
-            if not isinstance(item, ConnectionView):
-                continue
-
-            # Check if it has the necessary attributes
             if not isinstance(item, ConnectionView):
                 continue
 
@@ -90,9 +90,6 @@ class NodzScene(QtWidgets.QGraphicsScene):
 
             parent = slot.parentItem()
             if not isinstance(parent, NodeView):
-                continue
-
-            if not isinstance(slot, SlotView):
                 continue
 
             node_name = parent.model.name
