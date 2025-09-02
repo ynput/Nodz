@@ -1313,11 +1313,11 @@ class NodzView(QtWidgets.QGraphicsView):
         visible_scene_rect = self.mapToScene(viewport_rect).boundingRect()
 
         return {
-            'visible_rect': [
+            "visible_rect": [
                 visible_scene_rect.x(),
                 visible_scene_rect.y(),
                 visible_scene_rect.width(),
-                visible_scene_rect.height()
+                visible_scene_rect.height(),
             ]
         }
 
@@ -1332,17 +1332,24 @@ class NodzView(QtWidgets.QGraphicsView):
         if not isinstance(framing_data, dict):
             raise ValueError("framing_data must be a dictionary")
 
-        if 'visible_rect' not in framing_data:
+        if "visible_rect" not in framing_data:
             raise ValueError("framing_data must contain 'visible_rect'")
 
-        visible_rect_list = framing_data['visible_rect']
-        if not isinstance(visible_rect_list, list) or len(visible_rect_list) != 4:
-            raise ValueError("'visible_rect' must be a list of 4 numbers [x, y, width, height]")
+        visible_rect_list = framing_data["visible_rect"]
+        if (
+            not isinstance(visible_rect_list, list)
+            or len(visible_rect_list) != 4
+        ):
+            raise ValueError(
+                "'visible_rect' must be a list of 4 numbers [x, y, width, height]"
+            )
 
         # Create QRectF from the stored rectangle
         visible_rect = QtCore.QRectF(
-            visible_rect_list[0], visible_rect_list[1],
-            visible_rect_list[2], visible_rect_list[3]
+            visible_rect_list[0],
+            visible_rect_list[1],
+            visible_rect_list[2],
+            visible_rect_list[3],
         )
 
         # Use fitInView to restore the exact view
