@@ -97,7 +97,7 @@ class NodeModel(BaseModel):
         return list(self.attributes.keys())[idx]
 
     def sort_attributes(self):
-        # Sort attibutes based on their index
+        # Sort attributes based on their index
         # Make sure attr names == dict key.
         self.attributes = OrderedDict(
             {
@@ -143,8 +143,3 @@ class GraphModel(BaseModel):
     def add_connection(self, con: ConnectionModel):
         if con not in self.connections:
             self.connections.append(con)
-
-
-# Note: ModelEdit, ModelEntity, and NodzAdapter classes have been removed
-# as they are no longer needed with the new MVC architecture and unified API.
-# The functionality has been replaced by the controllers and models in the new architecture.
