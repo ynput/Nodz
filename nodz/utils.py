@@ -38,6 +38,7 @@ def get_logging_level():
 
 
 def json_encoder(obj):
+    """encode unsupported data types."""
     if isinstance(obj, QtCore.QPointF):
         obj = (obj.x(), obj.y())
     elif isinstance(obj, type):
