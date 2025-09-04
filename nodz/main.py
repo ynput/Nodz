@@ -10,6 +10,7 @@ import sys
 from typing import Any, Dict, Optional, Union, List
 from qtpy import QtCore, QtGui, QtWidgets
 
+from .slot_drawer import SlotDrawer
 from .views import NodeView, ConnectionView, PlugView, SocketView, SlotView
 from .controllers import NodzAPI
 from .utils import nlog
@@ -166,6 +167,9 @@ class NodzView(QtWidgets.QGraphicsView):
 
         # Load configuration
         self.config = self._load_config(config_path)
+
+        # initialize slot drawer singleton
+        SlotDrawer(self.config)
 
         # Setup view
         self._setup_view()

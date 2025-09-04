@@ -36,7 +36,7 @@ nodeA = nodz.api.create_node(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr1",
-    preset="attr_preset_1",
+    preset="attr_data_type",
     plug=True,
     socket=False,
     data_type=str,
@@ -46,7 +46,7 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr2",
-    preset="attr_preset_1",
+    preset="attr_data_type",
     plug=False,
     socket=False,
     data_type=int,
@@ -56,7 +56,7 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr3",
-    preset="attr_preset_2",
+    preset="attr_data_type",
     plug=True,
     socket=True,
     data_type=int,
@@ -65,7 +65,7 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr4",
-    preset="attr_preset_2",
+    preset="attr_data_type",
     plug=True,
     socket=True,
     data_type=str,
@@ -74,7 +74,7 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr5",
-    preset="attr_preset_3",
+    preset="attr_data_type",
     plug=True,
     socket=True,
     data_type=int,
@@ -85,7 +85,7 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr6",
-    preset="attr_preset_3",
+    preset="attr_data_type",
     plug=True,
     socket=True,
     data_type=int,

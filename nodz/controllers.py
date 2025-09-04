@@ -532,6 +532,8 @@ class ConnectionController(BaseController):
                 self.config,
                 self.signals,
             )
+            if source_view.slot_drawer_enabled:
+                connection_view.set_data_type(source_view.model.data_type)
             self.scene.addItem(connection_view)
 
         return connection_model
@@ -614,6 +616,8 @@ class ConnectionController(BaseController):
             self.config,
             self.signals,
         )
+        if source_slot.slot_drawer_enabled:
+            self.temp_connection.set_data_type(source_slot.model.data_type)
         self.scene.addItem(self.temp_connection)
 
     def on_connection_dragged(self, position: QtCore.QPoint) -> None:

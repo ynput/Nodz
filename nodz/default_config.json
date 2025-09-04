@@ -47,7 +47,6 @@
         "socket": [255, 155, 0, 255]
     },
 
-
     "node_preset_1": {
         "bg": [80, 80, 80, 255],
         "border": [50, 50, 50, 255],
@@ -76,32 +75,59 @@
         "socket": [255, 155, 0, 255]
     },
 
+    "attr_data_type": {
+        "bg": [160, 160, 160, 255],
+        "text": [220, 220, 220, 255],
+        "slot_data_type": true
+    },
+
     "shapes_definitions": {
         "circle": [
-            {"ellipse": [[0, 0], [10, 10]]}
+            {"ellipse": [[0.0, 0.0], [1.0, 1.0]]}
         ],
         "rectangle": [
-            {"rect": [[0, 0], [10, 10]]}
+            {"rect": [[0.2, 0.0], [0.8, 1.0]]}
         ],
         "square": [
-            {"rect": [[0, 0], [10, 10]]}
+            {"rect": [[0, 0], [1.0, 1.0]]}
         ],
-        "triangle": [
-            {"polygon": [[0, 8], [5, 0], [10, 8]]}
+        "rounded_square": [
+            {"rounded_rect": [[0, 0], [1.0, 1.0]], "radius": 0.3}
+        ],
+        "triangle_left": [
+            {"polygon": [[0, 0.5], [1.0, 0], [1.0, 1.0]]}
+        ],
+        "triangle_right": [
+            {"polygon": [[0, 0], [1.0, 0.5], [0.0, 1.0]]}
+        ],
+        "triangle_up": [
+            {"polygon": [[0, 1.0], [0.5, 0], [1.0, 1.0]]}
+        ],
+        "triangle_down": [
+            {"polygon": [[0, 0], [1.0, 0], [0.5, 1.0]]}
         ],
         "diamond": [
-            {"polygon": [[5, 0], [10, 5], [5, 10], [0, 5]]}
+            {"polygon": [[0.5, 0], [1.0, 0.5], [0.5, 1.0], [0, 0.5]]}
         ],
         "hexagon": [
-            {"polygon": [[2, 0], [8, 0], [10, 4], [8, 8], [2, 8], [0, 4]]}
+            {"polygon": [[0.2, 0], [0.8, 0], [1.0, 0.4], [0.8, 0.8], [0.2, 0.8], [0, 0.4]]}
         ],
         "compound_gear": [
-            {"ellipse": [[1, 1], [8, 8]]},
-            {"rect": [[0, 4], [10, 2]]},
-            {"rect": [[4, 0], [2, 10]]}
+            {"ellipse": [[0.1, 0.1], [0.8, 0.8]]},
+            {"rect": [[0, 0.4], [1.0, 0.2]]},
+            {"rect": [[0.4, 0], [0.2, 1.0]]}
         ],
         "star": [
-            {"polygon": [[5, 0], [6, 3], [10, 3], [7, 6], [8, 10], [5, 7], [2, 10], [3, 6], [0, 3], [4, 3]]}
+            {"polygon": [[0.5, 0], [0.6, 0.3], [1.0, 0.3], [0.7, 0.6], [0.8, 1.0], [0.5, 0.7], [0.2, 1.0], [0.3, 0.6], [0, 0.3], [0.4, 0.3]]}
+        ],
+        "two_bars": [
+            {"polygon": [[0.1, 0.0], [0.9, 0.0], [0.9, 0.5], [0.1, 0.5]]},
+            {"polygon": [[0.1, 0.5], [0.9, 0.5], [0.9, 1.0], [0.1, 1.0]]}
+        ],
+        "three_bars": [
+            {"polygon": [[0.0, 0.00], [1.0, 0.00], [1.0, 0.33], [0.0, 0.33]]},
+            {"polygon": [[0.0, 0.33], [1.0, 0.33], [1.0, 0.66], [0.0, 0.66]]},
+            {"polygon": [[0.0, 0.66], [1.0, 0.66], [1.0, 1.00], [0.0, 1.00]]}
         ]
     },
 
@@ -109,28 +135,28 @@
         "<class 'str'>": {
             "shape": "circle",
             "color": [255, 128, 0],
-            "connection_width": 1,
-            "border_width": 2,
-            "border_color": [200, 100, 0]
+            "connection_width": 2,
+            "border_width": 1,
+            "border_color": [128, 64, 0]
         },
         "<class 'int'>": {
-            "shape": "square",
-            "color": [128, 255, 255],
-            "connection_width": 4,
+            "shape": "diamond",
+            "color": [96, 128, 223],
+            "connection_width": 3,
             "border_width": 1,
-            "border_color": [100, 200, 200]
+            "border_color": [48, 64, 111]
         },
         "<class 'float'>": {
             "shape": "diamond",
             "color": [255, 255, 128],
-            "connection_width": 1,
+            "connection_width": 2,
             "border_width": 2,
             "border_color": [200, 200, 100]
         },
         "<class 'bool'>": {
             "shape": "triangle",
             "color": [255, 128, 255],
-            "connection_width": 1,
+            "connection_width": 2,
             "border_width": 2,
             "border_color": [200, 100, 200]
         },
@@ -164,10 +190,12 @@
         },
         "default": {
             "shape": "circle",
-            "color": [255, 155, 0],
+            "color": [255, 128, 0],
             "connection_width": 2,
-            "border_width": 2,
-            "border_color": [200, 120, 0]
+            "border_width": 1,
+            "border_color": [0, 0, 0]
         }
+    },
+    "slot_shape_aliases": {
     }
 }

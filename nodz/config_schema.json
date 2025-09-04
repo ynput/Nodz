@@ -40,7 +40,7 @@
             ],
             "additionalProperties": false
         },
-        "attrColorObject": {
+        "attrColorObjectSlots": {
             "type": "object",
             "properties": {
                 "bg": {
@@ -64,16 +64,48 @@
             ],
             "additionalProperties": false
         },
+        "attrColorObjectDataType": {
+            "type": "object",
+            "properties": {
+                "bg": {
+                    "$ref": "#/definitions/colorArray"
+                },
+                "text": {
+                    "$ref": "#/definitions/colorArray"
+                },
+                "slot_data_type": {
+                    "type": "boolean",
+                    "description": "Override the plug and socket colors to draw them based on their data type"
+                }
+            },
+            "required": [
+                "bg",
+                "text",
+                "slot_data_type"
+            ],
+            "additionalProperties": false
+        },
+        "attrColorObject": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/attrColorObjectSlots"
+                },
+                {
+                    "$ref": "#/definitions/attrColorObjectDataType"
+                }
+            ]
+        },
         "2DPoint": {
             "type": "array",
             "items": {
                 "type": "number",
-                "minimum": 0,
-                "maximum": 10
+                "minimum": 0.0,
+                "maximum": 1.0
             },
             "minItems": 2,
             "maxItems": 2,
-            "description": "X, Y coordinate pair in 0-10 relative scale"
+            "description": "X, Y coordinate pair in 0.0-1.0 relative scale"
         },
         "shapeCommand": {
             "type": "object",
@@ -125,6 +157,28 @@
                     },
                     "required": [
                         "polygon"
+                    ],
+                    "additionalProperties": false
+                },
+                {
+                    "properties": {
+                        "rounded_rect": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/2DPoint"
+                            },
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "description": "Rounded rectangle defined by top-left and bottom-right coordinates"
+                        },
+                        "radius": {
+                            "type": "number",
+                            "description": "Corner radius"
+                        }
+                    },
+                    "required": [
+                        "rounded_rect",
+                        "radius"
                     ],
                     "additionalProperties": false
                 }
