@@ -1,0 +1,380 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://example.com/nodz-config.schema.json",
+    "title": "Nodz Configuration Schema",
+    "description": "JSON schema for validating Nodz default configuration files",
+    "type": "object",
+    "definitions": {
+        "colorArray": {
+            "type": "array",
+            "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 255
+            },
+            "minItems": 3,
+            "maxItems": 4,
+            "description": "RGB or RGBA color values"
+        },
+        "nodeColorObject": {
+            "type": "object",
+            "properties": {
+                "bg": {
+                    "$ref": "#/definitions/colorArray"
+                },
+                "border": {
+                    "$ref": "#/definitions/colorArray"
+                },
+                "border_sel": {
+                    "$ref": "#/definitions/colorArray"
+                },
+                "text": {
+                    "$ref": "#/definitions/colorArray"
+                }
+            },
+            "required": [
+                "bg",
+                "border",
+                "border_sel",
+                "text"
+            ],
+            "additionalProperties": false
+        },
+        "attrColorObject": {
+            "type": "object",
+            "properties": {
+                "bg": {
+                    "$ref": "#/definitions/colorArray"
+                },
+                "text": {
+                    "$ref": "#/definitions/colorArray"
+                },
+                "plug": {
+                    "$ref": "#/definitions/colorArray"
+                },
+                "socket": {
+                    "$ref": "#/definitions/colorArray"
+                }
+            },
+            "required": [
+                "bg",
+                "text",
+                "plug",
+                "socket"
+            ],
+            "additionalProperties": false
+        },
+        "2DPoint": {
+            "type": "array",
+            "items": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10
+            },
+            "minItems": 2,
+            "maxItems": 2,
+            "description": "X, Y coordinate pair in 0-10 relative scale"
+        },
+        "shapeCommand": {
+            "type": "object",
+            "oneOf": [
+                {
+                    "properties": {
+                        "ellipse": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/2DPoint"
+                            },
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "description": "Ellipse defined by top-left and bottom-right coordinates"
+                        }
+                    },
+                    "required": [
+                        "ellipse"
+                    ],
+                    "additionalProperties": false
+                },
+                {
+                    "properties": {
+                        "rect": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/2DPoint"
+                            },
+                            "minItems": 2,
+                            "maxItems": 2,
+                            "description": "Rectangle defined by top-left and bottom-right coordinates"
+                        }
+                    },
+                    "required": [
+                        "rect"
+                    ],
+                    "additionalProperties": false
+                },
+                {
+                    "properties": {
+                        "polygon": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/2DPoint"
+                            },
+                            "minItems": 3,
+                            "description": "Polygon defined by array of coordinate points"
+                        }
+                    },
+                    "required": [
+                        "polygon"
+                    ],
+                    "additionalProperties": false
+                }
+            ]
+        },
+        "shapeDefinition": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/shapeCommand"
+            },
+            "minItems": 1,
+            "description": "Array of drawing commands that define a shape"
+        },
+        "slotShapeConfig": {
+            "type": "object",
+            "properties": {
+                "shape": {
+                    "type": "string",
+                    "description": "Reference to a shape definition"
+                },
+                "color": {
+                    "$ref": "#/definitions/colorArray"
+                },
+                "connection_width": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "border_width": {
+                    "type": "integer",
+                    "minimum": 0
+                },
+                "border_color": {
+                    "$ref": "#/definitions/colorArray"
+                }
+            },
+            "required": [
+                "shape",
+                "color",
+                "connection_width",
+                "border_width",
+                "border_color"
+            ],
+            "additionalProperties": false
+        }
+    },
+    "properties": {
+        "scene_width": {
+            "type": "integer",
+            "minimum": 100,
+            "description": "Width of the scene in pixels"
+        },
+        "scene_height": {
+            "type": "integer",
+            "minimum": 100,
+            "description": "Height of the scene in pixels"
+        },
+        "grid_size": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Size of grid squares"
+        },
+        "antialiasing": {
+            "type": "boolean",
+            "description": "Enable antialiasing"
+        },
+        "antialiasing_boost": {
+            "type": "boolean",
+            "description": "Enable antialiasing boost"
+        },
+        "smooth_pixmap": {
+            "type": "boolean",
+            "description": "Enable smooth pixmap rendering"
+        },
+        "viewport_margins": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Viewport focus margins in pixels"
+        },
+        "horizontal_node_spacing": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Horizontal spacing between nodes when auto-laid out"
+        },
+        "vertical_node_spacing": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Vertical spacing between nodes when auto-laid out"
+        },
+        "node_font": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Font family for node text"
+        },
+        "node_font_size": {
+            "type": "integer",
+            "minimum": 6,
+            "description": "Font size for node text"
+        },
+        "attr_font": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Font family for attribute text"
+        },
+        "attr_font_size": {
+            "type": "integer",
+            "minimum": 6,
+            "description": "Font size for attribute text"
+        },
+        "mouse_bounding_box": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Mouse interaction bounding box size"
+        },
+        "node_width": {
+            "type": "integer",
+            "minimum": 50,
+            "description": "Default node width"
+        },
+        "node_height": {
+            "type": "integer",
+            "minimum": 20,
+            "description": "Default node height"
+        },
+        "node_radius": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Node corner radius"
+        },
+        "node_border": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Node border width"
+        },
+        "node_attr_height": {
+            "type": "integer",
+            "minimum": 10,
+            "description": "Height of node attributes"
+        },
+        "connection_width": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Width of connections between nodes"
+        },
+        "connection_grab_radius": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Radius for grabbing connections"
+        },
+        "alternate_value": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Alternate value for color variations"
+        },
+        "bg_color": {
+            "$ref": "#/definitions/colorArray",
+            "description": "Background color"
+        },
+        "grid_color": {
+            "$ref": "#/definitions/colorArray",
+            "description": "Grid line color"
+        },
+        "slot_border": {
+            "$ref": "#/definitions/colorArray",
+            "description": "Slot border color"
+        },
+        "non_connectable_color": {
+            "$ref": "#/definitions/colorArray",
+            "description": "Color for non-connectable elements"
+        },
+        "connection_color": {
+            "$ref": "#/definitions/colorArray",
+            "description": "Default connection color"
+        },
+        "node_default": {
+            "$ref": "#/definitions/nodeColorObject",
+            "description": "Default node colors"
+        },
+        "attr_default": {
+            "$ref": "#/definitions/attrColorObject",
+            "description": "Default attribute colors"
+        },
+        "shapes_definitions": {
+            "type": "object",
+            "patternProperties": {
+                "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+                    "$ref": "#/definitions/shapeDefinition"
+                }
+            },
+            "additionalProperties": false,
+            "description": "Shape definitions for slot rendering"
+        },
+        "slot_shapes": {
+            "type": "object",
+            "properties": {
+                "default": {
+                    "$ref": "#/definitions/slotShapeConfig",
+                    "description": "Default slot shape configuration"
+                }
+            },
+            "patternProperties": {
+                "^<class '.*'>$": {
+                    "$ref": "#/definitions/slotShapeConfig"
+                }
+            },
+            "additionalProperties": false,
+            "description": "Mapping of Python types to slot shape configurations"
+        }
+    },
+    "patternProperties": {
+        "^node_preset_\\d+$": {
+            "$ref": "#/definitions/nodeColorObject",
+            "description": "Custom node color presets"
+        },
+        "^attr_preset_\\d+$": {
+            "$ref": "#/definitions/attrColorObject",
+            "description": "Custom attribute color presets"
+        }
+    },
+    "required": [
+        "scene_width",
+        "scene_height",
+        "grid_size",
+        "antialiasing",
+        "antialiasing_boost",
+        "smooth_pixmap",
+        "viewport_margins",
+        "horizontal_node_spacing",
+        "vertical_node_spacing",
+        "node_font",
+        "node_font_size",
+        "attr_font",
+        "attr_font_size",
+        "mouse_bounding_box",
+        "node_width",
+        "node_height",
+        "node_radius",
+        "node_border",
+        "node_attr_height",
+        "connection_width",
+        "connection_grab_radius",
+        "alternate_value",
+        "bg_color",
+        "grid_color",
+        "slot_border",
+        "non_connectable_color",
+        "connection_color",
+        "node_default",
+        "attr_default",
+        "shapes_definitions",
+        "slot_shapes"
+    ],
+    "additionalProperties": true
+}
