@@ -80,6 +80,21 @@
         "text": [220, 220, 220, 255],
         "slot_data_type": true
     },
+    "attr_data_type_1": {
+        "bg": [60, 60, 60, 255],
+        "text": [220, 220, 220, 255],
+        "slot_data_type": true
+    },
+    "attr_data_type_2": {
+        "bg": [250, 120, 120, 255],
+        "text": [220, 220, 220, 255],
+        "slot_data_type": true
+    },
+    "attr_data_type_3": {
+        "bg": [160, 160, 160, 255],
+        "text": [220, 220, 220, 255],
+        "slot_data_type": true
+    },
 
     "shapes_definitions": {
         "circle": [
@@ -154,7 +169,7 @@
             "border_color": [200, 200, 100]
         },
         "<class 'bool'>": {
-            "shape": "triangle",
+            "shape": "triangle_right",
             "color": [255, 128, 255],
             "connection_width": 2,
             "border_width": 2,
@@ -174,12 +189,12 @@
             "border_width": 3,
             "border_color": [100, 200, 100]
         },
-        "<class 'tuple'>": {
-            "shape": "diamond",
-            "color": [255, 192, 128],
+        "typing.Union[__main__.SomeClass, str]": {
+            "shape": "two_bars",
+            "color": [255, 159, 64],
             "connection_width": 2,
-            "border_width": 2,
-            "border_color": [200, 150, 100]
+            "border_width": 1,
+            "border_color": [84, 53, 21]
         },
         "<class 'NoneType'>": {
             "shape": "circle",

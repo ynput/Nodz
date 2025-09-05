@@ -8,9 +8,13 @@ It creates a simple node graph with a few nodes and connections.
 
 import sys
 from typing import Union
-from qtpy import QtCore, QtGui, QtWidgets
+from qtpy import QtCore, QtWidgets
 
 from nodz.main import create_nodz_view
+from nodz.utils import nlog
+
+class SomeClass:
+    pass
 
 # Create application
 app = (
@@ -36,7 +40,7 @@ nodeA = nodz.api.create_node(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr1",
-    preset="attr_data_type",
+    preset="attr_data_type_1",
     plug=True,
     socket=False,
     data_type=str,
@@ -46,7 +50,7 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr2",
-    preset="attr_data_type",
+    preset="attr_data_type_1",
     plug=False,
     socket=False,
     data_type=int,
@@ -56,7 +60,7 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr3",
-    preset="attr_data_type",
+    preset="attr_data_type_2",
     plug=True,
     socket=True,
     data_type=int,
@@ -65,7 +69,7 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr4",
-    preset="attr_data_type",
+    preset="attr_data_type_2",
     plug=True,
     socket=True,
     data_type=str,
@@ -74,7 +78,7 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr5",
-    preset="attr_data_type",
+    preset="attr_data_type_3",
     plug=True,
     socket=True,
     data_type=int,
@@ -85,10 +89,10 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeA,
     name="Aattr6",
-    preset="attr_data_type",
+    preset="attr_data_type_3",
     plug=True,
     socket=True,
-    data_type=int,
+    data_type=float,
     plug_max_connections=1,
     socket_max_connections=-1,
 )
@@ -101,7 +105,7 @@ nodeB = nodz.api.create_node(
 nodz.api.create_attribute(
     node_name=nodeB,
     name="Battr1",
-    preset="attr_preset_1",
+    preset="attr_data_type",
     plug=True,
     socket=False,
     data_type=str,
@@ -110,7 +114,7 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeB,
     name="Battr2",
-    preset="attr_preset_1",
+    preset="attr_data_type_1",
     plug=True,
     socket=False,
     data_type=int,
@@ -119,16 +123,16 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeB,
     name="Battr3",
-    preset="attr_preset_2",
+    preset="attr_data_type_2",
     plug=True,
     socket=False,
-    data_type=int,
+    data_type=bool,
 )
 
 nodz.api.create_attribute(
     node_name=nodeB,
     name="Battr4",
-    preset="attr_preset_3",
+    preset="attr_data_type_3",
     plug=True,
     socket=False,
     data_type=int,
@@ -144,25 +148,25 @@ nodeC = nodz.api.create_node(
 nodz.api.create_attribute(
     node_name=nodeC,
     name="Cattr1",
-    preset="attr_preset_1",
+    preset="attr_data_type",
     plug=False,
     socket=True,
-    data_type=str,
+    data_type=Union[SomeClass, str],
 )
 
 nodz.api.create_attribute(
     node_name=nodeC,
     name="Cattr2",
-    preset="attr_preset_1",
+    preset="attr_data_type",
     plug=True,
     socket=False,
-    data_type=int,
+    data_type=float,
 )
 
 nodz.api.create_attribute(
     node_name=nodeC,
     name="Cattr3",
-    preset="attr_preset_1",
+    preset="attr_data_type",
     plug=True,
     socket=False,
     data_type=str,
@@ -171,7 +175,7 @@ nodz.api.create_attribute(
 nodz.api.create_attribute(
     node_name=nodeC,
     name="Cattr4",
-    preset="attr_preset_2",
+    preset="attr_data_type",
     plug=False,
     socket=True,
     data_type=str,
@@ -276,8 +280,7 @@ nodz.api.create_connection("nodeD", "Dattr2", "nodeE", "Eattr3")
 nodz.layout_graph()
 
 # Print instructions
-from nodz.utils import nlog
-nlog.info("\nNodz MVC Demo")
+nlog.info("Nodz MVC Demo")
 
 # Run application
 if app:
