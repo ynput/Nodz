@@ -19,6 +19,8 @@ from .models import (
     ModelObserver,
 )
 
+from .slot_drawer import SlotDrawer
+
 
 class SlotType(Enum):
     """Types of slots."""
@@ -76,6 +78,10 @@ class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
         self.model = model
         self.config = config
         self.signals = signals
+        self.slot_drawer = SlotDrawer()
+        self.slot_drawer_enabled = self.config[self.model.preset].get(
+            "slot_data_type", False
+        )
 
         # Register as observer
         self.model.add_observer(self)
@@ -85,14 +91,21 @@ class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
         self.slot_type = SlotType.SLOT
 
         # Style
-        self.brush = QtGui.QBrush()
-        self.brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
+        if self.slot_drawer_enabled:
+            self.pen, self.brush = self.slot_drawer.pen_and_brush(
+                self.model.data_type
+            )
+        else:
+            self.brush = QtGui.QBrush()
+            self.pen = QtGui.QPen()
 
-        self.pen = QtGui.QPen()
+        self.brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
         self.pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
 
         # Connection state
         self.new_connection = None
+
+        self.setZValue(1)
 
     def on_model_changed(
         self,
@@ -294,7 +307,12 @@ class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
         """Paint the slot."""
         painter.setBrush(self.brush)
         painter.setPen(self.pen)
-        painter.drawEllipse(self.boundingRect())
+        if self.slot_drawer_enabled:
+            SlotDrawer().paint(
+                self.model.data_type, painter, self.boundingRect()
+            )
+        else:
+            painter.drawEllipse(self.boundingRect())
 
     def center(self) -> QtCore.QPointF:
         """Get the center point of the slot in scene coordinates."""
@@ -318,9 +336,14 @@ class PlugView(SlotView):
 
     def _create_style(self) -> None:
         """Set up the visual style."""
-        self.brush.setColor(
-            QtGui.QColor(*self.config[self.model.preset]["plug"])
-        )
+        if self.slot_drawer_enabled:
+            _, self.brush = self.slot_drawer.pen_and_brush(
+                self.model.data_type
+            )
+        else:
+            self.brush.setColor(
+                QtGui.QColor(*self.config[self.model.preset]["plug"])
+            )
 
     def boundingRect(self) -> QtCore.QRectF:
         """Define the bounding rectangle."""
@@ -357,9 +380,14 @@ class SocketView(SlotView):
 
     def _create_style(self) -> None:
         """Set up the visual style."""
-        self.brush.setColor(
-            QtGui.QColor(*self.config[self.model.preset]["socket"])
-        )
+        if self.slot_drawer_enabled:
+            _, self.brush = self.slot_drawer.pen_and_brush(
+                self.model.data_type
+            )
+        else:
+            self.brush.setColor(
+                QtGui.QColor(*self.config[self.model.preset]["socket"])
+            )
 
     def boundingRect(self) -> QtCore.QRectF:
         """Define the bounding rectangle."""
@@ -423,6 +451,11 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
         self._pen = QtGui.QPen(QtGui.QColor(*self.config["connection_color"]))
         self._pen.setWidth(self.config["connection_width"])
         self.setPen(self._pen)
+
+    def set_data_type(self, data_type: Any) -> None:
+        self._pen = SlotDrawer().connection_pen(data_type)
+        self.setPen(self._pen)
+        self.update()
 
     def on_model_changed(
         self,
