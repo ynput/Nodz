@@ -4,6 +4,10 @@ from enum import Enum
 from qtpy import QtCore, QtGui
 
 
+class UnknownShapeError(BaseException):
+    pass
+
+
 @dataclass
 class SlotShapeDef:
     shape: str
@@ -104,6 +108,8 @@ class SlotDrawer:
             }
         self.slot_shapes: dict[str, SlotShapeDef] = {}
         for k, v in tmp_slot_shapes.items():
+            if v["shape"] not in self.shape_defs:
+                raise UnknownShapeError(f"{k} = {v}")
             obj = SlotShapeDef(**v)
             drawcalls: list = self.shape_defs.get(
                 obj.shape, self.shape_defs.get("circle")
