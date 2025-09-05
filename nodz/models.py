@@ -176,6 +176,8 @@ class AttrModel(BaseModel):
         elif get_origin(socket_type) is Union:
             return issubclass(plug_type, get_args(socket_type))
         elif isinstance(plug_type, type) and isinstance(socket_type, type):
+            # FIXME: issubclass may yield undesirable results, like:
+            #       issubclass(bool, int) == True
             return issubclass(plug_type, socket_type)
         return False
 
