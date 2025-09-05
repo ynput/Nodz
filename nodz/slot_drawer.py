@@ -101,10 +101,10 @@ class SlotDrawer:
         if "default" not in tmp_slot_shapes:
             tmp_slot_shapes["default"] = {
                 "shape": "circle",
-                "color": [255, 155, 0],
+                "color": [255, 128, 0],
                 "connection_width": 2,
                 "border_width": 1,
-                "border_color": [200, 120, 0],
+                "border_color": [0, 0, 0],
             }
         self.slot_shapes: dict[str, SlotShapeDef] = {}
         for k, v in tmp_slot_shapes.items():
