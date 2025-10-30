@@ -156,30 +156,75 @@ class AttrModel(BaseModel):
             bool: True if compatible, False otherwise.
         """
 
-        if str(plug_type) == "typing.Any" or str(socket_type) == "typing.Any":
-            return True
-        elif get_origin(plug_type) is Union:
-            if get_origin(socket_type) is not Union:
-                return any(
-                    [
-                        issubclass(src, socket_type)
-                        for src in get_args(plug_type)
-                    ]
+        def _get_all_types(type_entry: Any) -> List[Any]:
+            from collections.abc import Iterable
+
+            if isinstance(type_entry, Iterable):
+                return [
+                    orig_type
+                    for entry in type_entry
+                    for orig_type in _get_all_types(entry)
+                ]
+            if get_origin(type_entry) is Optional:
+                return [None] + _get_all_types(get_args(type_entry))
+            if get_origin(type_entry) is Union:
+                return _get_all_types(get_args(type_entry))
+
+            return [type_entry]
+
+        def __is_compatible(type1: Any, type2: Any) -> bool:
+            if str(type2) == "typing.Any" or str(type1) == "typing.Any":
+                # if type1 is Any this means the connection input is very
+                # permissive and can contain anything, correct values and/or
+                # incorrect values.
+                # Connection is fine but it will be at runtime to check this is OK.
+                return True
+
+            # List
+            if get_origin(type1) is list and get_origin(type1) == get_origin(type2):
+                return _is_compatible_types(
+                    _get_all_types(get_args(type1)),
+                    _get_all_types(get_args(type2)),
                 )
-            else:
-                return any(
-                    [
-                        issubclass(src, get_args(socket_type))
-                        for src in get_args(plug_type)
-                    ]
+
+            # Dict
+            if get_origin(type1) is dict and get_origin(type1) == get_origin(type2):
+                keys1, values1 = get_args(type1)
+                keys2, values2 = get_args(type2)
+
+                # Keys
+                compatible_keys = _is_compatible_types(
+                    _get_all_types(keys1),
+                    _get_all_types(keys2),
                 )
-        elif get_origin(socket_type) is Union:
-            return issubclass(plug_type, get_args(socket_type))
-        elif isinstance(plug_type, type) and isinstance(socket_type, type):
-            # FIXME: issubclass may yield undesirable results, like:
-            #       issubclass(bool, int) == True
-            return issubclass(plug_type, socket_type)
-        return False
+
+                # Values
+                compatible_values = _is_compatible_types(
+                    _get_all_types(values1),
+                    _get_all_types(values2),
+                )
+
+                return compatible_keys and compatible_values
+
+
+            if isinstance(type1, type) and isinstance(type2, type):
+                # FIXME: issubclass may yield undesirable results, like:
+                #       issubclass(bool, int) == True
+                return issubclass(type1, type2)
+
+            return type1 == type2
+
+        def _is_compatible_types(types1: List[Any], types2: List[Any]) -> bool:
+            for type1 in types1:
+                for type2 in types2:
+                    if __is_compatible(type1, type2):
+                        return True
+            return False
+
+        return _is_compatible_types(
+            _get_all_types(plug_type),
+            _get_all_types(socket_type),
+        )
 
 
 class NodeModel(BaseModel):
