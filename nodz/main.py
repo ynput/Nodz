@@ -525,7 +525,7 @@ class NodzView(QtWidgets.QGraphicsView):
         """Handle mouse release events."""
         # Reset drag mode
         if self.dragMode() == QtWidgets.QGraphicsView.DragMode.ScrollHandDrag:
-            self.setDragMode(QtWidgets.QGraphicsView.DragMode.RubberBandDrag)
+            self.setDragMode(QtWidgets.QGraphicsView.DragMode.NoDrag)
             # Create a fake event to end the drag
             fake_event = QtGui.QMouseEvent(
                 QtCore.QEvent.Type.MouseButtonRelease,
