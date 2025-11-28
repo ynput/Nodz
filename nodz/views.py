@@ -12,14 +12,17 @@ from qtpy import QtCore, QtGui, QtWidgets
 from qtpy.QtCore import Signal  # type: ignore
 
 from .models import (
-    BaseModel,
     NodeModel,
     AttrModel,
     ConnectionModel,
-    ModelObserver,
 )
 
 from .slot_drawer import SlotDrawer
+
+NODE_Z = 0.0
+NODE_Z_UP = 0.5
+CNCT_Z = -0.25
+CNCT_Z_UP = 0.25
 
 
 class SlotType(Enum):
@@ -57,7 +60,7 @@ class ViewSignals(QtCore.QObject):
     )  # source_node, source_attr, target_node, target_attr
 
 
-class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
+class SlotView(QtWidgets.QGraphicsItem):
     """Base view class for attribute connection points (plugs and sockets)."""
 
     # Static variables for connection drawing
@@ -83,9 +86,6 @@ class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
             "slot_data_type", False
         )
 
-        # Register as observer
-        self.model.add_observer(self)
-
         # Setup
         self.setAcceptHoverEvents(True)
         self.slot_type = SlotType.SLOT
@@ -104,18 +104,6 @@ class SlotView(QtWidgets.QGraphicsItem, ModelObserver):
 
         # Connection state
         self.new_connection = None
-
-        self.setZValue(1)
-
-    def on_model_changed(
-        self,
-        model: BaseModel,
-        property_name: str,
-        old_value: Any,
-        new_value: Any,
-    ) -> None:
-        """Handle model changes."""
-        self.update()
 
     def parent_node_view(self) -> "NodeView":
         """Get the parent node view."""
@@ -407,7 +395,7 @@ class SocketView(SlotView):
         return QtCore.QRect(x, y, width, height).toRectF()
 
 
-class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
+class ConnectionView(QtWidgets.QGraphicsPathItem):
     """View for a connection between slots."""
 
     def __init__(
@@ -424,9 +412,6 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
         self.config = config
         self.signals = signals
 
-        # Register as observer
-        self.model.add_observer(self)
-
         # Connection points
         self.source_point = source_point
         self.target_point = target_point
@@ -440,7 +425,7 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
         self._drag_start_pos = QtCore.QPointF()
 
         # Setup
-        self.setZValue(0)
+        self.setZValue(CNCT_Z)
         self._create_style()
         self.update_path()
 
@@ -455,16 +440,6 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
     def set_data_type(self, data_type: Any) -> None:
         self._pen = SlotDrawer().connection_pen(data_type)
         self.setPen(self._pen)
-        self.update()
-
-    def on_model_changed(
-        self,
-        model: BaseModel,
-        property_name: str,
-        old_value: Any,
-        new_value: Any,
-    ) -> None:
-        """Handle model changes."""
         self.update()
 
     def update_path(self) -> None:
@@ -492,22 +467,16 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
             return
 
         # Find source slot (plug)
-        for item in self.scene().items():
-            if (
-                isinstance(item, NodeView)
-                and item.model.name == self.model.plug_node
-            ):
+        for item in self.scene().node_items():
+            if item.model.name == self.model.plug_node:
                 if self.model.plug_attr in item.plugs:
                     plug = item.plugs[self.model.plug_attr]
                     self.source_point = plug.center()
                 break
 
         # Find target slot (socket)
-        for item in self.scene().items():
-            if (
-                isinstance(item, NodeView)
-                and item.model.name == self.model.socket_node
-            ):
+        for item in self.scene().node_items():
+            if item.model.name == self.model.socket_node:
                 if self.model.socket_attr in item.sockets:
                     socket = item.sockets[self.model.socket_attr]
                     self.target_point = socket.center()
@@ -537,7 +506,7 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
                 self._is_dragging_end = True
                 self._dragging_source = True
                 self._drag_start_pos = click_pos
-                self.setZValue(2)  # Bring to front during drag
+                self.setZValue(CNCT_Z_UP)  # Bring to front during drag
                 event.accept()
                 return
             elif target_distance <= self._grab_radius:
@@ -545,12 +514,12 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
                 self._is_dragging_end = True
                 self._dragging_source = False
                 self._drag_start_pos = click_pos
-                self.setZValue(2)  # Bring to front during drag
+                self.setZValue(CNCT_Z_UP)  # Bring to front during drag
                 event.accept()
                 return
             else:
                 # Normal connection click - bring to front
-                self.setZValue(1)
+                self.setZValue(CNCT_Z)
 
         super().mousePressEvent(event)
 
@@ -605,14 +574,14 @@ class ConnectionView(QtWidgets.QGraphicsPathItem, ModelObserver):
             # Reset drag state
             self._is_dragging_end = False
             self._dragging_source = False
-            self.setZValue(0)  # Return to normal Z level
+            self.setZValue(CNCT_Z)  # Return to normal Z level
             event.accept()
             return
 
         super().mouseReleaseEvent(event)
 
 
-class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
+class NodeView(QtWidgets.QGraphicsItem):
     """View for a node."""
 
     def __init__(
@@ -624,11 +593,8 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
         self.config = config
         self.signals = signals
 
-        # Register as observer
-        self.model.add_observer(self)
-
         # Setup
-        self.setZValue(1)
+        self.setZValue(NODE_Z)
         self.setFlag(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
         self.setAcceptHoverEvents(True)
@@ -659,29 +625,18 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
         for attr_name, attr_model in self.model.attributes.items():
             self._create_attribute_view(attr_model)
 
-    def on_model_changed(
-        self,
-        model: BaseModel,
-        property_name: str,
-        old_value: Any,
-        new_value: Any,
-    ) -> None:
-        """Handle model changes."""
-        if property_name == "name":
-            self.update()
-        elif property_name == "position":
-            self.setPos(new_value)
-        elif property_name == "attributes":
-            if old_value is None and new_value is not None:
-                # Attribute added
-                self._create_attribute_view(new_value)
-            elif old_value is not None and new_value is None:
-                # Attribute removed
-                self._remove_attribute_view(old_value.attribute)
-            self.update()
-        elif property_name == "attributes_order":
-            # Attributes reordered
-            self.update()
+    def itemChange(
+        self, change: QtWidgets.QGraphicsItem.GraphicsItemChange, value: Any
+    ) -> Any:
+        if (
+            change
+            == QtWidgets.QGraphicsItem.GraphicsItemChange.ItemSelectedChange
+        ):
+            if value:
+                self.setZValue(NODE_Z_UP)
+            else:
+                self.setZValue(NODE_Z)
+        return super().itemChange(change, value)
 
     def _create_style(self) -> None:
         """Set up the visual style."""
@@ -984,15 +939,7 @@ class NodeView(QtWidgets.QGraphicsItem, ModelObserver):
             return
 
         # Find all connection views in the scene
-        for item in self.scene().items():
-            # Check if it's a connection view
-            if not isinstance(item, ConnectionView):
-                continue
-
-            # Check if this connection is connected to this node
-            if not isinstance(item, ConnectionView):
-                continue
-
+        for item in self.scene().connection_items():
             if (
                 item.model.plug_node != self.model.name
                 and item.model.socket_node != self.model.name

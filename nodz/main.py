@@ -11,7 +11,17 @@ from typing import Any, Dict, Optional, Union, List
 from qtpy import QtCore, QtGui, QtWidgets
 
 from .slot_drawer import SlotDrawer
-from .views import NodeView, ConnectionView, PlugView, SocketView, SlotView
+from .views import (
+    NodeView,
+    ConnectionView,
+    PlugView,
+    SocketView,
+    SlotView,
+    CNCT_Z,
+    CNCT_Z_UP,
+    NODE_Z,
+    NODE_Z_UP,
+)
 from .controllers import NodzAPI
 from .utils import nlog
 
@@ -38,6 +48,10 @@ class NodzScene(QtWidgets.QGraphicsScene):
         self._brush = QtGui.QBrush()
         self._brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
         self._brush.setColor(QtGui.QColor(*config["bg_color"]))
+
+        # bean keeping
+        self._nodeviews = list()
+        self._connectionviews = list()
 
     def drawBackground(
         self, painter: QtGui.QPainter, rect: Union[QtCore.QRectF, QtCore.QRect]
@@ -71,6 +85,28 @@ class NodzScene(QtWidgets.QGraphicsScene):
             painter.setPen(pen)
             painter.drawLines(lines)
 
+    def addItem(self, item: QtWidgets.QGraphicsItem) -> None:
+        """Extends addItem to store a list of NodeView and ConnectionView items"""
+        if isinstance(item, NodeView):
+            self._nodeviews.append(item)
+        elif isinstance(item, ConnectionView):
+            self._connectionviews.append(item)
+        super().addItem(item)
+
+    def removeItem(self, item: QtWidgets.QGraphicsItem) -> None:
+        """Extends removeItem to update our internal item lists."""
+        if isinstance(item, NodeView):
+            self._nodeviews.remove(item)
+        elif isinstance(item, ConnectionView):
+            self._connectionviews.remove(item)
+        super().removeItem(item)
+
+    def node_items(self) -> list[NodeView]:
+        return self._nodeviews
+
+    def connection_items(self) -> list[ConnectionView]:
+        return self._connectionviews
+
     def get_slot_connections(self, slot: SlotView) -> list:
         """Get all connections attached to a slot."""
 
@@ -80,11 +116,7 @@ class NodzScene(QtWidgets.QGraphicsScene):
         connections = []
 
         # Find all connection views in the scene
-        for item in self.items():
-            # Check if it's a connection view
-            if not isinstance(item, ConnectionView):
-                continue
-
+        for item in self.connection_items():
             # Check if this connection is connected to the slot
             if not hasattr(slot, "parentItem") or not slot.parentItem():
                 continue
@@ -810,11 +842,7 @@ class NodzView(QtWidgets.QGraphicsView):
 
     def _get_all_node_views(self) -> List[NodeView]:
         """Get all NodeView items from the scene."""
-        return [
-            item
-            for item in self.nodz_scene.items()
-            if isinstance(item, NodeView)
-        ]
+        return self.nodz_scene.node_items()
 
     def _build_node_mapping(
         self, node_views: List[NodeView]
@@ -871,10 +899,7 @@ class NodzView(QtWidgets.QGraphicsView):
         }
 
         # Collect all connection views from the scene
-        for item in self.nodz_scene.items():
-            if not isinstance(item, ConnectionView):
-                continue
-
+        for item in self.nodz_scene.connection_items():
             plug_node = item.model.plug_node
             socket_node = item.model.socket_node
 
@@ -1147,15 +1172,7 @@ class NodzView(QtWidgets.QGraphicsView):
         intersecting_connections = []
 
         # Find all connection views in the scene
-        for item in self.nodz_scene.items():
-            # Check if it's a connection view
-            if not isinstance(item, ConnectionView):
-                continue
-
-            # Check if it's a ConnectionView
-            if not isinstance(item, ConnectionView):
-                continue
-
+        for item in self.nodz_scene.connection_items():
             # Get connection endpoints
             conn_start = item.source_point
             conn_end = item.target_point
@@ -1199,17 +1216,10 @@ class NodzView(QtWidgets.QGraphicsView):
         for item in self.nodz_scene.selectedItems():
             if isinstance(item, NodeView):
                 selected_nodes.add(item.model.name)
+                item.setZValue(NODE_Z_UP)
 
         # Find all connection views and update their Z values
-        for item in self.nodz_scene.items():
-            # Check if it's a connection view
-            if not isinstance(item, ConnectionView):
-                continue
-
-            # Check if it's a ConnectionView
-            if not isinstance(item, ConnectionView):
-                continue
-
+        for item in self.nodz_scene.connection_items():
             # Check if either end of the connection is connected to a selected
             # node
             is_connected_to_selected = (
@@ -1219,24 +1229,17 @@ class NodzView(QtWidgets.QGraphicsView):
 
             # Set Z value based on selection
             if is_connected_to_selected:
-                item.setZValue(2)  # Raise above normal connections and nodes
+                # Raise above normal connections and nodes
+                item.setZValue(CNCT_Z_UP)
             else:
-                item.setZValue(
-                    -1
-                )  # Default Z value for unselected connections
+                # Default Z value for unselected connections
+                item.setZValue(CNCT_Z)
+            # print(f"{item}: {item.zValue()}")
 
     def _update_all_connections(self) -> None:
         """Update all connection paths in the scene."""
         # Find all connection views in the scene
-        for item in self.nodz_scene.items():
-            # Check if it's a connection view
-            if not isinstance(item, ConnectionView):
-                continue
-
-            # Check if it's a ConnectionView
-            if not isinstance(item, ConnectionView):
-                continue
-
+        for item in self.nodz_scene.connection_items():
             # Find the source and target views
             source_node = None
             target_node = None

@@ -11,44 +11,8 @@ from collections import OrderedDict
 from qtpy import QtCore
 
 
-class ModelObserver:
-    """Interface for objects that observe model changes."""
-
-    def on_model_changed(
-        self,
-        model: "BaseModel",
-        property_name: str,
-        old_value: Any,
-        new_value: Any,
-    ) -> None:
-        """Called when a model property changes."""
-        pass
-
-
 class BaseModel:
-    """Base class for all models with observer pattern support."""
-
-    def __init__(self) -> None:
-        self._observers: List[ModelObserver] = []
-
-    def add_observer(self, observer: ModelObserver) -> None:
-        """Add an observer to this model."""
-        if observer not in self._observers:
-            self._observers.append(observer)
-
-    def remove_observer(self, observer: ModelObserver) -> None:
-        """Remove an observer from this model."""
-        if observer in self._observers:
-            self._observers.remove(observer)
-
-    def _notify_change(
-        self, property_name: str, old_value: Any, new_value: Any
-    ) -> None:
-        """Notify all observers of a property change."""
-        for observer in self._observers:
-            observer.on_model_changed(
-                self, property_name, old_value, new_value
-            )
+    """Base class for all models."""
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the model to a dictionary."""
@@ -70,7 +34,6 @@ class AttrModel(BaseModel):
         socket_max_connections: int = -1,
         **kwargs,
     ) -> None:
-        super().__init__()
         self._attribute = attribute
         self._index = index
         self._preset = preset
@@ -87,9 +50,7 @@ class AttrModel(BaseModel):
 
     @attribute.setter
     def attribute(self, value: str) -> None:
-        old_value = self._attribute
         self._attribute = value
-        self._notify_change("attribute", old_value, value)
 
     @property
     def index(self) -> int:
@@ -97,9 +58,7 @@ class AttrModel(BaseModel):
 
     @index.setter
     def index(self, value: int) -> None:
-        old_value = self._index
         self._index = value
-        self._notify_change("index", old_value, value)
 
     @property
     def preset(self) -> str:
@@ -193,7 +152,6 @@ class NodeModel(BaseModel):
         position: Optional[QtCore.QPointF] = None,
         **kwargs,
     ) -> None:
-        super().__init__()
         self._name = name
         self._preset = preset
         self._alternate = alternate
@@ -207,9 +165,7 @@ class NodeModel(BaseModel):
 
     @name.setter
     def name(self, value: str) -> None:
-        old_value = self._name
         self._name = value
-        self._notify_change("name", old_value, value)
 
     @property
     def preset(self) -> str:
@@ -217,9 +173,7 @@ class NodeModel(BaseModel):
 
     @preset.setter
     def preset(self, value: str) -> None:
-        old_value = self._preset
         self._preset = value
-        self._notify_change("preset", old_value, value)
 
     @property
     def alternate(self) -> bool:
@@ -227,9 +181,7 @@ class NodeModel(BaseModel):
 
     @alternate.setter
     def alternate(self, value: bool) -> None:
-        old_value = self._alternate
         self._alternate = value
-        self._notify_change("alternate", old_value, value)
 
     @property
     def position(self) -> QtCore.QPointF:
@@ -237,9 +189,7 @@ class NodeModel(BaseModel):
 
     @position.setter
     def position(self, value: QtCore.QPointF) -> None:
-        old_value = self._position
         self._position = value
-        self._notify_change("position", old_value, value)
 
     @property
     def attributes(self) -> OrderedDict[str, AttrModel]:
@@ -257,15 +207,13 @@ class NodeModel(BaseModel):
             )
 
         self._attributes[attr_model.attribute] = attr_model
-        self._notify_change("attributes", None, attr_model)
 
     def remove_attribute(self, attr_name: str) -> None:
         """Remove an attribute from this node."""
         if attr_name not in self._attributes:
             raise ValueError(f"Attribute '{attr_name}' does not exist")
 
-        attr = self._attributes.pop(attr_name)
-        self._notify_change("attributes", attr, None)
+        self._attributes.pop(attr_name)
 
     def rename_attribute(self, old_name: str, new_name: str) -> None:
         """Rename an attribute."""
@@ -277,7 +225,6 @@ class NodeModel(BaseModel):
         attr = self._attributes.pop(old_name)
         attr.attribute = new_name
         self._attributes[new_name] = attr
-        self._notify_change("attributes", old_name, new_name)
 
     def sort_attributes(self) -> None:
         """Sort attributes based on their index."""
@@ -289,7 +236,6 @@ class NodeModel(BaseModel):
                 )
             }
         )
-        self._notify_change("attributes_order", None, None)
 
     def valid_position(self) -> bool:
         """Check if the position is valid."""
@@ -324,7 +270,6 @@ class ConnectionModel(BaseModel):
         socket_attr: str = "",
         **kwargs,
     ) -> None:
-        super().__init__()
         self._plug_node = plug_node
         self._plug_attr = plug_attr
         self._socket_node = socket_node
@@ -337,9 +282,7 @@ class ConnectionModel(BaseModel):
 
     @plug_node.setter
     def plug_node(self, value: str) -> None:
-        old_value = self._plug_node
         self._plug_node = value
-        self._notify_change("plug_node", old_value, value)
 
     @property
     def plug_attr(self) -> str:
@@ -347,9 +290,7 @@ class ConnectionModel(BaseModel):
 
     @plug_attr.setter
     def plug_attr(self, value: str) -> None:
-        old_value = self._plug_attr
         self._plug_attr = value
-        self._notify_change("plug_attr", old_value, value)
 
     @property
     def socket_node(self) -> str:
@@ -357,9 +298,7 @@ class ConnectionModel(BaseModel):
 
     @socket_node.setter
     def socket_node(self, value: str) -> None:
-        old_value = self._socket_node
         self._socket_node = value
-        self._notify_change("socket_node", old_value, value)
 
     @property
     def socket_attr(self) -> str:
@@ -367,9 +306,7 @@ class ConnectionModel(BaseModel):
 
     @socket_attr.setter
     def socket_attr(self, value: str) -> None:
-        old_value = self._socket_attr
         self._socket_attr = value
-        self._notify_change("socket_attr", old_value, value)
 
     @property
     def kwargs(self) -> Dict[str, Any]:
@@ -400,7 +337,6 @@ class GraphModel(BaseModel):
     """Model for a complete node graph."""
 
     def __init__(self) -> None:
-        super().__init__()
         self._nodes: Dict[str, NodeModel] = {}
         self._connections: List[ConnectionModel] = []
 
@@ -418,25 +354,20 @@ class GraphModel(BaseModel):
             raise ValueError(f"Node '{node.name}' already exists")
 
         self._nodes[node.name] = node
-        self._notify_change("nodes", None, node)
 
     def remove_node(self, name: str) -> None:
         """Remove a node from the graph."""
         if name not in self._nodes:
             raise ValueError(f"Node '{name}' does not exist")
 
-        node = self._nodes.pop(name)
-
-        self._notify_change("nodes", node, None)
+        self._nodes.pop(name)
 
     def update_node(self, name: str, node: NodeModel) -> None:
         """Update a node in the graph."""
         if name not in self._nodes:
             raise ValueError(f"Node '{name}' does not exist")
 
-        old_node = self._nodes[name]
         self._nodes[name] = node
-        self._notify_change("nodes", old_node, node)
 
     def rename_node(self, name: str, new_name: str) -> None:
         """Rename a node in the graph."""
@@ -455,8 +386,6 @@ class GraphModel(BaseModel):
                 conn.plug_node = new_name
             if conn.socket_node == name:
                 conn.socket_node = new_name
-
-        self._notify_change("nodes", name, new_name)
 
     def add_connection(self, conn: ConnectionModel) -> None:
         """Add a connection to the graph."""
@@ -486,7 +415,6 @@ class GraphModel(BaseModel):
             )
 
         self._connections.append(conn)
-        self._notify_change("connections", None, conn)
 
     def remove_connection(self, conn: ConnectionModel) -> None:
         """Remove a connection from the graph."""
@@ -494,7 +422,6 @@ class GraphModel(BaseModel):
             return
 
         self._connections.remove(conn)
-        self._notify_change("connections", conn, None)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert the graph model to a dictionary."""
