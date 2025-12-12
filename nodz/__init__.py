@@ -11,7 +11,6 @@ from .models import (
     AttrModel,
     ConnectionModel,
     GraphModel,
-    ModelObserver,
 )
 
 from .views import (
@@ -46,7 +45,6 @@ __all__ = [
     "AttrModel",
     "ConnectionModel",
     "GraphModel",
-    "ModelObserver",
     "ViewSignals",
     "NodeView",
     "SlotView",

@@ -6,11 +6,16 @@ Controllers are responsible for coordinating between models and views,
 handling user interactions, and implementing business logic.
 """
 
+from __future__ import annotations
+
 import os
 import json
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 import functools
 from qtpy import QtCore, QtGui, QtWidgets
+
+if TYPE_CHECKING:
+    from .main import NodzScene
 
 from .models import (
     NodeModel,
@@ -171,7 +176,7 @@ class BaseController:
     def __init__(
         self,
         graph_model: GraphModel,
-        scene: QtWidgets.QGraphicsScene,
+        scene: NodzScene,
         config: Dict[str, Any],
         signals: ViewSignals,
     ):
@@ -188,7 +193,7 @@ class NodeController(BaseController):
     def __init__(
         self,
         graph_model: GraphModel,
-        scene: QtWidgets.QGraphicsScene,
+        scene: NodzScene,
         config: Dict[str, Any],
         signals: ViewSignals,
     ):
@@ -303,14 +308,29 @@ class NodeController(BaseController):
         # Add to node model
         node_model.add_attribute(attr_model)
 
+        # Update the view directly
+        node_view = self._find_node_view(node_name)
+        if node_view:
+            node_view._create_attribute_view(attr_model)
+            node_view.update()
+
     @validate_attribute_exists
     def delete_attribute(self, node_name: str, attr_name: str) -> None:
         """Delete an attribute from a node."""
         # Get the node model
         node_model = self.graph_model.nodes[node_name]
 
+        # Update the view directly (before removing from model)
+        node_view = self._find_node_view(node_name)
+        if node_view:
+            node_view._remove_attribute_view(attr_name)
+
         # Remove from node model
         node_model.remove_attribute(attr_name)
+
+        # Update the view
+        if node_view:
+            node_view.update()
 
     @validate_attribute_exists
     def edit_attribute(
@@ -339,6 +359,11 @@ class NodeController(BaseController):
             attr_model = node_model.attributes[attr_name]
             attr_model.index = new_index
             node_model.sort_attributes()
+
+        # Update the view
+        node_view = self._find_node_view(node_name)
+        if node_view:
+            node_view.update()
 
     def on_node_moved(self, node_name: str, position: QtCore.QPointF) -> None:
         """Handle node moved signal."""
@@ -374,8 +399,8 @@ class NodeController(BaseController):
 
     def _find_node_view(self, node_name: str) -> Optional[NodeView]:
         """Find a node view by name."""
-        for item in self.scene.items():
-            if isinstance(item, NodeView) and item.model.name == node_name:
+        for item in self.scene.node_items():
+            if item.model.name == node_name:
                 return item
         return None
 
@@ -386,7 +411,7 @@ class ConnectionController(BaseController):
     def __init__(
         self,
         graph_model: GraphModel,
-        scene: QtWidgets.QGraphicsScene,
+        scene: NodzScene,
         config: Dict[str, Any],
         signals: ViewSignals,
     ):
@@ -764,10 +789,10 @@ class ConnectionController(BaseController):
 
     def _reset_all_slots_appearance(self) -> None:
         """Reset all slots to their original appearance."""
-        for item in self.scene.items():
-            if isinstance(item, (PlugView, SocketView)):
-                item._create_style()  # Reset to original style
-                item.update()
+        for item in self.scene.node_items():
+            for child in item.childItems():
+                child._create_style()  # Reset to original style
+                child.update()
 
     def _find_closest_compatible_slot(
         self, position: QtCore.QPoint
@@ -957,8 +982,8 @@ class ConnectionController(BaseController):
 
     def _find_node_view(self, node_name: str) -> Optional[NodeView]:
         """Find a node view by name."""
-        for item in self.scene.items():
-            if isinstance(item, NodeView) and item.model.name == node_name:
+        for item in self.scene.node_items():
+            if item.model.name == node_name:
                 return item
         return None
 
@@ -966,11 +991,10 @@ class ConnectionController(BaseController):
         self, connection_model: ConnectionModel
     ) -> Optional[ConnectionView]:
         """Find a connection view by model."""
-        for item in self.scene.items():
+        for item in self.scene.connection_items():
             # Check if it's a connection view by checking its class name
             if (
-                isinstance(item, ConnectionView)
-                and item.model.plug_node == connection_model.plug_node
+                item.model.plug_node == connection_model.plug_node
                 and item.model.plug_attr == connection_model.plug_attr
                 and item.model.socket_node == connection_model.socket_node
                 and item.model.socket_attr == connection_model.socket_attr
@@ -985,7 +1009,7 @@ class GraphController(BaseController):
     def __init__(
         self,
         graph_model: GraphModel,
-        scene: QtWidgets.QGraphicsScene,
+        scene: NodzScene,
         config: Dict[str, Any],
         signals: ViewSignals,
     ):
@@ -1103,11 +1127,10 @@ class GraphController(BaseController):
         self, connection_model: ConnectionModel
     ) -> Optional[QtWidgets.QGraphicsItem]:
         """Find a connection view by model."""
-        for item in self.scene.items():
+        for item in self.scene.connection_items():
             # Check if it's a connection view by checking its class name
             if (
-                isinstance(item, ConnectionView)
-                and item.model.plug_node == connection_model.plug_node
+                item.model.plug_node == connection_model.plug_node
                 and item.model.plug_attr == connection_model.plug_attr
                 and item.model.socket_node == connection_model.socket_node
                 and item.model.socket_attr == connection_model.socket_attr
@@ -1135,8 +1158,8 @@ class GraphController(BaseController):
 
     def _find_node_view(self, node_name: str) -> Optional[NodeView]:
         """Find a node view by name."""
-        for item in self.scene.items():
-            if isinstance(item, NodeView) and item.model.name == node_name:
+        for item in self.scene.node_items():
+            if item.model.name == node_name:
                 return item
         return None
 
@@ -1152,7 +1175,7 @@ class NodzAPI:
     """
 
     def __init__(
-        self, scene: QtWidgets.QGraphicsScene, config: Dict[str, Any]
+        self, scene: NodzScene, config: Dict[str, Any] # FIXME: Should be NodzScene ?
     ):
         """
         Initialize the API.
