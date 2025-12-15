@@ -27,7 +27,6 @@ This guide helps developers migrate from the legacy Nodz API (pre-MVC architectu
 ### New Architecture (MVC)
 - **Model-View-Controller Pattern**: Clean separation of concerns
 - **Modular Design**: Organized into separate modules (`models.py`, `views.py`, `controllers.py`, `main.py`)
-- **Observer Pattern**: Automatic view updates when models change
 - **Unified API Facade**: Single `NodzAPI` class for all operations
 - **String-Based References**: API methods use node names (strings) instead of objects
 - **Comprehensive Error Handling**: Custom exception hierarchy with descriptive messages
@@ -47,7 +46,7 @@ This guide helps developers migrate from the legacy Nodz API (pre-MVC architectu
 ├── nodz/
 │   ├── __init__.py       # Package initialization
 │   ├── main.py           # Main view and factory functions
-│   ├── models.py         # Data models with observer pattern
+│   ├── models.py         # Data models
 │   ├── views.py          # Qt graphics views
 │   ├── controllers.py    # Business logic and unified API
 │   ├── utils.py          # Utilities
@@ -109,19 +108,19 @@ api.delete_node('myNode')                      # Pass node name
 
 ### 4. Method Name Changes
 
-| Legacy Method | New Method | Notes |
-|---------------|------------|-------|
-| `createNode()` | `create_node()` | Snake case naming |
-| `deleteNode()` | `delete_node()` | Snake case naming |
-| `editNode()` | `rename_node()` | More descriptive name |
-| `createAttribute()` | `create_attribute()` | Snake case naming |
-| `deleteAttribute()` | `delete_attribute()` | Snake case naming |
-| `editAttribute()` | `edit_attribute()` | Snake case naming |
-| `createConnection()` | `create_connection()` | Snake case naming |
-| `saveGraph()` | `save_graph()` | Snake case naming |
-| `loadGraph()` | `load_graph()` | Snake case naming |
-| `evaluateGraph()` | `evaluate_graph()` | Snake case naming |
-| `clearGraph()` | `clear_graph()` | Snake case naming |
+| Legacy Method        | New Method            | Notes                 |
+| -------------------- | --------------------- | --------------------- |
+| `createNode()`       | `create_node()`       | Snake case naming     |
+| `deleteNode()`       | `delete_node()`       | Snake case naming     |
+| `editNode()`         | `rename_node()`       | More descriptive name |
+| `createAttribute()`  | `create_attribute()`  | Snake case naming     |
+| `deleteAttribute()`  | `delete_attribute()`  | Snake case naming     |
+| `editAttribute()`    | `edit_attribute()`    | Snake case naming     |
+| `createConnection()` | `create_connection()` | Snake case naming     |
+| `saveGraph()`        | `save_graph()`        | Snake case naming     |
+| `loadGraph()`        | `load_graph()`        | Snake case naming     |
+| `evaluateGraph()`    | `evaluate_graph()`    | Snake case naming     |
+| `clearGraph()`       | `clear_graph()`       | Snake case naming     |
 
 ### 5. Parameter Changes
 
@@ -561,13 +560,6 @@ nodz.api.signals.node_created.connect(callback)
 # or through the view directly if needed
 ```
 
-### Performance Considerations
-
-1. **Batch Operations**: The new API is more efficient for batch operations due to the MVC architecture.
-
-2. **Memory Usage**: The new architecture uses less memory due to better separation of concerns.
-
-3. **Update Frequency**: Observer pattern reduces unnecessary updates.
 
 ### Debugging Tips
 
@@ -615,7 +607,6 @@ The new MVC architecture provides a much more robust, maintainable, and feature-
 The new unified API offers significant advantages:
 
 - **Better Error Handling**: Comprehensive exception hierarchy
-- **Improved Performance**: Efficient MVC architecture with observer pattern
 - **Enhanced Functionality**: Graph analysis, validation, and utility methods
 - **Cleaner Code**: Consistent naming and parameter conventions
 - **Better Maintainability**: Modular architecture with clear separation of concerns

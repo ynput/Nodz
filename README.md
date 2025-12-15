@@ -48,12 +48,10 @@ graph TD
     end
 
     subgraph Patterns ["🔄 Design Patterns"]
-        OP(Observer Pattern)
         SIG(Signal/Slot System)
     end
 
     %% MVC Relationships
-    Models -.->|Observer Pattern| Views
     Views <-->|Signals| Controllers
     Controllers -->|Updates| Models
 
@@ -61,10 +59,6 @@ graph TD
     API -->|Coordinates| NC
     API -->|Coordinates| CC
     API -->|Coordinates| GC
-
-    %% Observer Pattern
-    OP -.->|Notifies| Views
-    Models -.->|Uses| OP
 
     %% Signal System
     Views -->|Emits| SIG
@@ -79,20 +73,18 @@ graph TD
     class NM,AM,CM,GM modelClass
     class NV,PV,SV,CV,NSV,NZV viewClass
     class NC,CC,GC,API controllerClass
-    class OP,SIG patternClass
+    class SIG patternClass
 ```
 
 ### Design Patterns Used
 
 - **MVC Pattern**: Clean separation between data (Models), presentation (Views), and business logic (Controllers)
-- **Observer Pattern**: Models automatically notify Views of changes through the observer system
 - **Facade Pattern**: `NodzAPI` provides a unified interface hiding the complexity of the underlying architecture
 - **Signal/Slot Pattern**: Qt-based event system for loose coupling between components
 
 ### Key Architectural Features
 
 - **Type Safety**: Comprehensive type checking system for connections between nodes
-- **Real-time Updates**: Observer pattern ensures views stay synchronized with model changes
 - **Extensible Design**: Plugin-ready architecture with preset system for customization
 - **Performance Optimized**: Efficient Qt-based rendering with proper Z-ordering and selective updates
 - **Error Handling**: Comprehensive exception hierarchy with descriptive error messages
