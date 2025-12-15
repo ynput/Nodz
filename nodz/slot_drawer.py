@@ -35,8 +35,7 @@ class RectPrim:
     def __post_init__(self):
         if len(self.points) != 2:
             raise ValueError(
-                "Need 2 points to define a bounding rect ! "
-                f"(got {len(self.points)})"
+                f"Need 2 points to define a bounding rect ! (got {len(self.points)})"
             )
         self.rect = QtCore.QRectF(*self.points[0], *self.points[1])
 
@@ -85,16 +84,12 @@ class SlotDrawer:
             return
 
         if config is None:
-            raise ValueError(
-                "First call to SlotDrawer must include the config !"
-            )
+            raise ValueError("First call to SlotDrawer must include the config !")
 
         # draw calls for named shapes
         self.shape_defs = config.get("shapes_definitions", {})
         if "circle" not in self.shape_defs:
-            self.shape_defs["circle"] = (
-                [{"ellipse": [(0.0, 0.0), (1.0, 1.0)]}],
-            )
+            self.shape_defs["circle"] = ([{"ellipse": [(0.0, 0.0), (1.0, 1.0)]}],)
 
         # shape definitions
         tmp_slot_shapes = config.get("slot_shapes", {})
@@ -133,9 +128,7 @@ class SlotDrawer:
                     )
                 elif "polygon" in dc:
                     obj.draw_calls.append(
-                        PolygonPrim(
-                            type=PrimType.Polygon, vertices=dc["polygon"]
-                        )
+                        PolygonPrim(type=PrimType.Polygon, vertices=dc["polygon"])
                     )
             self.slot_shapes[k] = obj
 
@@ -143,17 +136,13 @@ class SlotDrawer:
         SlotDrawer._initialized = True
 
     def connection_pen(self, data_type: Any) -> QtGui.QPen:
-        slot_def = self.slot_shapes.get(
-            str(data_type), self.slot_shapes["default"]
-        )
+        slot_def = self.slot_shapes.get(str(data_type), self.slot_shapes["default"])
         pen = QtGui.QPen(QtGui.QColor(*slot_def.color))
         pen.setWidth(slot_def.connection_width)
         return pen
 
     def pen_and_brush(self, data_type: Any) -> tuple[QtGui.QPen, QtGui.QBrush]:
-        slot_def = self.slot_shapes.get(
-            str(data_type), self.slot_shapes["default"]
-        )
+        slot_def = self.slot_shapes.get(str(data_type), self.slot_shapes["default"])
         brush = QtGui.QBrush(QtGui.QColor(*slot_def.color))
         pen = QtGui.QPen(QtGui.QColor(*slot_def.border_color))
         pen.setWidth(slot_def.border_width)
@@ -165,8 +154,6 @@ class SlotDrawer:
         painter: QtGui.QPainter,
         rect: QtCore.QRectF,
     ):
-        slot_def = self.slot_shapes.get(
-            str(data_type), self.slot_shapes["default"]
-        )
+        slot_def = self.slot_shapes.get(str(data_type), self.slot_shapes["default"])
         for prim in slot_def.draw_calls:
             prim.draw(painter, rect)

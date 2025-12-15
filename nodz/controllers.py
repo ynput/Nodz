@@ -79,9 +79,7 @@ class AttributeNotFoundError(AttributeError):
     def __init__(self, node_name: str, attr_name: str):
         self.node_name = node_name
         self.attr_name = attr_name
-        super().__init__(
-            f"Attribute '{attr_name}' not found on node '{node_name}'"
-        )
+        super().__init__(f"Attribute '{attr_name}' not found on node '{node_name}'")
 
 
 class ConnectionError(NodzError):
@@ -97,8 +95,7 @@ class IncompatibleTypesError(ConnectionError):
         self.source_type = source_type
         self.target_type = target_type
         super().__init__(
-            "Cannot connect incompatible types: "
-            f"{source_type} -> {target_type}"
+            f"Cannot connect incompatible types: {source_type} -> {target_type}"
         )
 
 
@@ -348,8 +345,7 @@ class NodeController(BaseController):
         if new_name and new_name != attr_name:
             if new_name in node_model.attributes:
                 raise ValueError(
-                    f"Attribute '{new_name}' already exists on node "
-                    f"'{node_name}'"
+                    f"Attribute '{new_name}' already exists on node '{node_name}'"
                 )
             node_model.rename_attribute(attr_name, new_name)
             attr_name = new_name
@@ -422,17 +418,11 @@ class ConnectionController(BaseController):
         self.temp_connection: Optional[ConnectionView] = None
 
         # colors
-        self.non_connectable_color = QtGui.QColor(
-            *self.config["non_connectable_color"]
-        )
+        self.non_connectable_color = QtGui.QColor(*self.config["non_connectable_color"])
 
         # Connect signals
-        self.signals.attr_connection_started.connect(
-            self.on_connection_started
-        )
-        self.signals.attr_connection_dragged.connect(
-            self.on_connection_dragged
-        )
+        self.signals.attr_connection_started.connect(self.on_connection_started)
+        self.signals.attr_connection_dragged.connect(self.on_connection_dragged)
         self.signals.connection_created.connect(self.on_connection_created)
         self.signals.connection_deleted.connect(self.on_connection_deleted)
         self.signals.node_moved.connect(self.on_node_moved)
@@ -472,13 +462,11 @@ class ConnectionController(BaseController):
         # Validate plug/socket compatibility
         if not source_attr_model.plug:
             raise ConnectionError(
-                f"Attribute '{source_attr}' on node '{source_node}' "
-                "is not a plug"
+                f"Attribute '{source_attr}' on node '{source_node}' is not a plug"
             )
         if not target_attr_model.socket:
             raise ConnectionError(
-                f"Attribute '{target_attr}' on node '{target_node}' "
-                "is not a socket"
+                f"Attribute '{target_attr}' on node '{target_node}' is not a socket"
             )
 
         # Validate data type compatibility
@@ -506,13 +494,9 @@ class ConnectionController(BaseController):
             existing_plug_connections = sum(
                 1
                 for conn in self.graph_model.connections
-                if conn.plug_node == source_node
-                and conn.plug_attr == source_attr
+                if conn.plug_node == source_node and conn.plug_attr == source_attr
             )
-            if (
-                existing_plug_connections
-                >= source_attr_model.plug_max_connections
-            ):
+            if existing_plug_connections >= source_attr_model.plug_max_connections:
                 raise MaxConnectionsExceededError(
                     source_node,
                     source_attr,
@@ -524,13 +508,9 @@ class ConnectionController(BaseController):
             existing_socket_connections = sum(
                 1
                 for conn in self.graph_model.connections
-                if conn.socket_node == target_node
-                and conn.socket_attr == target_attr
+                if conn.socket_node == target_node and conn.socket_attr == target_attr
             )
-            if (
-                existing_socket_connections
-                >= target_attr_model.socket_max_connections
-            ):
+            if existing_socket_connections >= target_attr_model.socket_max_connections:
                 raise MaxConnectionsExceededError(
                     target_node,
                     target_attr,
@@ -670,9 +650,7 @@ class ConnectionController(BaseController):
 
             self.temp_connection.update_path()
 
-    def _update_slot_compatibility_feedback(
-        self, position: QtCore.QPoint
-    ) -> None:
+    def _update_slot_compatibility_feedback(self, position: QtCore.QPoint) -> None:
         """Update visual feedback for compatible/incompatible slots."""
         if not self.temp_connection or not isinstance(
             self.temp_connection, ConnectionView
@@ -893,9 +871,7 @@ class ConnectionController(BaseController):
 
         # Create the actual connection
         try:
-            self.create_connection(
-                source_node, source_attr, target_node, target_attr
-            )
+            self.create_connection(source_node, source_attr, target_node, target_attr)
         except NodzError as e:
             # Handle error (could show a message to the user)
             nlog.error(f"Error creating connection: {e}")
@@ -911,19 +887,14 @@ class ConnectionController(BaseController):
         # Reset all slots to their original appearance
         self._reset_all_slots_appearance()
 
-        self.delete_connection(
-            source_node, source_attr, target_node, target_attr
-        )
+        self.delete_connection(source_node, source_attr, target_node, target_attr)
 
     def on_node_moved(self, node_name: str, position: QtCore.QPointF) -> None:
         """Update connections when a node is moved."""
         # Find all connections that involve this node
         connections_to_update = []
         for connection in self.graph_model.connections:
-            if (
-                connection.plug_node == node_name
-                or connection.socket_node == node_name
-            ):
+            if connection.plug_node == node_name or connection.socket_node == node_name:
                 connections_to_update.append(connection)
 
         # Update all affected connections
@@ -962,18 +933,14 @@ class ConnectionController(BaseController):
             # Remove from model
             self.graph_model.remove_connection(conn)
 
-    def _find_plug_view(
-        self, node_name: str, attr_name: str
-    ) -> Optional[PlugView]:
+    def _find_plug_view(self, node_name: str, attr_name: str) -> Optional[PlugView]:
         """Find a plug view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if isinstance(node_view, NodeView) and attr_name in node_view.plugs:
             return node_view.plugs[attr_name]
         return None
 
-    def _find_socket_view(
-        self, node_name: str, attr_name: str
-    ) -> Optional[SocketView]:
+    def _find_socket_view(self, node_name: str, attr_name: str) -> Optional[SocketView]:
         """Find a socket view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if isinstance(node_view, NodeView) and attr_name in node_view.sockets:
@@ -1044,9 +1011,7 @@ class GraphController(BaseController):
                 node_name,
                 node_data["preset"],
                 node_data["alternate"],
-                QtCore.QPointF(
-                    node_data["position"][0], node_data["position"][1]
-                ),
+                QtCore.QPointF(node_data["position"][0], node_data["position"][1]),
                 **node_data["kwargs"],
             )
 
@@ -1138,18 +1103,14 @@ class GraphController(BaseController):
                 return item
         return None
 
-    def _find_plug_view(
-        self, node_name: str, attr_name: str
-    ) -> Optional[PlugView]:
+    def _find_plug_view(self, node_name: str, attr_name: str) -> Optional[PlugView]:
         """Find a plug view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if isinstance(node_view, NodeView) and attr_name in node_view.plugs:
             return node_view.plugs[attr_name]
         return None
 
-    def _find_socket_view(
-        self, node_name: str, attr_name: str
-    ) -> Optional[SocketView]:
+    def _find_socket_view(self, node_name: str, attr_name: str) -> Optional[SocketView]:
         """Find a socket view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if isinstance(node_view, NodeView) and attr_name in node_view.sockets:
@@ -1175,7 +1136,9 @@ class NodzAPI:
     """
 
     def __init__(
-        self, scene: NodzScene, config: Dict[str, Any] # FIXME: Should be NodzScene ?
+        self,
+        scene: NodzScene,
+        config: Dict[str, Any],  # FIXME: Should be NodzScene ?
     ):
         """
         Initialize the API.
@@ -1313,9 +1276,7 @@ class NodzAPI:
             raise NodeNotFoundError(node_name)
         return self.graph_model.nodes[node_name].position
 
-    def set_node_position(
-        self, node_name: str, position: QtCore.QPointF
-    ) -> None:
+    def set_node_position(self, node_name: str, position: QtCore.QPointF) -> None:
         """
         Set the position of a node.
 
@@ -1413,9 +1374,7 @@ class NodzAPI:
             AttributeNotFoundError: If the attribute doesn't exist
             ValueError: If the new name already exists
         """
-        self.node_controller.edit_attribute(
-            node_name, attr_name, new_name, new_index
-        )
+        self.node_controller.edit_attribute(node_name, attr_name, new_name, new_index)
 
     def get_node_attributes(self, node_name: str) -> List[str]:
         """
@@ -1543,9 +1502,7 @@ class NodzAPI:
                 return True
         return False
 
-    def get_node_connections(
-        self, node_name: str
-    ) -> List[Tuple[str, str, str, str]]:
+    def get_node_connections(self, node_name: str) -> List[Tuple[str, str, str, str]]:
         """
         Get all connections involving a specific node.
 
@@ -1638,12 +1595,10 @@ class NodzAPI:
         for conn in self.graph_model.connections:
             if conn.plug_node not in self.graph_model.nodes:
                 errors.append(
-                    "Connection references non-existent plug node: "
-                    f"{conn.plug_node}"
+                    f"Connection references non-existent plug node: {conn.plug_node}"
                 )
             elif (
-                conn.plug_attr
-                not in self.graph_model.nodes[conn.plug_node].attributes
+                conn.plug_attr not in self.graph_model.nodes[conn.plug_node].attributes
             ):
                 errors.append(
                     "Connection references non-existent plug attribute: "
@@ -1832,9 +1787,7 @@ class NodzAPI:
         if hasattr(view, "get_viewport_framing"):
             return view.get_viewport_framing()
         else:
-            raise RuntimeError(
-                "View does not support viewport framing operations"
-            )
+            raise RuntimeError("View does not support viewport framing operations")
 
     def set_viewport_framing(self, framing_data: Dict[str, Any]) -> None:
         """
@@ -1872,6 +1825,4 @@ class NodzAPI:
         if hasattr(view, "set_viewport_framing"):
             view.set_viewport_framing(framing_data)
         else:
-            raise RuntimeError(
-                "View does not support viewport framing operations"
-            )
+            raise RuntimeError("View does not support viewport framing operations")

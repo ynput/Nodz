@@ -13,8 +13,10 @@ from qtpy import QtCore, QtWidgets
 from nodz.main import create_nodz_view
 from nodz.utils import nlog
 
+
 class SomeClass:
     pass
+
 
 # Create application
 app = (

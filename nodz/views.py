@@ -92,9 +92,7 @@ class SlotView(QtWidgets.QGraphicsItem):
 
         # Style
         if self.slot_drawer_enabled:
-            self.pen, self.brush = self.slot_drawer.pen_and_brush(
-                self.model.data_type
-            )
+            self.pen, self.brush = self.slot_drawer.pen_and_brush(self.model.data_type)
         else:
             self.brush = QtGui.QBrush()
             self.pen = QtGui.QPen()
@@ -115,12 +113,8 @@ class SlotView(QtWidgets.QGraphicsItem):
     def can_connect_to(self, other_slot: "SlotView") -> bool:
         """Check if this slot can connect to another slot."""
         # No plug on plug or socket on socket
-        has_plug = isinstance(self, PlugView) or isinstance(
-            other_slot, PlugView
-        )
-        has_socket = isinstance(self, SocketView) or isinstance(
-            other_slot, SocketView
-        )
+        has_plug = isinstance(self, PlugView) or isinstance(other_slot, PlugView)
+        has_socket = isinstance(self, SocketView) or isinstance(other_slot, SocketView)
         if not (has_plug and has_socket):
             return False
 
@@ -163,9 +157,7 @@ class SlotView(QtWidgets.QGraphicsItem):
             plug.model.data_type, socket.model.data_type
         )
 
-    def mousePressEvent(
-        self, event: QtWidgets.QGraphicsSceneMouseEvent
-    ) -> None:
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Start connection drawing on left click."""
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             # Signal that connection drawing has started
@@ -181,9 +173,7 @@ class SlotView(QtWidgets.QGraphicsItem):
         else:
             super().mousePressEvent(event)
 
-    def mouseMoveEvent(
-        self, event: QtWidgets.QGraphicsSceneMouseEvent
-    ) -> None:
+    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Update connection position during drag."""
         if SlotView.drawing_connection:
             # Create bounding box for hit detection
@@ -194,9 +184,7 @@ class SlotView(QtWidgets.QGraphicsItem):
         else:
             super().mouseMoveEvent(event)
 
-    def mouseReleaseEvent(
-        self, event: QtWidgets.QGraphicsSceneMouseEvent
-    ) -> None:
+    def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Finish connection on mouse release."""
         if (
             event.button() == QtCore.Qt.MouseButton.LeftButton
@@ -230,9 +218,7 @@ class SlotView(QtWidgets.QGraphicsItem):
 
                 if source_is_plug and target_is_socket:
                     # Connection from plug to socket
-                    source_node = (
-                        SlotView.source_slot.parent_node_view().model.name
-                    )
+                    source_node = SlotView.source_slot.parent_node_view().model.name
                     source_attr = SlotView.source_slot.model.attribute
                     target_node = target.parent_node_view().model.name
                     target_attr = target.model.attribute
@@ -240,9 +226,7 @@ class SlotView(QtWidgets.QGraphicsItem):
                     # Connection from socket to plug
                     source_node = target.parent_node_view().model.name
                     source_attr = target.model.attribute
-                    target_node = (
-                        SlotView.source_slot.parent_node_view().model.name
-                    )
+                    target_node = SlotView.source_slot.parent_node_view().model.name
                     target_attr = SlotView.source_slot.model.attribute
                 else:
                     # Invalid connection (plug to plug or socket to socket)
@@ -262,9 +246,7 @@ class SlotView(QtWidgets.QGraphicsItem):
                 # We use empty strings for target_node and target_attr to
                 # indicate an invalid connection.
                 try:
-                    source_node = (
-                        SlotView.source_slot.parent_node_view().model.name
-                    )
+                    source_node = SlotView.source_slot.parent_node_view().model.name
                     source_attr = SlotView.source_slot.model.attribute
 
                     # Emit signal for controller to handle
@@ -296,9 +278,7 @@ class SlotView(QtWidgets.QGraphicsItem):
         painter.setBrush(self.brush)
         painter.setPen(self.pen)
         if self.slot_drawer_enabled:
-            SlotDrawer().paint(
-                self.model.data_type, painter, self.boundingRect()
-            )
+            SlotDrawer().paint(self.model.data_type, painter, self.boundingRect())
         else:
             painter.drawEllipse(self.boundingRect())
 
@@ -325,13 +305,9 @@ class PlugView(SlotView):
     def _create_style(self) -> None:
         """Set up the visual style."""
         if self.slot_drawer_enabled:
-            _, self.brush = self.slot_drawer.pen_and_brush(
-                self.model.data_type
-            )
+            _, self.brush = self.slot_drawer.pen_and_brush(self.model.data_type)
         else:
-            self.brush.setColor(
-                QtGui.QColor(*self.config[self.model.preset]["plug"])
-            )
+            self.brush.setColor(QtGui.QColor(*self.config[self.model.preset]["plug"]))
 
     def boundingRect(self) -> QtCore.QRectF:
         """Define the bounding rectangle."""
@@ -369,13 +345,9 @@ class SocketView(SlotView):
     def _create_style(self) -> None:
         """Set up the visual style."""
         if self.slot_drawer_enabled:
-            _, self.brush = self.slot_drawer.pen_and_brush(
-                self.model.data_type
-            )
+            _, self.brush = self.slot_drawer.pen_and_brush(self.model.data_type)
         else:
-            self.brush.setColor(
-                QtGui.QColor(*self.config[self.model.preset]["socket"])
-            )
+            self.brush.setColor(QtGui.QColor(*self.config[self.model.preset]["socket"]))
 
     def boundingRect(self) -> QtCore.QRectF:
         """Define the bounding rectangle."""
@@ -485,9 +457,7 @@ class ConnectionView(QtWidgets.QGraphicsPathItem):
         # Update the path with restored endpoints
         self.update_path()
 
-    def mousePressEvent(
-        self, event: QtWidgets.QGraphicsSceneMouseEvent
-    ) -> None:
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Handle mouse press events."""
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
             # Check if clicking near connection ends for disconnection
@@ -523,9 +493,7 @@ class ConnectionView(QtWidgets.QGraphicsPathItem):
 
         super().mousePressEvent(event)
 
-    def mouseMoveEvent(
-        self, event: QtWidgets.QGraphicsSceneMouseEvent
-    ) -> None:
+    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Handle mouse move events."""
         if self._is_dragging_end:
             # Update the dragged end position
@@ -543,18 +511,11 @@ class ConnectionView(QtWidgets.QGraphicsPathItem):
 
         super().mouseMoveEvent(event)
 
-    def mouseReleaseEvent(
-        self, event: QtWidgets.QGraphicsSceneMouseEvent
-    ) -> None:
+    def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Handle mouse release events."""
-        if (
-            event.button() == QtCore.Qt.MouseButton.LeftButton
-            and self._is_dragging_end
-        ):
+        if event.button() == QtCore.Qt.MouseButton.LeftButton and self._is_dragging_end:
             # Check if we dragged far enough to disconnect
-            drag_distance = (
-                event.pos() - self._drag_start_pos
-            ).manhattanLength()
+            drag_distance = (event.pos() - self._drag_start_pos).manhattanLength()
             disconnect_threshold = (
                 self._grab_radius * 2
             )  # Must drag at least 2x grab radius
@@ -628,10 +589,7 @@ class NodeView(QtWidgets.QGraphicsItem):
     def itemChange(
         self, change: QtWidgets.QGraphicsItem.GraphicsItemChange, value: Any
     ) -> Any:
-        if (
-            change
-            == QtWidgets.QGraphicsItem.GraphicsItemChange.ItemSelectedChange
-        ):
+        if change == QtWidgets.QGraphicsItem.GraphicsItemChange.ItemSelectedChange:
             if value:
                 self.setZValue(NODE_Z_UP)
             else:
@@ -643,17 +601,13 @@ class NodeView(QtWidgets.QGraphicsItem):
         # Background brush
         self._brush = QtGui.QBrush()
         self._brush.setStyle(QtCore.Qt.BrushStyle.SolidPattern)
-        self._brush.setColor(
-            QtGui.QColor(*self.config[self.model.preset]["bg"])
-        )
+        self._brush.setColor(QtGui.QColor(*self.config[self.model.preset]["bg"]))
 
         # Border pen
         self._pen = QtGui.QPen()
         self._pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
         self._pen.setWidth(self.border)
-        self._pen.setColor(
-            QtGui.QColor(*self.config[self.model.preset]["border"])
-        )
+        self._pen.setColor(QtGui.QColor(*self.config[self.model.preset]["border"]))
 
         # Selected border pen
         self._pen_sel = QtGui.QPen()
@@ -666,9 +620,7 @@ class NodeView(QtWidgets.QGraphicsItem):
         # Text pen
         self._text_pen = QtGui.QPen()
         self._text_pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
-        self._text_pen.setColor(
-            QtGui.QColor(*self.config[self.model.preset]["text"])
-        )
+        self._text_pen.setColor(QtGui.QColor(*self.config[self.model.preset]["text"]))
 
         # Fonts
         self._node_text_font = QtGui.QFont(
@@ -701,9 +653,7 @@ class NodeView(QtWidgets.QGraphicsItem):
 
         # Create a socket if needed
         if attr_model.socket:
-            socket_view = SocketView(
-                self, attr_model, self.config, self.signals
-            )
+            socket_view = SocketView(self, attr_model, self.config, self.signals)
             self.sockets[attr_model.attribute] = socket_view
 
     def _remove_attribute_view(self, attr_name: str) -> None:
@@ -767,9 +717,7 @@ class NodeView(QtWidgets.QGraphicsItem):
         text_width = metrics.boundingRect(self.model.name).width() + 14
         text_height = metrics.boundingRect(self.model.name).height() + 14
         margin = (text_width - self.base_width) * 0.5
-        text_rect = QtCore.QRect(
-            -margin, -text_height, text_width, text_height
-        )
+        text_rect = QtCore.QRect(-margin, -text_height, text_width, text_height)
 
         painter.drawText(text_rect, align_flag, self.model.name)
 
@@ -878,17 +826,13 @@ class NodeView(QtWidgets.QGraphicsItem):
         color.setBlue(max(0, int(color.blue() - factor * mult)))
         return color.name()
 
-    def mouseDoubleClickEvent(
-        self, event: QtWidgets.QGraphicsSceneMouseEvent
-    ) -> None:
+    def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Handle double click events."""
         super().mouseDoubleClickEvent(event)
         # Emit signal for controller to handle
         self.signals.node_double_clicked.emit(self.model.name)
 
-    def mousePressEvent(
-        self, event: QtWidgets.QGraphicsSceneMouseEvent
-    ) -> None:
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Handle mouse press events."""
         # Only handle left mouse button events
         if event.button() == QtCore.Qt.MouseButton.LeftButton:
@@ -899,9 +843,7 @@ class NodeView(QtWidgets.QGraphicsItem):
             # Pass other mouse buttons (like middle) to the parent view
             event.ignore()
 
-    def mouseMoveEvent(
-        self, event: QtWidgets.QGraphicsSceneMouseEvent
-    ) -> None:
+    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Handle mouse move events."""
         # Only handle left mouse button events
         if event.buttons() & QtCore.Qt.MouseButton.LeftButton:
@@ -913,9 +855,7 @@ class NodeView(QtWidgets.QGraphicsItem):
             # Pass other mouse buttons (like middle) to the parent view
             event.ignore()
 
-    def mouseReleaseEvent(
-        self, event: QtWidgets.QGraphicsSceneMouseEvent
-    ) -> None:
+    def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """Handle mouse release events."""
         # Only handle left mouse button events
         if event.button() == QtCore.Qt.MouseButton.LeftButton:

@@ -6,6 +6,7 @@ This script demonstrates the enhanced unified API facade for Nodz.
 It shows how the API provides a clean, consistent interface that hides
 the complexity of the underlying MVC architecture.
 """
+
 import sys
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -13,7 +14,11 @@ from nodz.main import create_nodz_view
 from nodz.utils import nlog
 
 # Create application
-app = QtWidgets.QApplication(sys.argv) if not QtWidgets.QApplication.instance() else QtWidgets.QApplication.instance()
+app = (
+    QtWidgets.QApplication(sys.argv)
+    if not QtWidgets.QApplication.instance()
+    else QtWidgets.QApplication.instance()
+)
 
 # Create Nodz view
 nodz = create_nodz_view()
@@ -32,21 +37,21 @@ input_node = nodz.api.create_node(
     name="InputNode",
     preset="node_preset_1",
     position=QtCore.QPointF(50, 100),
-    description="Input data source"
+    description="Input data source",
 )
 
 process_node = nodz.api.create_node(
     name="ProcessNode",
     preset="node_preset_1",
     position=QtCore.QPointF(300, 100),
-    description="Data processing node"
+    description="Data processing node",
 )
 
 output_node = nodz.api.create_node(
     name="OutputNode",
     preset="node_preset_1",
     position=QtCore.QPointF(550, 100),
-    description="Output destination"
+    description="Output destination",
 )
 
 nlog.info(f"Created nodes: {nodz.api.get_node_names()}")
@@ -63,7 +68,7 @@ nodz.api.create_attribute(
     plug=True,
     socket=False,
     data_type=str,
-    help="Output data stream"
+    help="Output data stream",
 )
 
 nodz.api.create_attribute(
@@ -73,7 +78,7 @@ nodz.api.create_attribute(
     plug=False,
     socket=False,
     data_type=dict,
-    help="Configuration parameters"
+    help="Configuration parameters",
 )
 
 # Process node attributes
@@ -84,7 +89,7 @@ nodz.api.create_attribute(
     plug=False,
     socket=True,
     data_type=str,
-    help="Input data stream"
+    help="Input data stream",
 )
 
 nodz.api.create_attribute(
@@ -94,7 +99,7 @@ nodz.api.create_attribute(
     plug=True,
     socket=False,
     data_type=str,
-    help="Processed data output"
+    help="Processed data output",
 )
 
 nodz.api.create_attribute(
@@ -104,7 +109,7 @@ nodz.api.create_attribute(
     plug=True,
     socket=False,
     data_type=bool,
-    help="Processing status"
+    help="Processing status",
 )
 
 # Output node attributes
@@ -115,7 +120,7 @@ nodz.api.create_attribute(
     plug=False,
     socket=True,
     data_type=str,
-    help="Input data to save"
+    help="Input data to save",
 )
 
 nodz.api.create_attribute(
@@ -125,7 +130,7 @@ nodz.api.create_attribute(
     plug=False,
     socket=True,
     data_type=bool,
-    help="Status input"
+    help="Status input",
 )
 
 nlog.info("Attributes created for all nodes")
@@ -156,8 +161,12 @@ for src_node, src_attr, tgt_node, tgt_attr in connections:
     nlog.info(f"  {src_node}.{src_attr} -> {tgt_node}.{tgt_attr}")
 
 # Show node dependencies
-nlog.info(f"\nUpstream nodes for ProcessNode: {nodz.api.get_upstream_nodes('ProcessNode')}")
-nlog.info(f"Downstream nodes for ProcessNode: {nodz.api.get_downstream_nodes('ProcessNode')}")
+nlog.info(
+    f"\nUpstream nodes for ProcessNode: {nodz.api.get_upstream_nodes('ProcessNode')}"
+)
+nlog.info(
+    f"Downstream nodes for ProcessNode: {nodz.api.get_downstream_nodes('ProcessNode')}"
+)
 
 # === Graph Analysis ===
 print()
@@ -191,14 +200,18 @@ nlog.info("6. Utility operations...")
 # Check existence
 nlog.info(f"Node 'ProcessNode' exists: {nodz.api.node_exists('ProcessNode')}")
 nlog.info(f"Node 'NonExistent' exists: {nodz.api.node_exists('NonExistent')}")
-nlog.info(f"Attribute 'ProcessNode.data_in' exists: {nodz.api.attribute_exists('ProcessNode', 'data_in')}")
+nlog.info(
+    f"Attribute 'ProcessNode.data_in' exists: {nodz.api.attribute_exists('ProcessNode', 'data_in')}"
+)
 
 # Get node attributes
 attrs = nodz.api.get_node_attributes("ProcessNode")
 nlog.info(f"ProcessNode attributes: {attrs}")
 
 # Check specific connection
-conn_exists = nodz.api.connection_exists("InputNode", "data_out", "ProcessNode", "data_in")
+conn_exists = nodz.api.connection_exists(
+    "InputNode", "data_out", "ProcessNode", "data_in"
+)
 nlog.info(f"Connection InputNode.data_out -> ProcessNode.data_in exists: {conn_exists}")
 
 # === Advanced Operations ===
@@ -249,9 +262,9 @@ nodz.layout_graph()
 
 # === Instructions ===
 print()
-nlog.info("" + "="*50)
+nlog.info("" + "=" * 50)
 nlog.info("INTERACTIVE DEMO")
-nlog.info("="*50)
+nlog.info("=" * 50)
 nlog.info("The graph is now loaded and ready for interaction!")
 print("")
 nlog.info("API Features Demonstrated:")
