@@ -6,6 +6,8 @@ Views are responsible only for rendering and user interaction,
 with no data manipulation logic.
 """
 
+from __future__ import annotations
+
 from typing import Any, Dict, Optional
 from enum import Enum
 from qtpy import QtCore, QtGui, QtWidgets
@@ -15,6 +17,7 @@ from .models import (
     NodeModel,
     AttrModel,
     ConnectionModel,
+    NodeGroupModel,
 )
 
 from .slot_drawer import SlotDrawer
@@ -23,6 +26,8 @@ NODE_Z = 0.0
 NODE_Z_UP = 0.5
 CNCT_Z = -0.25
 CNCT_Z_UP = 0.25
+GROUP_Z = -0.5  # Groups render behind nodes
+GROUP_Z_UP = 0.4  # Selected groups above normal nodes
 
 
 class SlotType(Enum):
@@ -58,6 +63,14 @@ class ViewSignals(QtCore.QObject):
     connection_deleted = Signal(
         str, str, str, str
     )  # source_node, source_attr, target_node, target_attr
+
+    # Group signals
+    signal_group_selected = Signal(str, bool)  # group_name, selected
+    signal_group_moved = Signal(str, QtCore.QPointF)  # group_name, delta
+    signal_group_resized = Signal(str, QtCore.QRectF)  # group_name, new_rect
+    signal_group_drop_node = Signal(
+        str, str
+    )  # group_name, node_name (for drag-drop membership)
 
 
 class SlotView(QtWidgets.QGraphicsItem):
@@ -899,3 +912,610 @@ class NodeView(QtWidgets.QGraphicsItem):
 
             # Update the path
             item.update_path()
+
+
+class ResizeHandle(Enum):
+    """Enum for resize handle positions."""
+
+    NONE = 0
+    TOP_LEFT = 1
+    TOP_RIGHT = 2
+    BOTTOM_LEFT = 3
+    BOTTOM_RIGHT = 4
+
+
+class NodeGroupView(QtWidgets.QGraphicsRectItem):
+    """View for a node group - a visual container for organizing nodes.
+
+    Groups render as semi-transparent rounded rectangles behind nodes,
+    with a title bar displaying the group name. Groups can be selected,
+    moved, and resized via corner handles.
+
+    Attributes:
+        model: The NodeGroupModel containing group data.
+        config: Configuration dictionary for styling.
+        signals: ViewSignals instance for emitting interaction signals.
+    """
+
+    # Constants for group styling
+    TITLE_HEIGHT = 24  # pixels
+    BORDER_WIDTH = 2  # pixels
+    CORNER_RADIUS = 8  # pixels
+    PADDING = 20  # pixels around member nodes
+    HANDLE_SIZE = 10  # pixels for resize handles
+    FILL_OPACITY = 51  # ~20% opacity (255 * 0.2)
+
+    def __init__(
+        self,
+        model: NodeGroupModel,
+        config: Dict[str, Any],
+        signals: ViewSignals,
+    ) -> None:
+        """Initialize the node group view.
+
+        Args:
+            model: The NodeGroupModel containing group data.
+            config: Configuration dictionary for styling.
+            signals: ViewSignals instance for emitting signals.
+        """
+        super().__init__()
+        self.model = model
+        self.config = config
+        self.signals = signals
+
+        # Setup flags
+        self.setZValue(GROUP_Z)
+        self.setFlag(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
+        self.setFlag(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
+        self.setFlag(QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemSendsGeometryChanges)
+        self.setAcceptHoverEvents(True)
+
+        # Get dimensions from config or use defaults
+        grp_cfg = config.get("groups", {})
+        self._padding = grp_cfg.get("padding", self.PADDING)
+        self._title_height = grp_cfg.get("title_height", self.TITLE_HEIGHT)
+        self._corner_radius = grp_cfg.get("corner_radius", self.CORNER_RADIUS)
+        self._handle_size = grp_cfg.get("handle_size", self.HANDLE_SIZE)
+        self._fill_opacity = grp_cfg.get("fill_opacity", self.FILL_OPACITY)
+
+        # State
+        self._moving = False
+        self._resizing = False
+        self._resize_handle = ResizeHandle.NONE
+        self._resize_start_rect = QtCore.QRectF()
+        self._resize_start_pos = QtCore.QPointF()
+        self._drop_highlight = False
+        self._last_pos = QtCore.QPointF()
+
+        # Initialize rect from model or use default
+        if model.rect is not None:
+            self.setRect(model.rect)
+        else:
+            self.setRect(QtCore.QRectF(0, 0, 200, 150))
+
+        # Style
+        self._create_style()
+
+    def _create_style(self) -> None:
+        """Set up the visual style from model color."""
+        r, g, b, a = self.model.color
+
+        # Background brush (semi-transparent with ~20% opacity)
+        fill_alpha = min(a, self._fill_opacity)
+        self._brush = QtGui.QBrush(QtGui.QColor(r, g, b, fill_alpha))
+
+        # Border pen (solid, using group color)
+        self._pen = QtGui.QPen(QtGui.QColor(r, g, b, min(255, a + 100)))
+        self._pen.setWidth(self.BORDER_WIDTH)
+        self._pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
+
+        # Selected border (dashed white)
+        self._pen_sel = QtGui.QPen(QtGui.QColor(200, 200, 200, 128))
+        self._pen_sel.setWidth(self.BORDER_WIDTH + 1)
+        self._pen_sel.setStyle(QtCore.Qt.PenStyle.DashLine)
+
+        # Drop zone highlight pen
+        self._pen_drop = QtGui.QPen(QtGui.QColor(100, 200, 100))
+        self._pen_drop.setWidth(self.BORDER_WIDTH + 2)
+        self._pen_drop.setStyle(QtCore.Qt.PenStyle.DashDotLine)
+
+        # Title bar brush (slightly more opaque)
+        title_alpha = min(255, a + 50)
+        self._title_brush = QtGui.QBrush(QtGui.QColor(r, g, b, title_alpha))
+
+        # Title text color (white for contrast)
+        self._text_color = QtGui.QColor(255, 255, 255)
+        self._title_font = QtGui.QFont(
+            self.config.get("group_font", "Arial"),
+            self.config.get("group_font_size", 11),
+            QtGui.QFont.Weight.Bold,
+        )
+
+        # Handle brush
+        self._handle_brush = QtGui.QBrush(QtGui.QColor(255, 255, 255, 180))
+        self._handle_pen = QtGui.QPen(QtGui.QColor(100, 100, 100))
+        self._handle_pen.setWidth(1)
+
+    def update_from_model(self) -> None:
+        """Update the view from the model data.
+
+        Refreshes the visual style and rect based on current model state.
+        """
+        self._create_style()
+        if self.model.rect is not None:
+            self.setRect(self.model.rect)
+        self.update()
+
+    def get_bounding_rect_for_members(
+        self,
+        node_views: Dict[str, NodeView],
+    ) -> Optional[QtCore.QRectF]:
+        """Calculate the bounding rect that fits all member nodes.
+
+        Args:
+            node_views: Dictionary mapping node names to NodeView instances.
+
+        Returns:
+            QRectF containing all member nodes with padding, or None if
+            no members exist.
+        """
+        if not self.model.members:
+            return None
+
+        union_rect: Optional[QtCore.QRectF] = None
+        for node_name in self.model.members:
+            if node_name not in node_views:
+                continue
+            node_view = node_views[node_name]
+            node_rect = node_view.sceneBoundingRect()
+            if union_rect is None:
+                union_rect = QtCore.QRectF(node_rect)
+            else:
+                union_rect = union_rect.united(node_rect)
+
+        if union_rect is None:
+            return None
+
+        # Add padding and title height
+        padded_rect = QtCore.QRectF(
+            union_rect.x() - self._padding,
+            union_rect.y() - self._padding - self._title_height - 5,
+            union_rect.width() + 2 * self._padding,
+            union_rect.height() + 2 * self._padding + self._title_height,
+        )
+        return padded_rect
+
+    def update_rect_from_members(
+        self,
+        node_views: Dict[str, NodeView],
+    ) -> None:
+        """Update the group rect to fit all member nodes.
+
+        Args:
+            node_views: Dictionary mapping node names to NodeView instances.
+        """
+        bounding_rect = self.get_bounding_rect_for_members(node_views)
+        if bounding_rect is not None:
+            self.prepareGeometryChange()
+            self.setPos(bounding_rect.topLeft())
+            self.setRect(
+                QtCore.QRectF(0, 0, bounding_rect.width(), bounding_rect.height())
+            )
+            # Update model rect
+            self.model.rect = QtCore.QRectF(
+                self.pos().x(),
+                self.pos().y(),
+                bounding_rect.width(),
+                bounding_rect.height(),
+            )
+            self.update()
+
+    def highlight_drop_zone(self, highlight: bool) -> None:
+        """Enable or disable drop zone highlighting.
+
+        Args:
+            highlight: True to show drop zone highlight, False to hide.
+        """
+        self._drop_highlight = highlight
+        self.update()
+
+    def _get_handle_rects(self) -> Dict[ResizeHandle, QtCore.QRectF]:
+        """Get the rectangles for all resize handles.
+
+        Returns:
+            Dictionary mapping ResizeHandle enum to QRectF positions.
+        """
+        rect = self.rect()
+        size = self._handle_size
+        half = size / 2.0
+
+        return {
+            ResizeHandle.TOP_LEFT: QtCore.QRectF(
+                rect.left() - half,
+                rect.top() - half,
+                size,
+                size,
+            ),
+            ResizeHandle.TOP_RIGHT: QtCore.QRectF(
+                rect.right() - half,
+                rect.top() - half,
+                size,
+                size,
+            ),
+            ResizeHandle.BOTTOM_LEFT: QtCore.QRectF(
+                rect.left() - half,
+                rect.bottom() - half,
+                size,
+                size,
+            ),
+            ResizeHandle.BOTTOM_RIGHT: QtCore.QRectF(
+                rect.right() - half,
+                rect.bottom() - half,
+                size,
+                size,
+            ),
+        }
+
+    def _handle_at_pos(
+        self,
+        pos: QtCore.QPointF,
+    ) -> ResizeHandle:
+        """Determine which resize handle (if any) is at the given position.
+
+        Args:
+            pos: Position to check in item coordinates.
+
+        Returns:
+            ResizeHandle enum value, or ResizeHandle.NONE if no handle.
+        """
+        handles = self._get_handle_rects()
+        for handle, rect in handles.items():
+            if rect.contains(pos):
+                return handle
+        return ResizeHandle.NONE
+
+    def boundingRect(self) -> QtCore.QRectF:
+        """Return the bounding rect including resize handles.
+
+        Returns:
+            QRectF that encompasses the group and its handles.
+        """
+        rect = self.rect()
+        # Expand to include handle areas
+        margin = self._handle_size
+        return rect.adjusted(-margin, -margin, margin, margin)
+
+    def shape(self) -> QtGui.QPainterPath:
+        """Define shape for hit detection.
+
+        Returns:
+            QPainterPath representing the interactive shape.
+        """
+        path = QtGui.QPainterPath()
+        path.addRoundedRect(
+            self.rect(),
+            self._corner_radius,
+            self._corner_radius,
+        )
+        # Add handle shapes when selected
+        if self.isSelected():
+            for handle_rect in self._get_handle_rects().values():
+                path.addRect(handle_rect)
+        return path
+
+    def paint(
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionGraphicsItem,
+        widget: Optional[QtWidgets.QWidget] = None,
+    ) -> None:
+        """Paint the group background, title bar, and handles.
+
+        Args:
+            painter: QPainter to use for drawing.
+            option: Style options.
+            widget: Optional widget being painted on.
+        """
+        rect = self.rect()
+
+        # Determine which pen to use
+        if self._drop_highlight:
+            pen = self._pen_drop
+        elif self.isSelected():
+            pen = self._pen_sel
+        else:
+            pen = self._pen
+
+        # Draw main background
+        painter.setBrush(self._brush)
+        painter.setPen(pen)
+        painter.drawRoundedRect(
+            rect,
+            self._corner_radius,
+            self._corner_radius,
+        )
+
+        # Draw title bar area
+        title_rect = QtCore.QRectF(
+            rect.left(),
+            rect.top(),
+            rect.width(),
+            self._title_height,
+        )
+
+        # Create a clipped path for the title bar (rounded top corners)
+        title_path = QtGui.QPainterPath()
+        title_path.addRoundedRect(
+            QtCore.QRectF(
+                rect.left(),
+                rect.top(),
+                rect.width(),
+                self._title_height + self._corner_radius,
+            ),
+            self._corner_radius,
+            self._corner_radius,
+        )
+        # Clip off the bottom rounded part
+        clip_rect = QtCore.QRectF(
+            rect.left(),
+            rect.top() + self._title_height,
+            rect.width(),
+            self._corner_radius,
+        )
+        title_path.addRect(clip_rect)
+
+        painter.setBrush(self._title_brush)
+        painter.setPen(QtCore.Qt.PenStyle.NoPen)
+        painter.setClipRect(title_rect)
+        painter.drawRoundedRect(
+            QtCore.QRectF(
+                rect.left(),
+                rect.top(),
+                rect.width(),
+                self._title_height + self._corner_radius,
+            ),
+            self._corner_radius,
+            self._corner_radius,
+        )
+        painter.setClipping(False)
+
+        # Draw title text
+        painter.setPen(self._text_color)
+        painter.setFont(self._title_font)
+        text_rect = QtCore.QRectF(
+            rect.left() + 10,
+            rect.top() + 2,
+            rect.width() - 20,
+            self._title_height - 4,
+        )
+        painter.drawText(
+            text_rect,
+            int(
+                QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+            ),
+            self.model.name,
+        )
+
+        # Draw resize handles when selected
+        if self.isSelected():
+            painter.setBrush(self._handle_brush)
+            painter.setPen(self._handle_pen)
+            for handle_rect in self._get_handle_rects().values():
+                painter.drawRect(handle_rect)
+
+    def itemChange(
+        self,
+        change: QtWidgets.QGraphicsItem.GraphicsItemChange,
+        value: Any,
+    ) -> Any:
+        """Handle item change notifications.
+
+        Args:
+            change: The type of change.
+            value: The new value.
+
+        Returns:
+            The value to use (possibly modified).
+        """
+        if change == QtWidgets.QGraphicsItem.GraphicsItemChange.ItemSelectedChange:
+            # Update Z-value based on selection
+            if value:
+                self.setZValue(GROUP_Z_UP)
+            else:
+                self.setZValue(GROUP_Z)
+            # Emit selection signal
+            self.signals.signal_group_selected.emit(self.model.name, bool(value))
+
+        return super().itemChange(change, value)
+
+    def hoverMoveEvent(
+        self,
+        event: QtWidgets.QGraphicsSceneHoverEvent,
+    ) -> None:
+        """Handle hover move to update cursor for resize handles.
+
+        Args:
+            event: The hover event.
+        """
+        if self.isSelected():
+            handle = self._handle_at_pos(event.pos())
+            if handle in (ResizeHandle.TOP_LEFT, ResizeHandle.BOTTOM_RIGHT):
+                self.setCursor(QtCore.Qt.CursorShape.SizeFDiagCursor)
+            elif handle in (ResizeHandle.TOP_RIGHT, ResizeHandle.BOTTOM_LEFT):
+                self.setCursor(QtCore.Qt.CursorShape.SizeBDiagCursor)
+            else:
+                self.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
+        else:
+            self.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
+        super().hoverMoveEvent(event)
+
+    def hoverLeaveEvent(
+        self,
+        event: QtWidgets.QGraphicsSceneHoverEvent,
+    ) -> None:
+        """Reset cursor when leaving the item.
+
+        Args:
+            event: The hover event.
+        """
+        self.setCursor(QtCore.Qt.CursorShape.ArrowCursor)
+        super().hoverLeaveEvent(event)
+
+    def mousePressEvent(
+        self,
+        event: QtWidgets.QGraphicsSceneMouseEvent,
+    ) -> None:
+        """Handle mouse press for movement and resizing.
+
+        Args:
+            event: The mouse event.
+        """
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            # Check for resize handle first (only when selected)
+            if self.isSelected():
+                handle = self._handle_at_pos(event.pos())
+                if handle != ResizeHandle.NONE:
+                    self._resizing = True
+                    self._resize_handle = handle
+                    self._resize_start_rect = QtCore.QRectF(self.rect())
+                    self._resize_start_pos = event.scenePos()
+                    event.accept()
+                    return
+
+            # Start moving
+            self._moving = True
+            self._last_pos = self.pos()
+            self.setZValue(GROUP_Z_UP)
+
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(
+        self,
+        event: QtWidgets.QGraphicsSceneMouseEvent,
+    ) -> None:
+        """Handle mouse move for dragging and resizing.
+
+        Args:
+            event: The mouse event.
+        """
+        if self._resizing:
+            # Handle resize
+            delta = event.scenePos() - self._resize_start_pos
+            new_rect = QtCore.QRectF(self._resize_start_rect)
+
+            # Minimum size constraints
+            min_width = 100.0
+            min_height = self._title_height + 50.0
+
+            if self._resize_handle == ResizeHandle.TOP_LEFT:
+                new_rect.setLeft(
+                    min(
+                        new_rect.left() + delta.x(),
+                        new_rect.right() - min_width,
+                    )
+                )
+                new_rect.setTop(
+                    min(
+                        new_rect.top() + delta.y(),
+                        new_rect.bottom() - min_height,
+                    )
+                )
+            elif self._resize_handle == ResizeHandle.TOP_RIGHT:
+                new_rect.setRight(
+                    max(
+                        new_rect.right() + delta.x(),
+                        new_rect.left() + min_width,
+                    )
+                )
+                new_rect.setTop(
+                    min(
+                        new_rect.top() + delta.y(),
+                        new_rect.bottom() - min_height,
+                    )
+                )
+            elif self._resize_handle == ResizeHandle.BOTTOM_LEFT:
+                new_rect.setLeft(
+                    min(
+                        new_rect.left() + delta.x(),
+                        new_rect.right() - min_width,
+                    )
+                )
+                new_rect.setBottom(
+                    max(
+                        new_rect.bottom() + delta.y(),
+                        new_rect.top() + min_height,
+                    )
+                )
+            elif self._resize_handle == ResizeHandle.BOTTOM_RIGHT:
+                new_rect.setRight(
+                    max(
+                        new_rect.right() + delta.x(),
+                        new_rect.left() + min_width,
+                    )
+                )
+                new_rect.setBottom(
+                    max(
+                        new_rect.bottom() + delta.y(),
+                        new_rect.top() + min_height,
+                    )
+                )
+
+            self.prepareGeometryChange()
+            self.setRect(new_rect)
+            self.update()
+            event.accept()
+            return
+
+        if self._moving:
+            # Calculate movement delta
+            super().mouseMoveEvent(event)
+            delta = self.pos() - self._last_pos
+            self._last_pos = self.pos()
+
+            # Emit signal for controller to move member nodes
+            if delta.x() != 0 or delta.y() != 0:
+                self.signals.signal_group_moved.emit(self.model.name, delta)
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(
+        self,
+        event: QtWidgets.QGraphicsSceneMouseEvent,
+    ) -> None:
+        """Handle mouse release after movement or resizing.
+
+        Args:
+            event: The mouse event.
+        """
+        if event.button() == QtCore.Qt.MouseButton.LeftButton:
+            if self._resizing:
+                self._resizing = False
+                self._resize_handle = ResizeHandle.NONE
+                # Update model rect
+                scene_rect = QtCore.QRectF(
+                    self.pos().x() + self.rect().x(),
+                    self.pos().y() + self.rect().y(),
+                    self.rect().width(),
+                    self.rect().height(),
+                )
+                self.model.rect = scene_rect
+                # Emit resize signal
+                self.signals.signal_group_resized.emit(
+                    self.model.name,
+                    scene_rect,
+                )
+                event.accept()
+                return
+
+            if self._moving:
+                self._moving = False
+                self.setZValue(GROUP_Z)
+                # Update model rect
+                self.model.rect = QtCore.QRectF(
+                    self.pos().x(),
+                    self.pos().y(),
+                    self.rect().width(),
+                    self.rect().height(),
+                )
+
+        super().mouseReleaseEvent(event)

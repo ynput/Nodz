@@ -5,9 +5,12 @@ This module provides the main entry point for the Nodz graph editor.
 It demonstrates how to use the MVC architecture to create a Nodz application.
 """
 
+from __future__ import annotations
+
+import json
 import os
 import sys
-from typing import Any, Dict, Optional, Union, List
+from typing import Any, Dict, List, Optional, Union
 from qtpy import QtCore, QtGui, QtWidgets
 
 from .slot_drawer import SlotDrawer
@@ -17,13 +20,14 @@ from .views import (
     PlugView,
     SocketView,
     SlotView,
+    NodeGroupView,
     CNCT_Z,
     CNCT_Z_UP,
     NODE_Z,
     NODE_Z_UP,
 )
-from .controllers import NodzAPI
-from .utils import nlog
+from .controllers import NodzAPI, NodeGroupController
+from .utils import json_encoder, nlog
 
 
 DEFAULT_CONFIG_PATH = os.path.join(
@@ -50,8 +54,9 @@ class NodzScene(QtWidgets.QGraphicsScene):
         self._brush.setColor(QtGui.QColor(*config["bg_color"]))
 
         # bean keeping
-        self._nodeviews = list()
-        self._connectionviews = list()
+        self._nodeviews: list[NodeView] = list()
+        self._connectionviews: list[ConnectionView] = list()
+        self._groupviews: list[NodeGroupView] = list()
 
     def drawBackground(
         self, painter: QtGui.QPainter, rect: Union[QtCore.QRectF, QtCore.QRect]
@@ -86,26 +91,48 @@ class NodzScene(QtWidgets.QGraphicsScene):
             painter.drawLines(lines)
 
     def addItem(self, item: QtWidgets.QGraphicsItem) -> None:
-        """Extends addItem to store a list of NodeView and ConnectionView items"""
+        """Extend addItem to store lists of NodeView, ConnectionView, and
+        NodeGroupView items.
+        """
         if isinstance(item, NodeView):
             self._nodeviews.append(item)
         elif isinstance(item, ConnectionView):
             self._connectionviews.append(item)
+        elif isinstance(item, NodeGroupView):
+            self._groupviews.append(item)
         super().addItem(item)
 
     def removeItem(self, item: QtWidgets.QGraphicsItem) -> None:
-        """Extends removeItem to update our internal item lists."""
+        """Extend removeItem to update our internal item lists."""
         if isinstance(item, NodeView):
-            self._nodeviews.remove(item)
+            if item in self._nodeviews:
+                self._nodeviews.remove(item)
         elif isinstance(item, ConnectionView):
-            self._connectionviews.remove(item)
+            if item in self._connectionviews:
+                self._connectionviews.remove(item)
+        elif isinstance(item, NodeGroupView):
+            if item in self._groupviews:
+                self._groupviews.remove(item)
         super().removeItem(item)
 
     def node_items(self) -> list[NodeView]:
+        """Return list of all NodeView items in the scene."""
         return self._nodeviews
 
     def connection_items(self) -> list[ConnectionView]:
+        """Return list of all ConnectionView items in the scene."""
         return self._connectionviews
+
+    def group_items(self) -> list[NodeGroupView]:
+        """Return list of all NodeGroupView items in the scene."""
+        return self._groupviews
+
+    def clear(self) -> None:
+        """Clear all items from the scene and reset internal lists."""
+        super().clear()
+        self._nodeviews.clear()
+        self._connectionviews.clear()
+        self._groupviews.clear()
 
     def get_slot_connections(self, slot: SlotView) -> list:
         """Get all connections attached to a slot."""
@@ -215,6 +242,7 @@ class NodzView(QtWidgets.QGraphicsView):
 
         self._show_help = True
         self._viewport_help_document = None
+        self._viewport_help_hint = None
 
         # Grid snapping state
         self._grid_snap_enabled = False
@@ -328,16 +356,30 @@ class NodzView(QtWidgets.QGraphicsView):
             rect (QtCore.QRectF | QtCore.QRect): The rectangle specifying
                 the area of the view that needs to be updated.
         """
-        if not self._show_help:
-            return
-        vp_bottom_left = self.viewport().rect().bottomLeft()
-        painter.resetTransform()
+
+        def _build_doc(_docstr: str):
+            _doc = QtGui.QTextDocument()
+            font_size = painter.fontInfo().pointSize()
+            _doc.setDefaultFont(
+                QtGui.QFont(painter.font().family(), max(10, font_size - 2))
+            )
+            _doc.setMarkdown(_docstr)
+            return _doc
+
+        painter.save()
+
+        if not self._viewport_help_hint:
+            h_str = "**H**: Toggle help overlay"
+            self._viewport_help_hint = _build_doc(h_str)
+
         if not self._viewport_help_document:
             h_str = (
                 "*Keyboard Shortcuts:*   \n\n"
                 "**L**: Layout graph    "
                 "**A**: Frame all nodes    "
                 "**F**: Frame selection    "
+                "**Ctrl+G**: Create group from selection    "
+                "**Ctrl+Shift+G**: Remove selected groups    \n\n"
                 "**H**: Toggle help overlay    "
                 "**Del/Backspace**: Delete selection    \n\n"
                 "**Shift+Click**: Add to selection    "
@@ -345,17 +387,24 @@ class NodzView(QtWidgets.QGraphicsView):
                 "**Alt+Drag**: Cut connections    "
                 "**S-down**: Snap to grid"
             )
-            self._viewport_help_document = QtGui.QTextDocument()
-            font_size = painter.fontInfo().pointSize()
-            self._viewport_help_document.setDefaultFont(
-                QtGui.QFont(painter.font().family(), max(10, font_size - 2))
-            )
-            self._viewport_help_document.setMarkdown(h_str)
+            self._viewport_help_document = _build_doc(h_str)
+
+        vp_bottom_left = self.viewport().rect().bottomLeft()
+        painter.resetTransform()
+        doc = (
+            self._viewport_help_document
+            if self._show_help
+            else self._viewport_help_hint
+        )
         painter.translate(
-            QtCore.QPoint(vp_bottom_left.x() + 20, vp_bottom_left.y() - 80)
+            QtCore.QPoint(
+                vp_bottom_left.x() + 20,
+                vp_bottom_left.y() - int(doc.size().height()) - 10,
+            )
         )
         painter.setOpacity(0.5)
-        self._viewport_help_document.drawContents(painter)
+        doc.drawContents(painter)
+        painter.restore()
 
     def wheelEvent(self, event: QtGui.QWheelEvent) -> None:
         """Handle wheel events for zooming."""
@@ -642,6 +691,16 @@ class NodzView(QtWidgets.QGraphicsView):
         # Frame selected nodes with 'F'
         elif event.key() == QtCore.Qt.Key.Key_F:
             self.frame_selected()
+        # Create group from selection with Ctrl+G
+        # Remove selected group with Ctrl+Shift+G
+        elif (
+            event.key() == QtCore.Qt.Key.Key_G
+            and event.modifiers() & QtCore.Qt.KeyboardModifier.ControlModifier
+        ):
+            if event.modifiers() & QtCore.Qt.KeyboardModifier.ShiftModifier:
+                self.remove_group_from_selection()
+            else:
+                self.create_group_from_selection()
         # show help overlay with 'H'
         elif event.key() == QtCore.Qt.Key.Key_H:
             self._show_help = False if self._show_help else True
@@ -756,6 +815,64 @@ class NodzView(QtWidgets.QGraphicsView):
         # Delete each selected node using the API
         for node in selected_nodes:
             self.api.delete_node(node.model.name)
+
+    def create_group_from_selection(self) -> None:
+        """Create a node group from currently selected nodes.
+
+        Generates a unique group name like "Group 1", "Group 2", etc.
+        and creates a group containing all selected nodes.
+        """
+        # Get all selected node views
+        selected_nodes = [
+            item.model.name
+            for item in self.nodz_scene.selectedItems()
+            if isinstance(item, NodeView)
+        ]
+
+        if len(selected_nodes) < 1:
+            # Need at least one node to create a group
+            return
+
+        # Generate a unique group name
+        base_name = "Group"
+        counter = 1
+        existing_groups = self.api.list_node_groups()
+        while f"{base_name} {counter}" in existing_groups:
+            counter += 1
+        group_name = f"{base_name} {counter}"
+
+        # Create the group via the API
+        try:
+            self.api.create_node_group(group_name, selected_nodes)
+            nlog.info(
+                f"Created group '{group_name}' with {len(selected_nodes)} node(s)"
+            )
+        except Exception as e:
+            nlog.error(f"Failed to create group: {e}")
+
+    def remove_group_from_selection(self) -> None:
+        """Remove node groups from the current selection.
+
+        Deletes all selected node groups.
+        """
+        # Get all selected group views
+        selected_groups = [
+            item
+            for item in self.nodz_scene.selectedItems()
+            if isinstance(item, NodeGroupView)
+        ]
+
+        if not selected_groups:
+            # No groups selected, do nothing
+            return
+
+        # Delete each selected group using the API
+        for group in selected_groups:
+            try:
+                self.api.delete_node_group(group.model.name)
+                nlog.info(f"Removed group '{group.model.name}'")
+            except Exception as e:
+                nlog.error(f"Failed to remove group '{group.model.name}': {e}")
 
     def _center_graph_in_scene(self):
         """

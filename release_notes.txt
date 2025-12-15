@@ -1,5 +1,37 @@
 RELEASE NOTES
 
+v2.0.0 - 15/12/2025:
+    + Feature : Node Groups - Visual containers for organizing related nodes
+        - Create groups from selected nodes with Ctrl+G keyboard shortcut
+        - Semi-transparent colored backgrounds with customizable colors (RGBA)
+        - Title labels displayed at the top of each group
+        - Auto-resizing bounding box based on member nodes
+        - Groups are rendered behind nodes for clear visual hierarchy
+        - Moving a group moves all member nodes together
+        - Deleting a group preserves the member nodes
+        - Nodes automatically removed from group when deleted
+        - A node can only belong to one group at a time
+    + API : New group-related methods in NodzAPI:
+        - create_node_group(name, members, color) - Create a new group
+        - delete_node_group(group_name) - Delete a group (keeps nodes)
+        - rename_node_group(group_name, new_name) - Rename a group
+        - add_to_node_group(group_name, node_names) - Add nodes to group
+        - remove_from_node_group(group_name, node_names) - Remove nodes from group
+        - validate_node_group(group_name) - Validate group integrity
+        - list_node_groups() - List all group names
+        - get_group_members(group_name) - Get nodes in a group
+        - get_node_group(node_name) - Get group containing a node
+        - set_group_color(group_name, color) - Set group color
+        - group_exists(group_name) - Check if group exists
+    + Error Handling : New group-related exceptions:
+        - NodeGroupError - Base exception for group errors
+        - GroupNotFoundError - Group doesn't exist
+        - GroupExistsError - Group already exists
+        - NodeAlreadyInGroupError - Node is already in another group
+    + Serialization : Groups stored as separate metadata in graph JSON
+        - Backward compatible: graphs without groups load correctly
+        - Groups key always present in saved files
+
 v1.3.0 - 02/07/2018:
     + Feature : Added a signal when a node is double-clicked
 

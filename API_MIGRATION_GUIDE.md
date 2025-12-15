@@ -370,7 +370,78 @@ nodz.api.signals.connection_created.connect(on_connection_created)
 
 ## New Features
 
-### 1. Enhanced Error Handling
+### 1. Node Groups API
+
+The new unified API introduces comprehensive support for node groups, allowing visual organization of related nodes:
+
+#### Group Operations
+
+```python
+# Create a group
+group_info = api.create_node_group(
+    name="Processing",           # Unique group name
+    members=["nodeA", "nodeB"],  # List of node names to include
+    color=(65, 105, 225, 80)     # Optional RGBA color tuple
+)  # Returns: dict with group info
+
+# Delete a group (nodes are preserved)
+success = api.delete_node_group("Processing")  # Returns: bool
+
+# Rename a group
+success = api.rename_node_group("Processing", "Data Processing")  # Returns: bool
+
+# Add nodes to an existing group
+success = api.add_to_node_group("Processing", ["nodeC", "nodeD"])  # Returns: bool
+
+# Remove nodes from a group
+success = api.remove_from_node_group("Processing", ["nodeA"])  # Returns: bool
+
+# Validate a group (check for missing nodes, etc.)
+issues = api.validate_node_group("Processing")  # Returns: list[str]
+
+# List all groups
+groups = api.list_node_groups()  # Returns: list[str]
+```
+
+#### Additional Group Helpers
+
+```python
+# Get members of a group
+members = api.get_group_members("Processing")  # Returns: list[str]
+
+# Check which group contains a node
+group_name = api.get_node_group("nodeA")  # Returns: str or None
+
+# Set group color
+api.set_group_color("Processing", (255, 0, 0, 100))
+
+# Check if group exists
+exists = api.group_exists("Processing")  # Returns: bool
+```
+
+#### Group Error Handling
+
+```python
+from nodz.controllers import (
+    NodeGroupError,          # Base group exception
+    GroupNotFoundError,      # Group doesn't exist
+    GroupExistsError,        # Group already exists
+    NodeAlreadyInGroupError, # Node is already in another group
+)
+
+try:
+    api.create_node_group("MyGroup", ["nodeA"])
+except GroupExistsError as e:
+    print(f"Group '{e.group_name}' already exists")
+except NodeAlreadyInGroupError as e:
+    print(f"Node '{e.node_name}' is already in '{e.existing_group}'")
+```
+
+#### Keyboard Shortcut
+
+- **Ctrl+G**: Create a group from currently selected nodes
+
+### 2. Enhanced Error Handling
 
 The new API provides comprehensive error handling with custom exceptions:
 
@@ -393,7 +464,7 @@ except ConnectionError as e:
     print(f"Connection error: {e}")
 ```
 
-### 2. Graph Analysis Tools
+### 3. Graph Analysis Tools
 
 ```python
 # Get graph statistics
@@ -417,7 +488,7 @@ upstream = api.get_upstream_nodes('myNode')
 downstream = api.get_downstream_nodes('myNode')
 ```
 
-### 3. Validation Tools
+### 4. Validation Tools
 
 ```python
 # Validate graph integrity
@@ -429,7 +500,7 @@ else:
     print("Graph is valid")
 ```
 
-### 4. Utility Methods
+### 5. Utility Methods
 
 ```python
 # Check existence
@@ -449,7 +520,7 @@ connections = api.get_connections()
 node_connections = api.get_node_connections('myNode')
 ```
 
-### 5. Position Management
+### 6. Position Management
 
 ```python
 # Get and set node positions
@@ -457,7 +528,7 @@ position = api.get_node_position('myNode')
 api.set_node_position('myNode', QtCore.QPointF(200, 150))
 ```
 
-### 6. Logging Control
+### 7. Logging Control
 
 ```python
 # Control logging levels
@@ -465,7 +536,7 @@ api.set_logging_level('DEBUG')
 current_level = api.get_logging_level()
 ```
 
-### 7. Viewport Control
+### 8. Viewport Control
 
 ```python
 # Save and restore viewport state
@@ -596,7 +667,7 @@ nodz.api.signals.node_created.connect(callback)
 - [ ] Add error handling with new exception types
 - [ ] Test all functionality with the new API
 - [ ] Update documentation and comments
-- [ ] Consider using new features (graph analysis, validation, etc.)
+- [ ] Consider using new features (graph analysis, validation, node groups, etc.)
 
 ---
 

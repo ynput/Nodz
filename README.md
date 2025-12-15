@@ -181,6 +181,8 @@ L             : Auto-layout graph hierarchically
 S (hold)      : Snap selected nodes to grid
 H             : Toggle help overlay
 Alt+Drag      : Cut connections with line
+Ctrl+G        : Create group from selected nodes
+Ctrl+Shift+G  : Remove selected groups
 ```
 
 ### Advanced Features
@@ -190,6 +192,53 @@ Alt+Drag      : Cut connections with line
 - **Save/Load**: Complete graph serialization to JSON format
 - **Undo/Redo Ready**: Architecture supports command pattern implementation
 - **Plugin System**: Extensible preset system for custom node types
+
+### Node Groups
+
+Node groups allow you to visually organize related nodes within colored, labeled containers. Groups help manage complex graphs by providing logical grouping and collective manipulation of nodes.
+
+**Visual Representation:**
+- Semi-transparent colored background box
+- Title label displayed at the top of the group
+- Automatically resizes to encompass all member nodes
+- Groups are rendered behind nodes to keep nodes as primary interactive elements
+
+**Creating Groups:**
+- Select one or more nodes
+- Press `Ctrl+G` to create a group from the selection
+- Groups are automatically named and colored (customizable via API)
+
+**Behavior:**
+- Moving a group moves all member nodes together
+- A node can only belong to one group at a time
+- Deleting a group preserves the member nodes
+- When a grouped node is deleted, it is automatically removed from its group
+
+**Example Usage:**
+
+```python
+# Create nodes
+api.create_node("Input", position=QtCore.QPointF(100, 100))
+api.create_node("Process", position=QtCore.QPointF(300, 100))
+api.create_node("Output", position=QtCore.QPointF(500, 100))
+
+# Group related nodes
+api.create_node_group("Processing Pipeline", ["Input", "Process"])
+
+# Add another node to existing group
+api.add_to_node_group("Processing Pipeline", "Output")
+
+# Customize group color (RGBA)
+api.set_group_color("Processing Pipeline", (65, 105, 225, 80))
+
+# List all groups
+groups = api.list_node_groups()
+print(f"Groups: {groups}")
+
+# Get nodes in a group
+members = api.get_group_members("Processing Pipeline")
+print(f"Members: {members}")
+```
 
 ## Unified API Reference
 
@@ -281,6 +330,31 @@ except ValueError:
     pass
 ```
 
+### Group Operations
+
+```python
+# Create a group from selected nodes
+group_info = api.create_node_group(name, members=None, color=None)  # Returns dict with group info
+
+# Manage groups
+api.delete_node_group(group_name)  # Returns bool
+api.rename_node_group(group_name, new_name)  # Returns bool
+
+# Manage group membership
+api.add_to_node_group(group_name, node_names)  # Returns bool
+api.remove_from_node_group(group_name, node_names)  # Returns bool
+
+# Query groups
+groups = api.list_node_groups()  # Returns list of group names
+issues = api.validate_node_group(group_name)  # Returns list of validation issues
+
+# Additional helpers
+members = api.get_group_members(group_name)  # Get nodes in a group
+group = api.get_node_group(node_name)  # Get group containing a node (or None)
+api.set_group_color(group_name, (r, g, b, a))  # Set group RGBA color
+exists = api.group_exists(group_name)  # Check if group exists
+```
+
 ### Utility Methods
 
 ```python
@@ -307,6 +381,11 @@ from nodz.controllers import (
     AttributeNotFoundError, # Attribute doesn't exist
     ConnectionError,        # Connection-related errors
     IncompatibleTypesError, # Type mismatch in connections
+    # Group-related errors
+    NodeGroupError,         # Base group exception
+    GroupNotFoundError,     # Group doesn't exist
+    GroupExistsError,       # Group already exists
+    NodeAlreadyInGroupError,# Node is already in another group
 )
 
 try:
@@ -317,6 +396,14 @@ except IncompatibleTypesError as e:
     print(f"Type mismatch: {e.source_type} -> {e.target_type}")
 except NodzError as e:
     print(f"General error: {e}")
+
+# Group error handling example
+try:
+    api.create_node_group("MyGroup", ["NodeA", "NodeB"])
+except GroupExistsError as e:
+    print(f"Group already exists: {e.group_name}")
+except NodeAlreadyInGroupError as e:
+    print(f"Node '{e.node_name}' is already in group '{e.existing_group}'")
 ```
 
 ## Examples

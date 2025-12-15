@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import os
 import json
-from typing import Any, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
 import functools
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -22,6 +22,7 @@ from .models import (
     AttrModel,
     ConnectionModel,
     GraphModel,
+    NodeGroupModel,
 )
 from .views import (
     NodeView,
@@ -29,6 +30,7 @@ from .views import (
     SocketView,
     ConnectionView,
     ViewSignals,
+    NodeGroupView,
 )
 from .utils import (
     json_decoder,
@@ -1070,6 +1072,21 @@ class GraphController(BaseController):
                 )
                 self.scene.addItem(connection_view)
 
+        # Create groups (backward compatible - groups may not exist in old files)
+        groups_data = graph_dict.get("groups", {})
+        for group_name, group_data in groups_data.items():
+            group_model = NodeGroupModel.from_dict(group_data)
+            self.graph_model._groups[group_name] = group_model
+            # Update reverse lookup
+            for member in group_model.members:
+                self.graph_model._node_to_group[member] = group_name
+            # Create group view
+            group_view = NodeGroupView(group_model, self.config, self.signals)
+            self.scene.addItem(group_view)
+            # Update rect from members
+            node_views = {item.model.name: item for item in self.scene.node_items()}
+            group_view.update_rect_from_members(node_views)
+
     def clear_graph(self) -> None:
         """Clear the graph."""
         # Clear scene
@@ -1078,6 +1095,8 @@ class GraphController(BaseController):
         # Clear model data while keeping the same instance
         self.graph_model.nodes.clear()
         self.graph_model.connections.clear()
+        self.graph_model.groups.clear()
+        self.graph_model._node_to_group.clear()
 
     def evaluate_graph(self) -> List[Tuple[str, str]]:
         """Evaluate the graph and return a list of connections."""
@@ -1125,6 +1144,641 @@ class GraphController(BaseController):
         return None
 
 
+class NodeGroupError(NodzError):
+    """Base class for group-related errors."""
+
+    pass
+
+
+class GroupNotFoundError(NodeGroupError):
+    """Raised when a group is not found."""
+
+    def __init__(self, group_name: str):
+        self.group_name = group_name
+        super().__init__(f"Group '{group_name}' not found")
+
+
+class GroupExistsError(NodeGroupError):
+    """Raised when a group with the same name already exists."""
+
+    def __init__(self, group_name: str):
+        self.group_name = group_name
+        super().__init__(f"Group '{group_name}' already exists")
+
+
+class NodeAlreadyInGroupError(NodeGroupError):
+    """Raised when a node is already in another group."""
+
+    def __init__(self, node_name: str, existing_group: str):
+        self.node_name = node_name
+        self.existing_group = existing_group
+        super().__init__(f"Node '{node_name}' is already in group '{existing_group}'")
+
+
+def validate_group_exists(func):
+    """Decorator to validate that a group exists."""
+
+    @functools.wraps(func)
+    def wrapper(self, group_name, *args, **kwargs):
+        if group_name not in self.graph_model.groups:
+            raise GroupNotFoundError(group_name)
+        return func(self, group_name, *args, **kwargs)
+
+    return wrapper
+
+
+class NodeGroupController(BaseController):
+    """Controller for node group operations.
+
+    Manages the relationship between NodeGroupModel and NodeGroupView,
+    handling group creation, deletion, membership changes, and
+    interaction events.
+
+    Attributes:
+        graph_model: The GraphModel containing group data.
+        scene: The NodzScene for view management.
+        config: Configuration dictionary.
+        signals: ViewSignals instance for event handling.
+    """
+
+    def __init__(
+        self,
+        graph_model: GraphModel,
+        scene: NodzScene,
+        config: Dict[str, Any],
+        signals: ViewSignals,
+    ):
+        """Initialize the node group controller.
+
+        Args:
+            graph_model: The GraphModel for group storage.
+            scene: The NodzScene for view management.
+            config: Configuration dictionary.
+            signals: ViewSignals instance for event handling.
+        """
+        super().__init__(graph_model, scene, config, signals)
+        default_palette = [
+            (65, 105, 225, 80),  # Royal Blue
+            (34, 139, 34, 80),  # Forest Green
+            (255, 140, 0, 80),  # Dark Orange
+            (148, 0, 211, 80),  # Dark Violet
+            (220, 20, 60, 80),  # Crimson
+            (0, 139, 139, 80),  # Dark Cyan
+            (255, 215, 0, 80),  # Gold
+            (139, 69, 19, 80),  # Saddle Brown
+        ]
+        self.grp_palette = self.config.get("groups", {}).get("palette")
+        if self.grp_palette:
+            self.grp_palette = [tuple(c) for c in self.grp_palette]
+        else:
+            self.grp_palette = default_palette
+
+        # Connect signals
+        self._connect_signals()
+
+    def _connect_signals(self) -> None:
+        """Connect view signals to handler methods."""
+        self.signals.signal_group_moved.connect(self.on_group_moved)
+        self.signals.signal_group_selected.connect(self.on_group_selected)
+        self.signals.signal_group_resized.connect(self.on_group_resized)
+        self.signals.signal_group_drop_node.connect(self.on_node_dropped_on_group)
+        self.signals.node_moved.connect(self._on_node_moved)
+        self.signals.node_deleted.connect(self._on_node_deleted)
+
+    # ==================== API Methods ====================
+
+    def create_node_group(
+        self,
+        name: str,
+        members: Optional[List[str]] = None,
+        color: Optional[str] = None,
+    ) -> NodeGroupModel:
+        """Create a new node group.
+
+        Args:
+            name: Unique name for the group.
+            members: Optional list of node names to include.
+            color: Optional color string in hex format (e.g., "#FF5500")
+                   or None for auto-generated color.
+
+        Returns:
+            The created NodeGroupModel.
+
+        Raises:
+            GroupExistsError: If a group with the same name exists.
+            NodeNotFoundError: If any member node doesn't exist.
+            NodeAlreadyInGroupError: If any member is in another group.
+        """
+        # Validate group name uniqueness
+        if name in self.graph_model.groups:
+            raise GroupExistsError(name)
+
+        # Convert members to list if None
+        member_list = members or []
+
+        # Validate all members exist and aren't in other groups
+        for node_name in member_list:
+            if node_name not in self.graph_model.nodes:
+                raise NodeNotFoundError(node_name)
+            existing_group = self.graph_model.get_group_for_node(node_name)
+            if existing_group:
+                raise NodeAlreadyInGroupError(node_name, existing_group)
+
+        # Parse color or generate one
+        color_tuple = self._parse_color(color) if color else None
+        if color_tuple is None:
+            color_tuple = self._generate_group_color()
+
+        # Create model
+        group_model = NodeGroupModel(
+            name=name,
+            color=color_tuple,
+            members=member_list,
+        )
+
+        # Add to graph model
+        self.graph_model.add_group(group_model)
+
+        # Create view
+        self._create_group_view(group_model)
+
+        # Calculate bounding rect from members if any
+        if member_list:
+            self._update_group_rect(name)
+
+        return group_model
+
+    @validate_group_exists
+    def delete_node_group(self, group_name: str) -> bool:
+        """Delete a node group, leaving member nodes intact.
+
+        Args:
+            group_name: Name of the group to delete.
+
+        Returns:
+            True if deletion was successful.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+        """
+        # Find and remove view
+        group_view = self.get_group_view(group_name)
+        if group_view:
+            self.scene.removeItem(group_view)
+
+        # Remove from model (this also cleans up node-to-group mappings)
+        self.graph_model.remove_group(group_name)
+
+        return True
+
+    @validate_group_exists
+    def rename_node_group(self, group_name: str, new_name: str) -> bool:
+        """Rename a node group.
+
+        Args:
+            group_name: Current name of the group.
+            new_name: New name for the group.
+
+        Returns:
+            True if rename was successful.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+            GroupExistsError: If a group with new_name already exists.
+        """
+        if new_name in self.graph_model.groups:
+            raise GroupExistsError(new_name)
+
+        group = self.graph_model.groups[group_name]
+
+        # Update model: remove with old name, update, add with new name
+        del self.graph_model.groups[group_name]
+        group.name = new_name
+        self.graph_model.groups[new_name] = group
+
+        # Update node-to-group reverse lookup
+        for member in group.members:
+            if self.graph_model._node_to_group.get(member) == group_name:
+                self.graph_model._node_to_group[member] = new_name
+
+        # Update view
+        group_view = self.get_group_view(group_name)
+        if group_view:
+            group_view.update()
+
+        return True
+
+    @validate_group_exists
+    def add_to_node_group(
+        self,
+        group_name: str,
+        node_names: Union[str, List[str]],
+    ) -> bool:
+        """Add one or more nodes to a group.
+
+        Args:
+            group_name: Name of the target group.
+            node_names: Single node name or list of node names to add.
+
+        Returns:
+            True if all nodes were added successfully.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+            NodeNotFoundError: If any node doesn't exist.
+            NodeAlreadyInGroupError: If any node is in another group.
+        """
+        # Normalize to list
+        if isinstance(node_names, str):
+            node_names = [node_names]
+
+        group = self.graph_model.groups[group_name]
+
+        # Validate all nodes first
+        for node_name in node_names:
+            if node_name not in self.graph_model.nodes:
+                raise NodeNotFoundError(node_name)
+            existing_group = self.graph_model.get_group_for_node(node_name)
+            if existing_group and existing_group != group_name:
+                raise NodeAlreadyInGroupError(node_name, existing_group)
+
+        # Add nodes
+        for node_name in node_names:
+            if not group.contains_node(node_name):
+                group.add_member(node_name)
+                self.graph_model._node_to_group[node_name] = group_name
+
+        # Update group rect
+        self._update_group_rect(group_name)
+
+        return True
+
+    @validate_group_exists
+    def remove_from_node_group(
+        self,
+        group_name: str,
+        node_names: Union[str, List[str]],
+    ) -> bool:
+        """Remove one or more nodes from a group.
+
+        Args:
+            group_name: Name of the group.
+            node_names: Single node name or list of node names to remove.
+
+        Returns:
+            True if removal was successful.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+
+        Note:
+            If a node is not in the group, it is silently skipped.
+        """
+        # Normalize to list
+        if isinstance(node_names, str):
+            node_names = [node_names]
+
+        group = self.graph_model.groups[group_name]
+
+        # Remove nodes
+        for node_name in node_names:
+            if group.contains_node(node_name):
+                group.remove_member(node_name)
+                if self.graph_model._node_to_group.get(node_name) == group_name:
+                    del self.graph_model._node_to_group[node_name]
+
+        # Update group rect
+        self._update_group_rect(group_name)
+
+        return True
+
+    def validate_node_group(self, group_name: str) -> List[str]:
+        """Validate a group and return list of validation errors.
+
+        Checks performed:
+        - Group exists
+        - All member nodes exist in the graph
+        - No member is in multiple groups (data integrity)
+
+        Args:
+            group_name: Name of the group to validate.
+
+        Returns:
+            List of validation error messages (empty if valid).
+        """
+        errors: List[str] = []
+
+        # Check group exists
+        if group_name not in self.graph_model.groups:
+            errors.append(f"Group '{group_name}' does not exist")
+            return errors
+
+        group = self.graph_model.groups[group_name]
+
+        # Check all members exist
+        for member in group.members:
+            if member not in self.graph_model.nodes:
+                errors.append(f"Member node '{member}' does not exist in graph")
+
+        # Check reverse lookup consistency
+        for member in group.members:
+            recorded_group = self.graph_model._node_to_group.get(member)
+            if recorded_group != group_name:
+                errors.append(
+                    f"Node '{member}' reverse lookup points to "
+                    f"'{recorded_group}' instead of '{group_name}'"
+                )
+
+        return errors
+
+    def list_node_groups(self) -> List[str]:
+        """Return list of all group names.
+
+        Returns:
+            List of group names.
+        """
+        return list(self.graph_model.groups.keys())
+
+    # ==================== Interaction Handlers ====================
+
+    def on_group_selected(self, group_name: str, selected: bool) -> None:
+        """Handle group selection.
+
+        Selects or deselects all member nodes when the group is
+        selected/deselected.
+
+        Args:
+            group_name: Name of the group.
+            selected: Whether the group is being selected or deselected.
+        """
+        if group_name not in self.graph_model.groups:
+            return
+
+        group = self.graph_model.groups[group_name]
+
+        # Select/deselect all member nodes
+        for node_name in group.members:
+            node_view = self._find_node_view(node_name)
+            if node_view:
+                node_view.setSelected(selected)
+
+    def on_group_moved(
+        self,
+        group_name: str,
+        delta: QtCore.QPointF,
+    ) -> None:
+        """Handle group movement by moving all member nodes.
+
+        Args:
+            group_name: Name of the group.
+            delta: Movement delta in scene coordinates.
+        """
+        if group_name not in self.graph_model.groups:
+            return
+
+        group = self.graph_model.groups[group_name]
+
+        # Move all member nodes by the delta
+        for node_name in group.members:
+            node_view = self._find_node_view(node_name)
+            if node_view:
+                new_pos = node_view.pos() + delta
+                node_view.setPos(new_pos)
+                # Update model position
+                if node_name in self.graph_model.nodes:
+                    self.graph_model.nodes[node_name]._position = new_pos
+                # Emit node_moved so connections update
+                self.signals.node_moved.emit(node_name, new_pos)
+
+    def on_group_resized(
+        self,
+        group_name: str,
+        new_rect: QtCore.QRectF,
+    ) -> None:
+        """Handle group resize.
+
+        Updates the group model rect when the view is resized.
+
+        Args:
+            group_name: Name of the group.
+            new_rect: New bounding rectangle in scene coordinates.
+        """
+        if group_name not in self.graph_model.groups:
+            return
+
+        group = self.graph_model.groups[group_name]
+        group.rect = new_rect
+
+    def on_node_dropped_on_group(
+        self,
+        node_name: str,
+        group_name: str,
+    ) -> None:
+        """Handle node being dropped onto a group (drag-drop membership).
+
+        Args:
+            node_name: Name of the node being dropped.
+            group_name: Name of the group to add the node to.
+        """
+        if group_name not in self.graph_model.groups:
+            return
+        if node_name not in self.graph_model.nodes:
+            return
+
+        # Check if node is already in another group
+        existing_group = self.graph_model.get_group_for_node(node_name)
+        if existing_group and existing_group != group_name:
+            # Remove from old group first
+            try:
+                self.remove_from_node_group(existing_group, node_name)
+            except NodeGroupError:
+                pass
+
+        # Add to new group
+        try:
+            self.add_to_node_group(group_name, node_name)
+        except NodeGroupError as e:
+            nlog.warning(f"Could not add node to group: {e}")
+
+    def on_node_removed_from_group(
+        self,
+        node_name: str,
+        group_name: str,
+    ) -> None:
+        """Handle node being dragged out of a group.
+
+        Args:
+            node_name: Name of the node.
+            group_name: Name of the group to remove from.
+        """
+        try:
+            self.remove_from_node_group(group_name, node_name)
+        except NodeGroupError as e:
+            nlog.warning(f"Could not remove node from group: {e}")
+
+    def _on_node_moved(
+        self,
+        node_name: str,
+        position: QtCore.QPointF,
+    ) -> None:
+        """Update group bounds when a member node moves.
+
+        This is an internal handler connected to node_moved signal.
+
+        Args:
+            node_name: Name of the moved node.
+            position: New position of the node.
+        """
+        group_name = self.graph_model.get_group_for_node(node_name)
+        if group_name:
+            # Don't update rect during group movement to avoid recursion
+            group_view = self.get_group_view(group_name)
+            if group_view and not group_view._moving:
+                self._update_group_rect(group_name)
+
+    def _on_node_deleted(self, node_name: str) -> None:
+        """Remove node from its group when deleted.
+
+        Args:
+            node_name: Name of the deleted node.
+        """
+        group_name = self.graph_model.get_group_for_node(node_name)
+        if group_name:
+            try:
+                self.remove_from_node_group(group_name, node_name)
+            except NodeGroupError:
+                pass
+
+    # ==================== Helper Methods ====================
+
+    def _create_group_view(
+        self,
+        group: NodeGroupModel,
+    ) -> NodeGroupView:
+        """Create a view for a group model.
+
+        Args:
+            group: The NodeGroupModel to create a view for.
+
+        Returns:
+            The created NodeGroupView.
+        """
+        group_view = NodeGroupView(group, self.config, self.signals)
+        self.scene.addItem(group_view)
+        return group_view
+
+    def _update_group_rect(self, group_name: str) -> None:
+        """Recalculate group rect from member node positions.
+
+        Args:
+            group_name: Name of the group to update.
+        """
+        group_view = self.get_group_view(group_name)
+        if group_view:
+            # Build node_views dict
+            node_views = {item.model.name: item for item in self.scene.node_items()}
+            group_view.update_rect_from_members(node_views)
+
+    def _connect_group_signals(self, group_view: NodeGroupView) -> None:
+        """Wire up view signals for a group.
+
+        Note: With the current design, signals are connected via
+        ViewSignals which is shared. This method is provided for
+        any future per-view signal connections.
+
+        Args:
+            group_view: The NodeGroupView to connect signals for.
+        """
+        # Currently signals are connected via shared ViewSignals
+        # This method is a placeholder for future per-view connections
+        pass
+
+    def get_group_view(self, group_name: str) -> Optional[NodeGroupView]:
+        """Get a group view by name.
+
+        Args:
+            group_name: Name of the group.
+
+        Returns:
+            The NodeGroupView, or None if not found.
+        """
+        for item in self.scene.group_items():
+            if item.model.name == group_name:
+                return item
+        return None
+
+    def _find_node_view(self, node_name: str) -> Optional[NodeView]:
+        """Find a node view by name.
+
+        Args:
+            node_name: Name of the node.
+
+        Returns:
+            The NodeView, or None if not found.
+        """
+        for item in self.scene.node_items():
+            if item.model.name == node_name:
+                return item
+        return None
+
+    def _parse_color(self, color_str: str) -> Optional[Tuple[int, int, int, int]]:
+        """Parse a color string to RGBA tuple.
+
+        Args:
+            color_str: Color in hex format (e.g., "#FF5500" or "#FF550080").
+
+        Returns:
+            RGBA tuple, or None if parsing fails.
+        """
+        if not color_str:
+            return None
+
+        # Remove # prefix if present
+        if color_str.startswith("#"):
+            color_str = color_str[1:]
+
+        try:
+            if len(color_str) == 6:
+                # RGB format
+                r = int(color_str[0:2], 16)
+                g = int(color_str[2:4], 16)
+                b = int(color_str[4:6], 16)
+                return (r, g, b, 80)  # Default alpha
+            elif len(color_str) == 8:
+                # RGBA format
+                r = int(color_str[0:2], 16)
+                g = int(color_str[2:4], 16)
+                b = int(color_str[4:6], 16)
+                a = int(color_str[6:8], 16)
+                return (r, g, b, a)
+        except ValueError:
+            pass
+
+        return None
+
+    def _generate_group_color(self) -> Tuple[int, int, int, int]:
+        """Pick a unique color out of the palette for a new group.
+
+        Returns:
+            RGBA color tuple.
+        """
+        import random
+
+        # rank the colors by the number of groups using them.
+        n_bins = len(self.grp_palette)
+        bins = {x: 0 for x in range(n_bins)}
+        for g in self.graph_model.groups.values():
+            i = self.grp_palette.index(g.color)
+            if i >= 0:
+                bins[i] += 1
+        # randomly pick one of the least used colors.
+        min_val = min(bins.values())
+        lowest_bins = [i for i, count in bins.items() if count == min_val]
+        idx = random.choice(lowest_bins)
+        # print(f"Lowest bins: picked {idx} out of {lowest_bins}")
+        return self.grp_palette[idx]
+
+
 class NodzAPI:
     """
     Unified API facade for Nodz.
@@ -1162,6 +1816,9 @@ class NodzAPI:
             self.graph_model, scene, config, self.signals
         )
         self.graph_controller = GraphController(
+            self.graph_model, scene, config, self.signals
+        )
+        self.group_controller = NodeGroupController(
             self.graph_model, scene, config, self.signals
         )
 
@@ -1793,8 +2450,8 @@ class NodzAPI:
         """
         Restore the viewport framing settings.
 
-        This restores a previously saved view state by using QGraphicsView.fitInView()
-        with the stored visible rectangle.
+        This restores a previously saved view state by using
+        QGraphicsView.fitInView() with the stored visible rectangle.
 
         Args:
             framing_data: Dictionary containing viewport settings as returned by
@@ -1802,7 +2459,8 @@ class NodzAPI:
 
         Raises:
             ValueError: If framing_data is invalid or missing required fields
-            RuntimeError: If no views are available or view doesn't support framing
+            RuntimeError: If no views are available or view doesn't support
+                          framing
 
         Example:
             # Save viewport state before loading a new graph
@@ -1826,3 +2484,171 @@ class NodzAPI:
             view.set_viewport_framing(framing_data)
         else:
             raise RuntimeError("View does not support viewport framing operations")
+
+    # ==================== Node Group Operations ====================
+
+    def create_node_group(
+        self,
+        name: str,
+        members: Optional[List[str]] = None,
+        color: Optional[str] = None,
+    ) -> dict:
+        """
+        Create a new node group containing the specified nodes.
+
+        Args:
+            name: Unique name for the group.
+            members: Optional list of node names to include in the group.
+            color: Optional color in hex format (e.g., "#FF5500" or
+                   "#FF550080" with alpha). If None, auto-generates.
+
+        Returns:
+            Dictionary with group information:
+            {
+                "name": str,
+                "members": list[str],
+                "color": tuple[int, int, int, int]
+            }
+
+        Raises:
+            GroupExistsError: If a group with the same name already exists.
+            NodeNotFoundError: If any member node doesn't exist.
+            NodeAlreadyInGroupError: If any member is already in another group.
+
+        Example:
+            api.create_node_group("Processing", ["nodeA", "nodeB"])
+            api.create_node_group("Output", ["nodeC"], color="#22FF22")
+        """
+        group_model = self.group_controller.create_node_group(name, members, color)
+        return {
+            "name": group_model.name,
+            "members": list(group_model.members),
+            "color": group_model.color,
+        }
+
+    def delete_node_group(self, group_name: str) -> bool:
+        """
+        Delete a node group. Member nodes are preserved.
+
+        Args:
+            group_name: Name of the group to delete.
+
+        Returns:
+            True if deletion was successful.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+
+        Example:
+            api.delete_node_group("Processing")
+        """
+        return self.group_controller.delete_node_group(group_name)
+
+    def rename_node_group(self, group_name: str, new_name: str) -> bool:
+        """
+        Rename a node group.
+
+        Args:
+            group_name: Current name of the group.
+            new_name: New name for the group.
+
+        Returns:
+            True if rename was successful.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+            GroupExistsError: If a group with new_name already exists.
+
+        Example:
+            api.rename_node_group("Group 1", "Input Processing")
+        """
+        return self.group_controller.rename_node_group(group_name, new_name)
+
+    def add_to_node_group(
+        self,
+        group_name: str,
+        node_names: Union[str, List[str]],
+    ) -> bool:
+        """
+        Add one or more nodes to an existing group.
+
+        Args:
+            group_name: Name of the target group.
+            node_names: Single node name or list of node names to add.
+
+        Returns:
+            True if all nodes were added successfully.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+            NodeNotFoundError: If any node doesn't exist.
+            NodeAlreadyInGroupError: If any node is already in another group.
+
+        Example:
+            api.add_to_node_group("Processing", "nodeD")
+            api.add_to_node_group("Processing", ["nodeE", "nodeF"])
+        """
+        return self.group_controller.add_to_node_group(group_name, node_names)
+
+    def remove_from_node_group(
+        self,
+        group_name: str,
+        node_names: Union[str, List[str]],
+    ) -> bool:
+        """
+        Remove one or more nodes from a group.
+
+        Args:
+            group_name: Name of the group.
+            node_names: Single node name or list of node names to remove.
+
+        Returns:
+            True if removal was successful.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+
+        Note:
+            If a node is not in the group, it is silently skipped.
+
+        Example:
+            api.remove_from_node_group("Processing", "nodeA")
+            api.remove_from_node_group("Processing", ["nodeB", "nodeC"])
+        """
+        return self.group_controller.remove_from_node_group(group_name, node_names)
+
+    def validate_node_group(self, group_name: str) -> List[str]:
+        """
+        Validate a node group and return any issues found.
+
+        Checks performed:
+        - Group exists
+        - All member nodes exist in the graph
+        - No member appears in multiple groups (data integrity)
+
+        Args:
+            group_name: Name of the group to validate.
+
+        Returns:
+            List of validation error messages (empty if valid).
+
+        Example:
+            issues = api.validate_node_group("Processing")
+            if issues:
+                print("Validation failed:", issues)
+        """
+        return self.group_controller.validate_node_group(group_name)
+
+    def list_node_groups(self) -> List[str]:
+        """
+        Get a list of all node group names.
+
+        Returns:
+            List of group names.
+
+        Example:
+            groups = api.list_node_groups()
+            for name in groups:
+                print(f"Group: {name}")
+        """
+        return self.group_controller.list_node_groups()
