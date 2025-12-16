@@ -68,9 +68,7 @@ class ViewSignals(QtCore.QObject):
     signal_group_selected = Signal(str, bool)  # group_name, selected
     signal_group_moved = Signal(str, QtCore.QPointF)  # group_name, delta
     signal_group_resized = Signal(str, QtCore.QRectF)  # group_name, new_rect
-    signal_group_drop_node = Signal(
-        str, str
-    )  # group_name, node_name (for drag-drop membership)
+    signal_group_drop_node = Signal(str, str)  # node_name, group_name
 
 
 class SlotView(QtWidgets.QGraphicsItem):
@@ -881,10 +879,47 @@ class NodeView(QtWidgets.QGraphicsItem):
                 # Emit node_moved signal - ConnectionController will handle
                 # connection updates
                 self.signals.node_moved.emit(self.model.name, self.pos())
+
+                # Check if node was dropped on a group
+                self._check_drop_on_group()
             super().mouseReleaseEvent(event)
         else:
             # Pass other mouse buttons (like middle) to the parent view
             event.ignore()
+
+    def _check_drop_on_group(self) -> None:
+        """Check if this node was dropped on a group and emit signal.
+
+        Checks if the node's bounding rect intersects with any group's
+        bounding rect. If so, and the node is not already a member of
+        that group, emits signal_group_drop_node.
+        """
+        if not self.scene():
+            return
+
+        node_rect = self.sceneBoundingRect()
+
+        # Find all groups in the scene
+        for item in self.scene().items():
+            if not isinstance(item, NodeGroupView):
+                continue
+
+            # Check if node overlaps with group
+            group_rect = item.sceneBoundingRect()
+            if not group_rect.intersects(node_rect):
+                continue
+
+            # Check if node is already a member of this group
+            if self.model.name in item.model.members:
+                continue
+
+            # Emit signal: (node_name, group_name)
+            self.signals.signal_group_drop_node.emit(
+                self.model.name,
+                item.model.name,
+            )
+            # Only add to one group at a time
+            break
 
     def _update_connected_paths(self) -> None:
         """Update all connection paths connected to this node."""
