@@ -1238,10 +1238,10 @@ class NodeGroupController(BaseController):
 
     def _connect_signals(self) -> None:
         """Connect view signals to handler methods."""
-        self.signals.signal_group_moved.connect(self.on_group_moved)
-        self.signals.signal_group_selected.connect(self.on_group_selected)
-        self.signals.signal_group_resized.connect(self.on_group_resized)
-        self.signals.signal_group_drop_node.connect(self.on_node_dropped_on_group)
+        self.signals.group_moved.connect(self.on_group_moved)
+        self.signals.group_selected.connect(self.on_group_selected)
+        self.signals.group_resized.connect(self.on_group_resized)
+        self.signals.group_drop_node.connect(self.on_node_dropped_on_group)
         self.signals.node_moved.connect(self._on_node_moved)
         self.signals.node_deleted.connect(self._on_node_deleted)
 

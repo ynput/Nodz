@@ -65,10 +65,10 @@ class ViewSignals(QtCore.QObject):
     )  # source_node, source_attr, target_node, target_attr
 
     # Group signals
-    signal_group_selected = Signal(str, bool)  # group_name, selected
-    signal_group_moved = Signal(str, QtCore.QPointF)  # group_name, delta
-    signal_group_resized = Signal(str, QtCore.QRectF)  # group_name, new_rect
-    signal_group_drop_node = Signal(str, str)  # node_name, group_name
+    group_selected = Signal(str, bool)  # group_name, selected
+    group_moved = Signal(str, QtCore.QPointF)  # group_name, delta
+    group_resized = Signal(str, QtCore.QRectF)  # group_name, new_rect
+    group_drop_node = Signal(str, str)  # node_name, group_name
 
 
 class SlotView(QtWidgets.QGraphicsItem):
@@ -892,7 +892,7 @@ class NodeView(QtWidgets.QGraphicsItem):
 
         Checks if the node's bounding rect intersects with any group's
         bounding rect. If so, and the node is not already a member of
-        that group, emits signal_group_drop_node.
+        that group, emits group_drop_node.
         """
         if not self.scene():
             return
@@ -914,7 +914,7 @@ class NodeView(QtWidgets.QGraphicsItem):
                 continue
 
             # Emit signal: (node_name, group_name)
-            self.signals.signal_group_drop_node.emit(
+            self.signals.group_drop_node.emit(
                 self.model.name,
                 item.model.name,
             )
@@ -1359,7 +1359,7 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
             else:
                 self.setZValue(GROUP_Z)
             # Emit selection signal
-            self.signals.signal_group_selected.emit(self.model.name, bool(value))
+            self.signals.group_selected.emit(self.model.name, bool(value))
 
         return super().itemChange(change, value)
 
@@ -1509,7 +1509,7 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
 
             # Emit signal for controller to move member nodes
             if delta.x() != 0 or delta.y() != 0:
-                self.signals.signal_group_moved.emit(self.model.name, delta)
+                self.signals.group_moved.emit(self.model.name, delta)
         else:
             super().mouseMoveEvent(event)
 
@@ -1535,7 +1535,7 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
                 )
                 self.model.rect = scene_rect
                 # Emit resize signal
-                self.signals.signal_group_resized.emit(
+                self.signals.group_resized.emit(
                     self.model.name,
                     scene_rect,
                 )
