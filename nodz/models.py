@@ -128,18 +128,30 @@ class AttrModel(BaseModel):
         """
 
         def _get_all_types(type_entry: Any) -> List[Any]:
-            from collections.abc import Iterable
-
-            if isinstance(type_entry, Iterable):
+            # Handle tuple of types (e.g., from get_args())
+            if isinstance(type_entry, tuple):
                 return [
                     orig_type
                     for entry in type_entry
                     for orig_type in _get_all_types(entry)
                 ]
-            if get_origin(type_entry) is Optional:
-                return [None] + _get_all_types(get_args(type_entry))
-            if get_origin(type_entry) is Union:
+
+            origin = get_origin(type_entry)
+
+            # Handle Optional (which is Union[X, None])
+            if origin is Union:
                 return _get_all_types(get_args(type_entry))
+
+            # Handle List types - extract the inner type
+            if origin is list:
+                args = get_args(type_entry)
+                if args:
+                    return _get_all_types(args)
+                return [type_entry]
+
+            # Handle Dict types - we don't flatten these, return as-is
+            if origin is dict:
+                return [type_entry]
 
             return [type_entry]
 
