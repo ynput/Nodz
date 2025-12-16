@@ -1306,6 +1306,16 @@ class NodeGroupController(BaseController):
         if member_list:
             self._update_group_rect(name)
 
+        # Emit group_created signal
+        group_view = self.get_group_view(name)
+        rect = group_view.rect() if group_view else QtCore.QRect()
+        self.signals.group_created.emit(
+            name,
+            color_tuple,
+            member_list,
+            rect,
+        )
+
         return group_model
 
     @validate_group_exists
@@ -1411,6 +1421,9 @@ class NodeGroupController(BaseController):
         # Update group rect
         self._update_group_rect(group_name)
 
+        # Emit group_membership_changed signal
+        self.signals.group_membership_changed.emit(group_name, list(group.members))
+
         return True
 
     @validate_group_exists
@@ -1449,6 +1462,9 @@ class NodeGroupController(BaseController):
 
         # Update group rect
         self._update_group_rect(group_name)
+
+        # Emit group_membership_changed signal
+        self.signals.group_membership_changed.emit(group_name, list(group.members))
 
         return True
 

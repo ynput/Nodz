@@ -65,6 +65,8 @@ class ViewSignals(QtCore.QObject):
     )  # source_node, source_attr, target_node, target_attr
 
     # Group signals
+    group_created = Signal(str, tuple, list, QtCore.QRect)
+    group_membership_changed = Signal(str, list)
     group_selected = Signal(str, bool)  # group_name, selected
     group_moved = Signal(str, QtCore.QPointF)  # group_name, delta
     group_resized = Signal(str, QtCore.QRectF)  # group_name, new_rect
