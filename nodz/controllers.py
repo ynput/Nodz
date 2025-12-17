@@ -1515,6 +1515,29 @@ class NodeGroupController(BaseController):
         """
         return list(self.graph_model.groups.keys())
 
+    def clear_node_groups(self) -> int:
+        """Clear all node groups from the graph.
+
+        Removes all groups and their views. Member nodes are preserved.
+
+        Returns:
+            Number of groups that were removed.
+        """
+        # Get count before clearing
+        group_count = len(self.graph_model.groups)
+
+        if group_count == 0:
+            return 0
+
+        # Remove all group views from scene
+        for group_view in list(self.scene.group_items()):
+            self.scene.removeItem(group_view)
+
+        # Clear model data
+        self.graph_model.clear_groups()
+
+        return group_count
+
     # ==================== Interaction Handlers ====================
 
     def on_group_selected(self, group_name: str, selected: bool) -> None:
@@ -2668,3 +2691,21 @@ class NodzAPI:
                 print(f"Group: {name}")
         """
         return self.group_controller.list_node_groups()
+
+    def clear_node_groups(self) -> int:
+        """
+        Remove all node groups from the graph.
+
+        All groups are deleted but their member nodes are preserved.
+        This is useful for resetting the visual organization without
+        affecting the actual nodes and connections.
+
+        Returns:
+            Number of groups that were removed.
+
+        Example:
+            # Clear all groups
+            count = api.clear_node_groups()
+            print(f"Removed {count} groups")
+        """
+        return self.group_controller.clear_node_groups()

@@ -736,6 +736,15 @@ class GraphModel(BaseModel):
         """
         return self._node_to_group.get(node_name)
 
+    def clear_groups(self) -> None:
+        """Clear all groups from the graph.
+
+        Removes all groups and their node-to-group mappings.
+        Member nodes are preserved in the graph.
+        """
+        self._groups.clear()
+        self._node_to_group.clear()
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert the graph model to a dictionary."""
         return {
