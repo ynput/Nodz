@@ -2524,6 +2524,25 @@ class NodzAPI:
         else:
             raise RuntimeError("View does not support viewport framing operations")
 
+    def frame_all(self) -> None:
+        """
+        Frame all nodes in the view.
+
+        This will zoom and pan the view to show all nodes in the scene.
+        """
+        # Get the view from the scene via the graph controller
+        views = self.graph_controller.scene.views()
+        if not views:
+            raise RuntimeError("No views available for the scene")
+
+        view = views[0]  # Get the first (and typically only) view
+
+        # Check if it's a NodzView with our viewport methods
+        if hasattr(view, "frame_all"):
+            view.frame_all()
+        else:
+            raise RuntimeError("View does not support viewport framing operations")
+
     # ==================== Node Group Operations ====================
 
     def create_node_group(
