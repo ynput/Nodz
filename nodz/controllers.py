@@ -2543,6 +2543,31 @@ class NodzAPI:
         else:
             raise RuntimeError("View does not support viewport framing operations")
 
+    def layout_graph(self) -> None:
+        """
+        Organize nodes in the graph according to their connections using a
+        hierarchical layout.
+
+        This method arranges nodes in columns based on their dependency
+        relationships, with root nodes (no incoming connections) on the left
+        and dependent nodes arranged in subsequent columns to the right.
+
+        Raises:
+            ValueError: If the scene or configuration is invalid
+        """
+        # Get the view from the scene via the graph controller
+        views = self.graph_controller.scene.views()
+        if not views:
+            raise RuntimeError("No views available for the scene")
+
+        view = views[0]  # Get the first (and typically only) view
+
+        # Check if it's a NodzView with our viewport methods
+        if hasattr(view, "layout_graph"):
+            view.layout_graph()
+        else:
+            raise RuntimeError("View does not support viewport framing operations")
+
     # ==================== Node Group Operations ====================
 
     def create_node_group(
