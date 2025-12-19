@@ -1251,15 +1251,15 @@ class NodeGroupController(BaseController):
         self,
         name: str,
         members: Optional[List[str]] = None,
-        color: Optional[str] = None,
+        color: Optional[Tuple[int, int, int, int]] = None,
     ) -> NodeGroupModel:
         """Create a new node group.
 
         Args:
             name: Unique name for the group.
             members: Optional list of node names to include.
-            color: Optional color string in hex format (e.g., "#FF5500")
-                   or None for auto-generated color.
+            color: Optional color tuple (R, G, B, A) or None for auto-generated
+                   color.
 
         Returns:
             The created NodeGroupModel.
@@ -1284,10 +1284,12 @@ class NodeGroupController(BaseController):
             if existing_group:
                 raise NodeAlreadyInGroupError(node_name, existing_group)
 
-        # Parse color or generate one
-        color_tuple = self._parse_color(color) if color else None
+        # Use color or generate one
+        color_tuple = color
         if color_tuple is None:
             color_tuple = self._generate_group_color()
+        elif isinstance(color_tuple, tuple) and len(color_tuple) == 3:
+            color_tuple = (*color_tuple, 80)  # Add default alpha if missing
 
         # Create model
         group_model = NodeGroupModel(
@@ -1758,41 +1760,6 @@ class NodeGroupController(BaseController):
         for item in self.scene.node_items():
             if item.model.name == node_name:
                 return item
-        return None
-
-    def _parse_color(self, color_str: str) -> Optional[Tuple[int, int, int, int]]:
-        """Parse a color string to RGBA tuple.
-
-        Args:
-            color_str: Color in hex format (e.g., "#FF5500" or "#FF550080").
-
-        Returns:
-            RGBA tuple, or None if parsing fails.
-        """
-        if not color_str:
-            return None
-
-        # Remove # prefix if present
-        if color_str.startswith("#"):
-            color_str = color_str[1:]
-
-        try:
-            if len(color_str) == 6:
-                # RGB format
-                r = int(color_str[0:2], 16)
-                g = int(color_str[2:4], 16)
-                b = int(color_str[4:6], 16)
-                return (r, g, b, 80)  # Default alpha
-            elif len(color_str) == 8:
-                # RGBA format
-                r = int(color_str[0:2], 16)
-                g = int(color_str[2:4], 16)
-                b = int(color_str[4:6], 16)
-                a = int(color_str[6:8], 16)
-                return (r, g, b, a)
-        except ValueError:
-            pass
-
         return None
 
     def _generate_group_color(self) -> Tuple[int, int, int, int]:
@@ -2574,7 +2541,7 @@ class NodzAPI:
         self,
         name: str,
         members: Optional[List[str]] = None,
-        color: Optional[str] = None,
+        color: Optional[Tuple[int, int, int, int]] = None,
     ) -> dict:
         """
         Create a new node group containing the specified nodes.
@@ -2600,7 +2567,7 @@ class NodzAPI:
 
         Example:
             api.create_node_group("Processing", ["nodeA", "nodeB"])
-            api.create_node_group("Output", ["nodeC"], color="#22FF22")
+            api.create_node_group("Output", ["nodeC"], color=(255, 100, 0, 100))
         """
         group_model = self.group_controller.create_node_group(name, members, color)
         return {
