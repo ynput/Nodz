@@ -1341,6 +1341,9 @@ class NodeGroupController(BaseController):
         # Remove from model (this also cleans up node-to-group mappings)
         self.graph_model.remove_group(group_name)
 
+        # Emit signal
+        self.signals.group_deleted.emit(group_name)
+
         return True
 
     @validate_group_exists

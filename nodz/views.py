@@ -66,6 +66,7 @@ class ViewSignals(QtCore.QObject):
 
     # Group signals
     group_created = Signal(str, tuple, list, QtCore.QRect)
+    group_deleted = Signal(str)
     group_membership_changed = Signal(str, list)
     group_selected = Signal(str, bool)  # group_name, selected
     group_moved = Signal(str, QtCore.QPointF)  # group_name, delta

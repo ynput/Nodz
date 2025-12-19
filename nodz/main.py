@@ -805,7 +805,7 @@ class NodzView(QtWidgets.QGraphicsView):
         selected_nodes = [
             item
             for item in self.nodz_scene.selectedItems()
-            if isinstance(item, NodeView)
+            if isinstance(item, (NodeView, NodeGroupView))
         ]
 
         if not selected_nodes:
@@ -814,7 +814,10 @@ class NodzView(QtWidgets.QGraphicsView):
 
         # Delete each selected node using the API
         for node in selected_nodes:
-            self.api.delete_node(node.model.name)
+            if isinstance(node, NodeView):
+                self.api.delete_node(node.model.name)
+            elif isinstance(node, NodeGroupView):
+                self.api.delete_node_group(node.model.name)
 
     def create_group_from_selection(self) -> None:
         """Create a node group from currently selected nodes.
