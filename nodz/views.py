@@ -1073,6 +1073,11 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
         self._handle_pen = QtGui.QPen(QtGui.QColor(100, 100, 100))
         self._handle_pen.setWidth(1)
 
+    def update_color_from_model(self) -> None:
+        """Update the color-related visual elements from the model."""
+        self._create_style()
+        self.update()
+
     def update_from_model(self) -> None:
         """Update the view from the model data.
 

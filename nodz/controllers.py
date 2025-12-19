@@ -1408,7 +1408,7 @@ class NodeGroupController(BaseController):
         # Update view
         group_view = self.get_group_view(group_name)
         if group_view:
-            group_view.update()
+            group_view.update_color_from_model()
 
         return True
 
