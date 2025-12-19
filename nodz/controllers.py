@@ -1381,6 +1381,38 @@ class NodeGroupController(BaseController):
         return True
 
     @validate_group_exists
+    def set_node_group_color(
+        self,
+        group_name: str,
+        color: Tuple[int, int, int, int],
+    ) -> bool:
+        """Set the background color of a node group.
+
+        Args:
+            group_name: Name of the target group.
+            color: RGBA color tuple (0-255 for each component).
+
+        Returns:
+            True if color was set successfully.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+        """
+        # Normalize color to RGBA if needed
+        if len(color) == 3:
+            color = (*color, 80)  # Default alpha if not provided
+
+        group = self.graph_model.groups[group_name]
+        group.color = color
+
+        # Update view
+        group_view = self.get_group_view(group_name)
+        if group_view:
+            group_view.update()
+
+        return True
+
+    @validate_group_exists
     def add_to_node_group(
         self,
         group_name: str,
@@ -2613,6 +2645,27 @@ class NodzAPI:
             api.rename_node_group("Group 1", "Input Processing")
         """
         return self.group_controller.rename_node_group(group_name, new_name)
+
+    def set_node_group_color(
+        self, group_name: str, color: Tuple[int, int, int, int]
+    ) -> bool:
+        """
+        Set the color of a node group.
+
+        Args:
+            group_name: Name of the group.
+            color: RGBA color tuple (0-255 for each component).
+
+        Returns:
+            True if color was set successfully.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+
+        Example:
+            api.set_node_group_color("Processing", (255, 100, 0, 100))
+        """
+        return self.group_controller.set_node_group_color(group_name, color)
 
     def add_to_node_group(
         self,
