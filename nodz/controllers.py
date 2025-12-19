@@ -2351,6 +2351,22 @@ class NodzAPI:
                 downstream.add(conn.socket_node)
         return list(downstream)
 
+    def selected_nodes(self) -> List[str]:
+        """
+        Get a list of currently selected node names.
+
+        Returns:
+            List of names of selected nodes
+
+        Note:
+            This method returns the names of nodes that are currently
+            selected in the scene view.
+        """
+        items = self.graph_controller.scene.selectedItems()
+        return [
+            item.model.name for item in items if isinstance(item, NodeView)
+        ]
+
     def find_cycles(self) -> List[List[str]]:
         """
         Find cycles in the graph.
