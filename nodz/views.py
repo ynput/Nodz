@@ -777,15 +777,17 @@ class NodeView(QtWidgets.QGraphicsItem):
         painter.setPen(self._text_pen)
         painter.setFont(self._node_text_font)
 
+        label_text = self.model.label or self.model.name
+
         metrics = painter.fontMetrics()
-        text_width = metrics.boundingRect(self.model.name).width() + 14
-        text_height = metrics.boundingRect(self.model.name).height() + 14
+        text_width = metrics.boundingRect(label_text).width() + 14
+        text_height = metrics.boundingRect(label_text).height() + 14
         margin = (text_width - self.base_width) * 0.5
         text_rect = QtCore.QRect(
             -margin, -text_height, text_width, text_height
         )
 
-        painter.drawText(text_rect, align_flag, self.model.name)
+        painter.drawText(text_rect, align_flag, label_text)
 
     def paint_attr_base(
         self,
@@ -1481,7 +1483,7 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
                 QtCore.Qt.AlignmentFlag.AlignLeft
                 | QtCore.Qt.AlignmentFlag.AlignVCenter
             ),
-            self.model.name,
+            self.model.label or self.model.name,
         )
 
         # Draw resize handles when selected

@@ -271,6 +271,46 @@ class NodeController(BaseController):
         return new_name
 
     @validate_node_exists
+    def set_node_label(self, node_name: str, label: Optional[str]) -> bool:
+        """Set the label for a node.
+
+        Args:
+            node_name: Name of the node to set label for.
+            label: Label text or None to clear the label.
+
+        Returns:
+            True if label was set successfully.
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist.
+        """
+        node_model = self.graph_model.nodes[node_name]
+        node_model.label = label
+
+        # Update the view
+        node_view = self._find_node_view(node_name)
+        if node_view:
+            node_view.update()
+
+        return True
+
+    @validate_node_exists
+    def get_node_label(self, node_name: str) -> Optional[str]:
+        """Get the label for a node.
+
+        Args:
+            node_name: Name of the node to get label from.
+
+        Returns:
+            The node's label or None if no label is set.
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist.
+        """
+        node_model = self.graph_model.nodes[node_name]
+        return node_model.label
+
+    @validate_node_exists
     def create_attribute(
         self,
         node_name: str,
@@ -1456,6 +1496,50 @@ class NodeGroupController(BaseController):
         return True
 
     @validate_group_exists
+    def set_node_group_label(
+        self,
+        group_name: str,
+        label: Optional[str],
+    ) -> bool:
+        """Set the label for a node group.
+
+        Args:
+            group_name: Name of the target group.
+            label: Label text or None to clear the label.
+
+        Returns:
+            True if label was set successfully.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+        """
+        group = self.graph_model.groups[group_name]
+        group.label = label
+
+        # Update view
+        group_view = self.get_group_view(group_name)
+        if group_view:
+            group_view.update()
+
+        return True
+
+    @validate_group_exists
+    def get_node_group_label(self, group_name: str) -> Optional[str]:
+        """Get the label for a node group.
+
+        Args:
+            group_name: Name of the target group.
+
+        Returns:
+            The group's label or None if no label is set.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+        """
+        group = self.graph_model.groups[group_name]
+        return group.label
+
+    @validate_group_exists
     def add_to_node_group(
         self,
         group_name: str,
@@ -2041,6 +2125,37 @@ class NodzAPI:
         if node_name not in self.graph_model.nodes:
             raise NodeNotFoundError(node_name)
         self.graph_model.nodes[node_name].position = position
+
+    def get_node_label(self, node_name: str) -> Optional[str]:
+        """
+        Get the label of a node.
+
+        Args:
+            node_name: Name of the node
+
+        Returns:
+            Label of the node or None if no label is set
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist
+        """
+        return self.node_controller.get_node_label(node_name)
+
+    def set_node_label(self, node_name: str, label: Optional[str]) -> bool:
+        """
+        Set the label of a node.
+
+        Args:
+            node_name: Name of the node
+            label: New label for the node (None to remove label)
+
+        Returns:
+            True if label was set successfully
+
+        Raises:
+            NodeNotFoundError: If the node doesn't exist
+        """
+        return self.node_controller.set_node_label(node_name, label)
 
     # Attribute operations
     def create_attribute(
@@ -2756,6 +2871,37 @@ class NodzAPI:
             api.set_node_group_color("Processing", (255, 100, 0, 100))
         """
         return self.group_controller.set_node_group_color(group_name, color)
+
+    def get_node_group_label(self, group_name: str) -> Optional[str]:
+        """
+        Get the label of a node group.
+
+        Args:
+            group_name: Name of the group.
+
+        Returns:
+            The label of the group.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+        """
+        return self.group_controller.get_node_group_label(group_name)
+
+    def set_node_group_label(self, group_name: str, label: Optional[str]) -> bool:
+        """
+        Set the label of a node group.
+
+        Args:
+            group_name: Name of the group.
+            label: Label to set (None to clear label).
+
+        Returns:
+            True if label was set successfully.
+
+        Raises:
+            GroupNotFoundError: If the group doesn't exist.
+        """
+        return self.group_controller.set_node_group_label(group_name, label)
 
     def add_to_node_group(
         self,

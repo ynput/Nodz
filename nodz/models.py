@@ -222,12 +222,14 @@ class NodeModel(BaseModel):
         preset: str,
         alternate: bool = True,
         position: Optional[QtCore.QPointF] = None,
+        label: Optional[str] = None,
         **kwargs,
     ) -> None:
         self._name = name
         self._preset = preset
         self._alternate = alternate
         self._position = position or QtCore.QPointF(-1.0, -1.0)
+        self._label = label
         self._attributes: OrderedDict[str, AttrModel] = OrderedDict()
         self._kwargs = kwargs or {}
 
@@ -262,6 +264,14 @@ class NodeModel(BaseModel):
     @position.setter
     def position(self, value: QtCore.QPointF) -> None:
         self._position = value
+
+    @property
+    def label(self) -> Optional[str]:
+        return self._label
+
+    @label.setter
+    def label(self, value: Optional[str]) -> None:
+        self._label = value
 
     @property
     def attributes(self) -> OrderedDict[str, AttrModel]:
@@ -324,6 +334,7 @@ class NodeModel(BaseModel):
             "preset": self._preset,
             "alternate": self._alternate,
             "position": self._position,
+            "label": self._label,
             "attributes": {
                 k: v.to_dict() for k, v in self._attributes.items()
             },
@@ -426,6 +437,7 @@ class NodeGroupModel(BaseModel):
         color: Tuple[int, int, int, int] = (100, 100, 100, 50),
         members: Optional[List[str]] = None,
         rect: Optional[QtCore.QRectF] = None,
+        label: Optional[str] = None,
         **kwargs,
     ) -> None:
         """Initialize a node group model.
@@ -435,12 +447,14 @@ class NodeGroupModel(BaseModel):
             color: RGBA color tuple (default: semi-transparent gray).
             members: List of node names to include in the group.
             rect: Optional explicit bounding rect.
+            label: Optional label for the group (cosmetic display name).
             **kwargs: Additional custom properties.
         """
         self._name = name
         self._color = color
         self._members: List[str] = members or []
         self._rect = rect
+        self._label = label
         self._kwargs = kwargs or {}
 
     @property
@@ -477,6 +491,16 @@ class NodeGroupModel(BaseModel):
     def rect(self, value: QtCore.QRectF) -> None:
         """Set the group bounding rect."""
         self._rect = value
+
+    @property
+    def label(self) -> Optional[str]:
+        """Get the group label."""
+        return self._label
+
+    @label.setter
+    def label(self, value: Optional[str]) -> None:
+        """Set the group label."""
+        self._label = value
 
     @property
     def kwargs(self) -> Dict[str, Any]:
@@ -531,6 +555,7 @@ class NodeGroupModel(BaseModel):
             "color": list(self._color),
             "members": self._members.copy(),
             "rect": rect_data,
+            "label": self._label,
             "kwargs": self._kwargs,
         }
 
@@ -565,6 +590,7 @@ class NodeGroupModel(BaseModel):
             color=color,
             members=data.get("members", []),
             rect=rect,
+            label=data.get("label"),
             **kwargs,
         )
 

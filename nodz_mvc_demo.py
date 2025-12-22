@@ -53,6 +53,7 @@ nodeA = nodz.api.create_node(
     name="nodeA",
     preset="node_preset_1",
     position=QtCore.QPointF(100, 100),
+    label="Node A  (nodeA)",
     help="NodeA has its own special help string!",
 )
 
@@ -224,7 +225,9 @@ nodz.api.create_attribute(
 )
 
 # Node E
-nodeE = nodz.api.create_node(name="nodeE", preset="node_preset_1")
+nodeE = nodz.api.create_node(
+    name="nodeE", preset="node_preset_1", label="Node E (nodeE)"
+)
 
 nodz.api.create_attribute(
     nodeE,
