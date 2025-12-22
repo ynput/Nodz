@@ -240,7 +240,7 @@ class NodzView(QtWidgets.QGraphicsView):
         # Create API
         self.api = NodzAPI(self.nodz_scene, self.config)
 
-        self._show_help = True
+        self._show_help = False
         self._viewport_help_document = None
         self._viewport_help_hint = None
 
