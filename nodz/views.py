@@ -1040,7 +1040,6 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
     BORDER_WIDTH = 2  # pixels
     CORNER_RADIUS = 8  # pixels
     PADDING = 20  # pixels around member nodes
-    HANDLE_SIZE = 10  # pixels for resize handles
     FILL_OPACITY = 51  # ~20% opacity (255 * 0.2)
 
     def __init__(
@@ -1075,7 +1074,6 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
         self._padding = grp_cfg.get("padding", self.PADDING)
         self._title_height = grp_cfg.get("title_height", self.TITLE_HEIGHT)
         self._corner_radius = grp_cfg.get("corner_radius", self.CORNER_RADIUS)
-        self._handle_size = grp_cfg.get("handle_size", self.HANDLE_SIZE)
         self._fill_opacity = grp_cfg.get("fill_opacity", self.FILL_OPACITY)
 
         # State
@@ -1109,10 +1107,14 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
         self._pen.setWidth(self.BORDER_WIDTH)
         self._pen.setStyle(QtCore.Qt.PenStyle.SolidLine)
 
-        # Selected border (dashed white)
-        self._pen_sel = QtGui.QPen(QtGui.QColor(200, 200, 200, 128))
+        # Selected border (solid outline using group color with full opacity)
+        self._highlight_color = QtGui.QColor(
+            min(r + 32, 255), min(g + 32, 255), min(b + 32, 255), 255
+        )
+        self._brush_sel = QtGui.QBrush(self._highlight_color)
+        self._pen_sel = QtGui.QPen(self._highlight_color)
         self._pen_sel.setWidth(self.BORDER_WIDTH + 1)
-        self._pen_sel.setStyle(QtCore.Qt.PenStyle.DashLine)
+        self._pen_sel.setStyle(QtCore.Qt.PenStyle.SolidLine)
 
         # Drop zone highlight pen
         self._pen_drop = QtGui.QPen(QtGui.QColor(100, 200, 100))
@@ -1135,6 +1137,35 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
         self._handle_brush = QtGui.QBrush(QtGui.QColor(255, 255, 255, 180))
         self._handle_pen = QtGui.QPen(QtGui.QColor(100, 100, 100))
         self._handle_pen.setWidth(1)
+
+    def _draw_corner_handle(
+        self,
+        painter: QtGui.QPainter,
+        rect: QtCore.QRectF,
+        direction: str,
+    ) -> None:
+        """Draw a triangular handle at the specified position.
+
+        Args:
+            painter: QPainter to use for drawing
+            rect: Rectangle defining the handle area
+            direction: Direction the triangle should point ('tl', 'tr', 'bl', 'br')
+        """
+        # Define angles for pie segments (in 1/16th degrees)
+        ANGLE_45 = 45 * 16
+        ANGLE_135 = 135 * 16
+        ANGLE_180 = 180 * 16
+        ANGLE_225 = 225 * 16
+        ANGLE_315 = 315 * 16
+
+        if direction == "tl":  # Top-left corner
+            painter.drawPie(rect, ANGLE_45, ANGLE_180)
+        elif direction == "tr":  # Top-right corner
+            painter.drawPie(rect, ANGLE_315, ANGLE_180)
+        elif direction == "bl":  # Bottom-left corner
+            painter.drawPie(rect, ANGLE_135, ANGLE_180)
+        elif direction == "br":  # Bottom-right corner
+            painter.drawPie(rect, ANGLE_225, ANGLE_180)
 
     def update_color_from_model(self) -> None:
         """Update the color-related visual elements from the model."""
@@ -1233,31 +1264,30 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
             Dictionary mapping ResizeHandle enum to QRectF positions.
         """
         rect = self.rect()
-        size = self._handle_size
-        half = size / 2.0
+        size = (self._corner_radius + 1) * 2
 
         return {
             ResizeHandle.TOP_LEFT: QtCore.QRectF(
-                rect.left() - half,
-                rect.top() - half,
+                rect.left() - 1,
+                rect.top() - 1,
                 size,
                 size,
             ),
             ResizeHandle.TOP_RIGHT: QtCore.QRectF(
-                rect.right() - half,
-                rect.top() - half,
+                rect.right() - size + 1,
+                rect.top() - 1,
                 size,
                 size,
             ),
             ResizeHandle.BOTTOM_LEFT: QtCore.QRectF(
-                rect.left() - half,
-                rect.bottom() - half,
+                rect.left() - 1,
+                rect.bottom() - size + 1,
                 size,
                 size,
             ),
             ResizeHandle.BOTTOM_RIGHT: QtCore.QRectF(
-                rect.right() - half,
-                rect.bottom() - half,
+                rect.right() - size + 1,
+                rect.bottom() - size + 1,
                 size,
                 size,
             ),
@@ -1289,7 +1319,7 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
         """
         rect = self.rect()
         # Expand to include handle areas
-        margin = self._handle_size
+        margin = 1
         return rect.adjusted(-margin, -margin, margin, margin)
 
     def shape(self) -> QtGui.QPainterPath:
@@ -1304,10 +1334,6 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
             self._corner_radius,
             self._corner_radius,
         )
-        # Add handle shapes when selected
-        if self.isSelected():
-            for handle_rect in self._get_handle_rects().values():
-                path.addRect(handle_rect)
         return path
 
     def paint(
@@ -1344,20 +1370,20 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
 
         # Draw title bar area
         title_rect = QtCore.QRectF(
-            rect.left(),
-            rect.top(),
-            rect.width(),
-            self._title_height,
+            rect.left() + 1,
+            rect.top() + 1,
+            rect.width() - 2,
+            self._title_height - 2,
         )
 
         # Create a clipped path for the title bar (rounded top corners)
         title_path = QtGui.QPainterPath()
         title_path.addRoundedRect(
             QtCore.QRectF(
-                rect.left(),
-                rect.top(),
-                rect.width(),
-                self._title_height + self._corner_radius,
+                rect.left() + 1,
+                rect.top() + 1,
+                rect.width() - 2,
+                self._title_height + self._corner_radius - 2,
             ),
             self._corner_radius,
             self._corner_radius,
@@ -1406,10 +1432,21 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
 
         # Draw resize handles when selected
         if self.isSelected():
-            painter.setBrush(self._handle_brush)
-            painter.setPen(self._handle_pen)
-            for handle_rect in self._get_handle_rects().values():
-                painter.drawRect(handle_rect)
+            # Set brush for handles
+            painter.setBrush(self._brush_sel)
+            painter.setPen(QtCore.Qt.PenStyle.NoPen)
+
+            # Get handle positions and draw them
+            handles = self._get_handle_rects()
+            for handle, rect in handles.items():
+                if handle == ResizeHandle.TOP_LEFT:
+                    self._draw_corner_handle(painter, rect, "tl")
+                elif handle == ResizeHandle.TOP_RIGHT:
+                    self._draw_corner_handle(painter, rect, "tr")
+                elif handle == ResizeHandle.BOTTOM_LEFT:
+                    self._draw_corner_handle(painter, rect, "bl")
+                elif handle == ResizeHandle.BOTTOM_RIGHT:
+                    self._draw_corner_handle(painter, rect, "br")
 
     def itemChange(
         self,
