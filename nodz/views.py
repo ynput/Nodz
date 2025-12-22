@@ -923,6 +923,9 @@ class NodeView(QtWidgets.QGraphicsItem):
             super().mouseMoveEvent(event)
             # Connection updates will be handled by ConnectionController via
             # node_moved signal
+
+            # Check if we're dragging over any groups for visual feedback
+            self._check_drag_over_groups()
         else:
             # Pass other mouse buttons (like middle) to the parent view
             event.ignore()
@@ -943,12 +946,82 @@ class NodeView(QtWidgets.QGraphicsItem):
                 # connection updates
                 self.signals.node_moved.emit(self.model.name, self.pos())
 
+                # Clear any group highlights from dragging
+                self._clear_group_highlights()
+
                 # Check if node was dropped on a group
                 self._check_drop_on_group()
             super().mouseReleaseEvent(event)
         else:
             # Pass other mouse buttons (like middle) to the parent view
             event.ignore()
+
+    def _clear_group_highlights(self) -> None:
+        """Clear all group drop zone highlights.
+
+        This method is called when node dragging ends to clean up any
+        visual feedback from drag-over detection.
+        """
+        if not self.scene():
+            return
+
+        # Reset all group highlights
+        for item in self.scene().items():
+            if isinstance(item, NodeGroupView):
+                item.highlight_drop_zone(False)
+
+    def _find_intersecting_groups(self) -> list[NodeGroupView]:
+        """Find groups that intersect with this node.
+
+        Returns:
+            List of NodeGroupView instances that intersect with this node
+            and where the node is not already a member.
+        """
+        if not self.scene():
+            return []
+
+        intersecting_groups = []
+        node_rect = self.sceneBoundingRect()
+
+        # Use scene's group_items() method if available for better performance
+        if hasattr(self.scene(), "group_items"):
+            groups = self.scene().group_items()
+        else:
+            # Fallback to iterating through all items
+            groups = [
+                item
+                for item in self.scene().items()
+                if isinstance(item, NodeGroupView)
+            ]
+
+        for group in groups:
+            # Check if node overlaps with group
+            group_rect = group.sceneBoundingRect()
+            if group_rect.intersects(node_rect):
+                # Check if node is already a member of this group
+                if self.model.name not in group.model.members:
+                    intersecting_groups.append(group)
+
+        return intersecting_groups
+
+    def _check_drag_over_groups(self) -> None:
+        """Check if this node is being dragged over any groups and highlight them.
+
+        This method is called during node dragging to provide visual feedback
+        by highlighting groups that the node is being dragged over.
+        Only the first intersecting group is highlighted to avoid visual clutter.
+        """
+        # Only check for group intersections if we have a valid scene
+        if not self.scene():
+            return
+
+        # First, reset all group highlights
+        self._clear_group_highlights()
+
+        # Find intersecting groups and highlight the first one
+        intersecting_groups = self._find_intersecting_groups()
+        if intersecting_groups:
+            intersecting_groups[0].highlight_drop_zone(True)
 
     def _check_drop_on_group(self) -> None:
         """Check if this node was dropped on a group and emit signal.
@@ -957,32 +1030,13 @@ class NodeView(QtWidgets.QGraphicsItem):
         bounding rect. If so, and the node is not already a member of
         that group, emits group_drop_node.
         """
-        if not self.scene():
-            return
-
-        node_rect = self.sceneBoundingRect()
-
-        # Find all groups in the scene
-        for item in self.scene().items():
-            if not isinstance(item, NodeGroupView):
-                continue
-
-            # Check if node overlaps with group
-            group_rect = item.sceneBoundingRect()
-            if not group_rect.intersects(node_rect):
-                continue
-
-            # Check if node is already a member of this group
-            if self.model.name in item.model.members:
-                continue
-
-            # Emit signal: (node_name, group_name)
+        # Find intersecting groups and emit signal for the first one
+        intersecting_groups = self._find_intersecting_groups()
+        if intersecting_groups:
             self.signals.group_drop_node.emit(
                 self.model.name,
-                item.model.name,
+                intersecting_groups[0].model.name,
             )
-            # Only add to one group at a time
-            break
 
     def _update_connected_paths(self) -> None:
         """Update all connection paths connected to this node."""
@@ -1119,7 +1173,7 @@ class NodeGroupView(QtWidgets.QGraphicsRectItem):
         # Drop zone highlight pen
         self._pen_drop = QtGui.QPen(QtGui.QColor(100, 200, 100))
         self._pen_drop.setWidth(self.BORDER_WIDTH + 2)
-        self._pen_drop.setStyle(QtCore.Qt.PenStyle.DashDotLine)
+        self._pen_drop.setStyle(QtCore.Qt.PenStyle.SolidLine)
 
         # Title bar brush (slightly more opaque)
         title_alpha = min(255, a + 50)
