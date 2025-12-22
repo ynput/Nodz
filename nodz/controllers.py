@@ -38,6 +38,7 @@ from .utils import (
     nlog,
     set_logging_level,
     get_logging_level,
+    block_signals,
 )
 
 
@@ -2653,6 +2654,7 @@ class NodzAPI:
 
     # ==================== Node Group Operations ====================
 
+    @block_signals
     def create_node_group(
         self,
         name: str,
@@ -2685,17 +2687,16 @@ class NodzAPI:
             api.create_node_group("Processing", ["nodeA", "nodeB"])
             api.create_node_group("Output", ["nodeC"], color=(255, 100, 0, 100))
         """
-        self.signals.blockSignals(True)
         group_model = self.group_controller.create_node_group(
             name, members, color
         )
-        self.signals.blockSignals(False)
         return {
             "name": group_model.name,
             "members": list(group_model.members),
             "color": group_model.color,
         }
 
+    @block_signals
     def delete_node_group(self, group_name: str) -> bool:
         """
         Delete a node group. Member nodes are preserved.
@@ -2712,9 +2713,7 @@ class NodzAPI:
         Example:
             api.delete_node_group("Processing")
         """
-        self.signals.blockSignals(True)
         success = self.group_controller.delete_node_group(group_name)
-        self.signals.blockSignals(False)
         return success
 
     def rename_node_group(self, group_name: str, new_name: str) -> bool:
