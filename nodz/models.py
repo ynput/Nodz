@@ -164,14 +164,18 @@ class AttrModel(BaseModel):
                 return True
 
             # List
-            if get_origin(type1) is list and get_origin(type1) == get_origin(type2):
+            if get_origin(type1) is list and get_origin(type1) == get_origin(
+                type2
+            ):
                 return _is_compatible_types(
                     _get_all_types(get_args(type1)),
                     _get_all_types(get_args(type2)),
                 )
 
             # Dict
-            if get_origin(type1) is dict and get_origin(type1) == get_origin(type2):
+            if get_origin(type1) is dict and get_origin(type1) == get_origin(
+                type2
+            ):
                 keys1, values1 = get_args(type1)
                 keys2, values2 = get_args(type2)
 
@@ -270,7 +274,9 @@ class NodeModel(BaseModel):
     def add_attribute(self, attr_model: AttrModel) -> None:
         """Add an attribute to this node."""
         if attr_model.attribute in self._attributes:
-            raise ValueError(f"Attribute '{attr_model.attribute}' already exists")
+            raise ValueError(
+                f"Attribute '{attr_model.attribute}' already exists"
+            )
 
         self._attributes[attr_model.attribute] = attr_model
 
@@ -297,7 +303,9 @@ class NodeModel(BaseModel):
         self._attributes = OrderedDict(
             {
                 v.attribute: v
-                for _, v in sorted(self._attributes.items(), key=lambda x: x[1].index)
+                for _, v in sorted(
+                    self._attributes.items(), key=lambda x: x[1].index
+                )
             }
         )
 
@@ -316,7 +324,9 @@ class NodeModel(BaseModel):
             "preset": self._preset,
             "alternate": self._alternate,
             "position": self._position,
-            "attributes": {k: v.to_dict() for k, v in self._attributes.items()},
+            "attributes": {
+                k: v.to_dict() for k, v in self._attributes.items()
+            },
             "kwargs": self._kwargs,
         }
 
@@ -537,7 +547,9 @@ class NodeGroupModel(BaseModel):
         rect = None
         if data.get("rect") is not None:
             rect_data = data["rect"]
-            rect = QtCore.QRectF(rect_data[0], rect_data[1], rect_data[2], rect_data[3])
+            rect = QtCore.QRectF(
+                rect_data[0], rect_data[1], rect_data[2], rect_data[3]
+            )
 
         color_data = data.get("color", [100, 100, 100, 50])
         color: Tuple[int, int, int, int] = (
@@ -644,7 +656,9 @@ class GraphModel(BaseModel):
         if conn.plug_node not in self._nodes:
             raise ValueError(f"Plug node '{conn.plug_node}' does not exist")
         if conn.socket_node not in self._nodes:
-            raise ValueError(f"Socket node '{conn.socket_node}' does not exist")
+            raise ValueError(
+                f"Socket node '{conn.socket_node}' does not exist"
+            )
 
         plug_node = self._nodes[conn.plug_node]
         socket_node = self._nodes[conn.socket_node]
@@ -748,9 +762,13 @@ class GraphModel(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         """Convert the graph model to a dictionary."""
         return {
-            "nodes": {name: node.to_dict() for name, node in self._nodes.items()},
+            "nodes": {
+                name: node.to_dict() for name, node in self._nodes.items()
+            },
             "connections": [conn.to_dict() for conn in self._connections],
-            "groups": {name: group.to_dict() for name, group in self._groups.items()},
+            "groups": {
+                name: group.to_dict() for name, group in self._groups.items()
+            },
         }
 
     @classmethod

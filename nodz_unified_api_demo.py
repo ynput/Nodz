@@ -141,7 +141,9 @@ nlog.info("3. Creating connections...")
 
 # Create connections between nodes
 nodz.api.create_connection("InputNode", "data_out", "ProcessNode", "data_in")
-nodz.api.create_connection("ProcessNode", "processed_out", "OutputNode", "data_in")
+nodz.api.create_connection(
+    "ProcessNode", "processed_out", "OutputNode", "data_in"
+)
 nodz.api.create_connection("ProcessNode", "status", "OutputNode", "status_in")
 
 nlog.info(f"Created {len(nodz.api.get_connections())} connections")
@@ -212,7 +214,9 @@ nlog.info(f"ProcessNode attributes: {attrs}")
 conn_exists = nodz.api.connection_exists(
     "InputNode", "data_out", "ProcessNode", "data_in"
 )
-nlog.info(f"Connection InputNode.data_out -> ProcessNode.data_in exists: {conn_exists}")
+nlog.info(
+    f"Connection InputNode.data_out -> ProcessNode.data_in exists: {conn_exists}"
+)
 
 # === Advanced Operations ===
 print()
@@ -222,10 +226,18 @@ nlog.info("7. Advanced operations...")
 nodz.api.create_node("CycleNode1", position=QtCore.QPointF(100, 300))
 nodz.api.create_node("CycleNode2", position=QtCore.QPointF(300, 300))
 
-nodz.api.create_attribute("CycleNode1", "out", plug=True, socket=False, data_type=int)
-nodz.api.create_attribute("CycleNode1", "in", plug=False, socket=True, data_type=int)
-nodz.api.create_attribute("CycleNode2", "out", plug=True, socket=False, data_type=int)
-nodz.api.create_attribute("CycleNode2", "in", plug=False, socket=True, data_type=int)
+nodz.api.create_attribute(
+    "CycleNode1", "out", plug=True, socket=False, data_type=int
+)
+nodz.api.create_attribute(
+    "CycleNode1", "in", plug=False, socket=True, data_type=int
+)
+nodz.api.create_attribute(
+    "CycleNode2", "out", plug=True, socket=False, data_type=int
+)
+nodz.api.create_attribute(
+    "CycleNode2", "in", plug=False, socket=True, data_type=int
+)
 
 # Create a cycle
 nodz.api.create_connection("CycleNode1", "out", "CycleNode2", "in")

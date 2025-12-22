@@ -254,7 +254,9 @@ class NodzView(QtWidgets.QGraphicsView):
         self.rubberband_origin = QtCore.QPoint()
         self.rubberband_rect = QtCore.QRect()
         self.is_rubberband_active = False
-        self.selection_operation = QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+        self.selection_operation = (
+            QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+        )
         self.selection_mode = "replace"  # "replace" or "subtract"
         self.rubber_band = QtWidgets.QRubberBand(
             QtWidgets.QRubberBand.Shape.Rectangle, self
@@ -341,8 +343,12 @@ class NodzView(QtWidgets.QGraphicsView):
         )
 
         # Set scroll bar policies
-        self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setHorizontalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.setVerticalScrollBarPolicy(
+            QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
 
     def drawForeground(
         self, painter: QtGui.QPainter, rect: Union[QtCore.QRectF, QtCore.QRect]
@@ -461,7 +467,9 @@ class NodzView(QtWidgets.QGraphicsView):
             # If clicking on an item
             if item and isinstance(item, QtWidgets.QGraphicsItem):
                 # Store current selection for Shift or Ctrl click
-                currently_selected = [i for i in self.nodz_scene.selectedItems()]
+                currently_selected = [
+                    i for i in self.nodz_scene.selectedItems()
+                ]
 
                 # Determine selection operation based on modifiers
                 if modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier:
@@ -541,7 +549,8 @@ class NodzView(QtWidgets.QGraphicsView):
                     # modifiers
                     if not (
                         modifiers & QtCore.Qt.KeyboardModifier.ShiftModifier
-                        or modifiers & QtCore.Qt.KeyboardModifier.ControlModifier
+                        or modifiers
+                        & QtCore.Qt.KeyboardModifier.ControlModifier
                     ):
                         self.nodz_scene.clearSelection()
                         # Emit signal when selection is cleared
@@ -637,7 +646,9 @@ class NodzView(QtWidgets.QGraphicsView):
                 self.nodz_scene.setSelectionArea(path)
 
             # Reset selection operation to default
-            self.selection_operation = QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+            self.selection_operation = (
+                QtCore.Qt.ItemSelectionOperation.ReplaceSelection
+            )
             self.previously_selected = []
 
             # Update connection Z values after selection change
@@ -710,7 +721,9 @@ class NodzView(QtWidgets.QGraphicsView):
             self.layout_graph()
         # Enable grid snapping with 'S' (hold down)
         elif event.key() == QtCore.Qt.Key.Key_S:
-            if not event.isAutoRepeat():  # Only on first press, not auto-repeat
+            if (
+                not event.isAutoRepeat()
+            ):  # Only on first press, not auto-repeat
                 self._grid_snap_enabled = True
                 self._snap_selected_nodes_to_grid()
         # Delete selected nodes with Delete or Backspace
@@ -726,7 +739,9 @@ class NodzView(QtWidgets.QGraphicsView):
         """Handle key release events."""
         # Disable grid snapping when 'S' is released
         if event.key() == QtCore.Qt.Key.Key_S:
-            if not event.isAutoRepeat():  # Only on actual release, not auto-repeat
+            if (
+                not event.isAutoRepeat()
+            ):  # Only on actual release, not auto-repeat
                 self._grid_snap_enabled = False
         else:
             super().keyReleaseEvent(event)
@@ -789,15 +804,21 @@ class NodzView(QtWidgets.QGraphicsView):
             if not selection_rect:
                 selection_rect = item.sceneBoundingRect()
             else:
-                selection_rect = selection_rect.united(item.sceneBoundingRect())
+                selection_rect = selection_rect.united(
+                    item.sceneBoundingRect()
+                )
 
         if not selection_rect:
             return
 
         # Fit the selected nodes in view
-        self.fitInView(selection_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+        self.fitInView(
+            selection_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio
+        )
         self._apply_viewport_margin(selection_rect)
-        self.fitInView(selection_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio)
+        self.fitInView(
+            selection_rect, QtCore.Qt.AspectRatioMode.KeepAspectRatio
+        )
 
     def delete_selected(self) -> None:
         """Delete all selected nodes from the graph."""
@@ -943,7 +964,9 @@ class NodzView(QtWidgets.QGraphicsView):
         """Get all NodeView items from the scene."""
         return self.nodz_scene.node_items()
 
-    def _build_node_mapping(self, node_views: List[NodeView]) -> Dict[str, NodeView]:
+    def _build_node_mapping(
+        self, node_views: List[NodeView]
+    ) -> Dict[str, NodeView]:
         """
         Build a mapping from node names to NodeView objects.
 
@@ -1049,7 +1072,9 @@ class NodzView(QtWidgets.QGraphicsView):
             Dictionary with horizontal_spacing and vertical_spacing values
         """
         try:
-            horizontal_spacing = self.config.get("horizontal_node_spacing", 80.0)
+            horizontal_spacing = self.config.get(
+                "horizontal_node_spacing", 80.0
+            )
             vertical_spacing = self.config.get("vertical_node_spacing", 40.0)
 
             return {
@@ -1115,7 +1140,9 @@ class NodzView(QtWidgets.QGraphicsView):
             List of levels, where each level contains tuples of (node, width, height)
         """
         # Initialize with root node at level 0
-        hierarchy_levels = [[(root_node, root_node.base_width, root_node.height)]]
+        hierarchy_levels = [
+            [(root_node, root_node.base_width, root_node.height)]
+        ]
 
         current_level = 0
         while current_level >= 0:
@@ -1146,7 +1173,9 @@ class NodzView(QtWidgets.QGraphicsView):
                         )
 
             # Move to next level if there were connections, otherwise stop
-            current_level = current_level + 1 if has_connections_at_level else -1
+            current_level = (
+                current_level + 1 if has_connections_at_level else -1
+            )
 
         return hierarchy_levels
 
@@ -1192,7 +1221,9 @@ class NodzView(QtWidgets.QGraphicsView):
                         )
 
         except (AttributeError, KeyError, TypeError) as e:
-            nlog.warning(f"Error finding connected nodes for '{node_name}': {e}")
+            nlog.warning(
+                f"Error finding connected nodes for '{node_name}': {e}"
+            )
 
         return connected_nodes
 
@@ -1225,7 +1256,9 @@ class NodzView(QtWidgets.QGraphicsView):
 
         for level_index, level_nodes in enumerate(hierarchy_levels):
             # Calculate X position for this level (moving left to right)
-            x_position = start_x - level_index * (base_node_width + horizontal_spacing)
+            x_position = start_x - level_index * (
+                base_node_width + horizontal_spacing
+            )
             y_position = start_y + vertical_spacing
 
             # Position each node in this level
@@ -1265,7 +1298,9 @@ class NodzView(QtWidgets.QGraphicsView):
             conn_end = item.target_point
 
             # Check if the line intersects with the connection
-            if self._lines_intersect(line_start, line_end, conn_start, conn_end):
+            if self._lines_intersect(
+                line_start, line_end, conn_start, conn_end
+            ):
                 intersecting_connections.append(item)
 
         return intersecting_connections
@@ -1282,7 +1317,9 @@ class NodzView(QtWidgets.QGraphicsView):
 
         def ccw(A, B, C):
             """Check if three points are in counter-clockwise order."""
-            return (C.y() - A.y()) * (B.x() - A.x()) > (B.y() - A.y()) * (C.x() - A.x())
+            return (C.y() - A.y()) * (B.x() - A.x()) > (B.y() - A.y()) * (
+                C.x() - A.x()
+            )
 
         # Two line segments intersect if the endpoints of each segment are on
         # opposite sides of the other segment
@@ -1426,7 +1463,10 @@ class NodzView(QtWidgets.QGraphicsView):
             raise ValueError("framing_data must contain 'visible_rect'")
 
         visible_rect_list = framing_data["visible_rect"]
-        if not isinstance(visible_rect_list, list) or len(visible_rect_list) != 4:
+        if (
+            not isinstance(visible_rect_list, list)
+            or len(visible_rect_list) != 4
+        ):
             raise ValueError(
                 "'visible_rect' must be a list of 4 numbers [x, y, width, height]"
             )
@@ -1466,7 +1506,9 @@ if __name__ == "__main__":
     nodz.api.create_attribute(
         "Node A", "Attr 1", plug=True, socket=False, data_type=str
     )
-    nodz.api.create_attribute("Node A", "Attr 2", plug=True, socket=True, data_type=int)
+    nodz.api.create_attribute(
+        "Node A", "Attr 2", plug=True, socket=True, data_type=int
+    )
 
     nodz.api.create_node("Node B", "node_preset_1", QtCore.QPointF(300, 100))
     nodz.api.create_attribute(

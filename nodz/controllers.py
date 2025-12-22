@@ -81,7 +81,9 @@ class AttributeNotFoundError(AttributeError):
     def __init__(self, node_name: str, attr_name: str):
         self.node_name = node_name
         self.attr_name = attr_name
-        super().__init__(f"Attribute '{attr_name}' not found on node '{node_name}'")
+        super().__init__(
+            f"Attribute '{attr_name}' not found on node '{node_name}'"
+        )
 
 
 class ConnectionError(NodzError):
@@ -420,11 +422,17 @@ class ConnectionController(BaseController):
         self.temp_connection: Optional[ConnectionView] = None
 
         # colors
-        self.non_connectable_color = QtGui.QColor(*self.config["non_connectable_color"])
+        self.non_connectable_color = QtGui.QColor(
+            *self.config["non_connectable_color"]
+        )
 
         # Connect signals
-        self.signals.attr_connection_started.connect(self.on_connection_started)
-        self.signals.attr_connection_dragged.connect(self.on_connection_dragged)
+        self.signals.attr_connection_started.connect(
+            self.on_connection_started
+        )
+        self.signals.attr_connection_dragged.connect(
+            self.on_connection_dragged
+        )
         self.signals.connection_created.connect(self.on_connection_created)
         self.signals.connection_deleted.connect(self.on_connection_deleted)
         self.signals.node_moved.connect(self.on_node_moved)
@@ -496,9 +504,13 @@ class ConnectionController(BaseController):
             existing_plug_connections = sum(
                 1
                 for conn in self.graph_model.connections
-                if conn.plug_node == source_node and conn.plug_attr == source_attr
+                if conn.plug_node == source_node
+                and conn.plug_attr == source_attr
             )
-            if existing_plug_connections >= source_attr_model.plug_max_connections:
+            if (
+                existing_plug_connections
+                >= source_attr_model.plug_max_connections
+            ):
                 raise MaxConnectionsExceededError(
                     source_node,
                     source_attr,
@@ -510,9 +522,13 @@ class ConnectionController(BaseController):
             existing_socket_connections = sum(
                 1
                 for conn in self.graph_model.connections
-                if conn.socket_node == target_node and conn.socket_attr == target_attr
+                if conn.socket_node == target_node
+                and conn.socket_attr == target_attr
             )
-            if existing_socket_connections >= target_attr_model.socket_max_connections:
+            if (
+                existing_socket_connections
+                >= target_attr_model.socket_max_connections
+            ):
                 raise MaxConnectionsExceededError(
                     target_node,
                     target_attr,
@@ -652,7 +668,9 @@ class ConnectionController(BaseController):
 
             self.temp_connection.update_path()
 
-    def _update_slot_compatibility_feedback(self, position: QtCore.QPoint) -> None:
+    def _update_slot_compatibility_feedback(
+        self, position: QtCore.QPoint
+    ) -> None:
         """Update visual feedback for compatible/incompatible slots."""
         if not self.temp_connection or not isinstance(
             self.temp_connection, ConnectionView
@@ -873,7 +891,9 @@ class ConnectionController(BaseController):
 
         # Create the actual connection
         try:
-            self.create_connection(source_node, source_attr, target_node, target_attr)
+            self.create_connection(
+                source_node, source_attr, target_node, target_attr
+            )
         except NodzError as e:
             # Handle error (could show a message to the user)
             nlog.error(f"Error creating connection: {e}")
@@ -889,14 +909,19 @@ class ConnectionController(BaseController):
         # Reset all slots to their original appearance
         self._reset_all_slots_appearance()
 
-        self.delete_connection(source_node, source_attr, target_node, target_attr)
+        self.delete_connection(
+            source_node, source_attr, target_node, target_attr
+        )
 
     def on_node_moved(self, node_name: str, position: QtCore.QPointF) -> None:
         """Update connections when a node is moved."""
         # Find all connections that involve this node
         connections_to_update = []
         for connection in self.graph_model.connections:
-            if connection.plug_node == node_name or connection.socket_node == node_name:
+            if (
+                connection.plug_node == node_name
+                or connection.socket_node == node_name
+            ):
                 connections_to_update.append(connection)
 
         # Update all affected connections
@@ -935,14 +960,18 @@ class ConnectionController(BaseController):
             # Remove from model
             self.graph_model.remove_connection(conn)
 
-    def _find_plug_view(self, node_name: str, attr_name: str) -> Optional[PlugView]:
+    def _find_plug_view(
+        self, node_name: str, attr_name: str
+    ) -> Optional[PlugView]:
         """Find a plug view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if isinstance(node_view, NodeView) and attr_name in node_view.plugs:
             return node_view.plugs[attr_name]
         return None
 
-    def _find_socket_view(self, node_name: str, attr_name: str) -> Optional[SocketView]:
+    def _find_socket_view(
+        self, node_name: str, attr_name: str
+    ) -> Optional[SocketView]:
         """Find a socket view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if isinstance(node_view, NodeView) and attr_name in node_view.sockets:
@@ -1013,7 +1042,9 @@ class GraphController(BaseController):
                 node_name,
                 node_data["preset"],
                 node_data["alternate"],
-                QtCore.QPointF(node_data["position"][0], node_data["position"][1]),
+                QtCore.QPointF(
+                    node_data["position"][0], node_data["position"][1]
+                ),
                 **node_data["kwargs"],
             )
 
@@ -1084,7 +1115,9 @@ class GraphController(BaseController):
             group_view = NodeGroupView(group_model, self.config, self.signals)
             self.scene.addItem(group_view)
             # Update rect from members
-            node_views = {item.model.name: item for item in self.scene.node_items()}
+            node_views = {
+                item.model.name: item for item in self.scene.node_items()
+            }
             group_view.update_rect_from_members(node_views)
 
     def clear_graph(self) -> None:
@@ -1122,14 +1155,18 @@ class GraphController(BaseController):
                 return item
         return None
 
-    def _find_plug_view(self, node_name: str, attr_name: str) -> Optional[PlugView]:
+    def _find_plug_view(
+        self, node_name: str, attr_name: str
+    ) -> Optional[PlugView]:
         """Find a plug view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if isinstance(node_view, NodeView) and attr_name in node_view.plugs:
             return node_view.plugs[attr_name]
         return None
 
-    def _find_socket_view(self, node_name: str, attr_name: str) -> Optional[SocketView]:
+    def _find_socket_view(
+        self, node_name: str, attr_name: str
+    ) -> Optional[SocketView]:
         """Find a socket view by node and attribute name."""
         node_view = self._find_node_view(node_name)
         if isinstance(node_view, NodeView) and attr_name in node_view.sockets:
@@ -1172,7 +1209,9 @@ class NodeAlreadyInGroupError(NodeGroupError):
     def __init__(self, node_name: str, existing_group: str):
         self.node_name = node_name
         self.existing_group = existing_group
-        super().__init__(f"Node '{node_name}' is already in group '{existing_group}'")
+        super().__init__(
+            f"Node '{node_name}' is already in group '{existing_group}'"
+        )
 
 
 def validate_group_exists(func):
@@ -1459,7 +1498,9 @@ class NodeGroupController(BaseController):
         self._update_group_rect(group_name)
 
         # Emit group_membership_changed signal
-        self.signals.group_membership_changed.emit(group_name, list(group.members))
+        self.signals.group_membership_changed.emit(
+            group_name, list(group.members)
+        )
 
         return True
 
@@ -1494,14 +1535,19 @@ class NodeGroupController(BaseController):
         for node_name in node_names:
             if group.contains_node(node_name):
                 group.remove_member(node_name)
-                if self.graph_model._node_to_group.get(node_name) == group_name:
+                if (
+                    self.graph_model._node_to_group.get(node_name)
+                    == group_name
+                ):
                     del self.graph_model._node_to_group[node_name]
 
         # Update group rect
         self._update_group_rect(group_name)
 
         # Emit group_membership_changed signal
-        self.signals.group_membership_changed.emit(group_name, list(group.members))
+        self.signals.group_membership_changed.emit(
+            group_name, list(group.members)
+        )
 
         return True
 
@@ -1531,7 +1577,9 @@ class NodeGroupController(BaseController):
         # Check all members exist
         for member in group.members:
             if member not in self.graph_model.nodes:
-                errors.append(f"Member node '{member}' does not exist in graph")
+                errors.append(
+                    f"Member node '{member}' does not exist in graph"
+                )
 
         # Check reverse lookup consistency
         for member in group.members:
@@ -1752,7 +1800,9 @@ class NodeGroupController(BaseController):
         group_view = self.get_group_view(group_name)
         if group_view:
             # Build node_views dict
-            node_views = {item.model.name: item for item in self.scene.node_items()}
+            node_views = {
+                item.model.name: item for item in self.scene.node_items()
+            }
             group_view.update_rect_from_members(node_views)
 
     def _connect_group_signals(self, group_view: NodeGroupView) -> None:
@@ -1974,7 +2024,9 @@ class NodzAPI:
             raise NodeNotFoundError(node_name)
         return self.graph_model.nodes[node_name].position
 
-    def set_node_position(self, node_name: str, position: QtCore.QPointF) -> None:
+    def set_node_position(
+        self, node_name: str, position: QtCore.QPointF
+    ) -> None:
         """
         Set the position of a node.
 
@@ -2072,7 +2124,9 @@ class NodzAPI:
             AttributeNotFoundError: If the attribute doesn't exist
             ValueError: If the new name already exists
         """
-        self.node_controller.edit_attribute(node_name, attr_name, new_name, new_index)
+        self.node_controller.edit_attribute(
+            node_name, attr_name, new_name, new_index
+        )
 
     def get_node_attributes(self, node_name: str) -> List[str]:
         """
@@ -2200,7 +2254,9 @@ class NodzAPI:
                 return True
         return False
 
-    def get_node_connections(self, node_name: str) -> List[Tuple[str, str, str, str]]:
+    def get_node_connections(
+        self, node_name: str
+    ) -> List[Tuple[str, str, str, str]]:
         """
         Get all connections involving a specific node.
 
@@ -2296,7 +2352,8 @@ class NodzAPI:
                     f"Connection references non-existent plug node: {conn.plug_node}"
                 )
             elif (
-                conn.plug_attr not in self.graph_model.nodes[conn.plug_node].attributes
+                conn.plug_attr
+                not in self.graph_model.nodes[conn.plug_node].attributes
             ):
                 errors.append(
                     "Connection references non-existent plug attribute: "
@@ -2501,7 +2558,9 @@ class NodzAPI:
         if hasattr(view, "get_viewport_framing"):
             return view.get_viewport_framing()
         else:
-            raise RuntimeError("View does not support viewport framing operations")
+            raise RuntimeError(
+                "View does not support viewport framing operations"
+            )
 
     def set_viewport_framing(self, framing_data: Dict[str, Any]) -> None:
         """
@@ -2540,7 +2599,9 @@ class NodzAPI:
         if hasattr(view, "set_viewport_framing"):
             view.set_viewport_framing(framing_data)
         else:
-            raise RuntimeError("View does not support viewport framing operations")
+            raise RuntimeError(
+                "View does not support viewport framing operations"
+            )
 
     def frame_all(self) -> None:
         """
@@ -2559,7 +2620,9 @@ class NodzAPI:
         if hasattr(view, "frame_all"):
             view.frame_all()
         else:
-            raise RuntimeError("View does not support viewport framing operations")
+            raise RuntimeError(
+                "View does not support viewport framing operations"
+            )
 
     def layout_graph(self) -> None:
         """
@@ -2584,7 +2647,9 @@ class NodzAPI:
         if hasattr(view, "layout_graph"):
             view.layout_graph()
         else:
-            raise RuntimeError("View does not support viewport framing operations")
+            raise RuntimeError(
+                "View does not support viewport framing operations"
+            )
 
     # ==================== Node Group Operations ====================
 
@@ -2621,7 +2686,9 @@ class NodzAPI:
             api.create_node_group("Output", ["nodeC"], color=(255, 100, 0, 100))
         """
         self.signals.blockSignals(True)
-        group_model = self.group_controller.create_node_group(name, members, color)
+        group_model = self.group_controller.create_node_group(
+            name, members, color
+        )
         self.signals.blockSignals(False)
         return {
             "name": group_model.name,
@@ -2742,7 +2809,9 @@ class NodzAPI:
             api.remove_from_node_group("Processing", "nodeA")
             api.remove_from_node_group("Processing", ["nodeB", "nodeC"])
         """
-        return self.group_controller.remove_from_node_group(group_name, node_names)
+        return self.group_controller.remove_from_node_group(
+            group_name, node_names
+        )
 
     def validate_node_group(self, group_name: str) -> List[str]:
         """
