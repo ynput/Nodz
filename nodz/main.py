@@ -791,7 +791,7 @@ class NodzView(QtWidgets.QGraphicsView):
         selected_items = [
             item
             for item in self.nodz_scene.selectedItems()
-            if isinstance(item, NodeView)
+            if isinstance(item, (NodeView, NodeGroupView))
         ]
 
         if not selected_items:
