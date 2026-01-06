@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import json
+import random
 from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING, Union
 import functools
 from qtpy import QtCore, QtGui, QtWidgets
@@ -1936,7 +1937,6 @@ class NodeGroupController(BaseController):
         Returns:
             RGBA color tuple.
         """
-        import random
 
         # rank the colors by the number of groups using them.
         n_bins = len(self.grp_palette)
@@ -1966,7 +1966,7 @@ class NodzAPI:
     def __init__(
         self,
         scene: NodzScene,
-        config: Dict[str, Any],  # FIXME: Should be NodzScene ?
+        config: Dict[str, Any],
     ):
         """
         Initialize the API.
