@@ -1221,13 +1221,13 @@ class GraphController(BaseController):
         return None
 
 
-class NodeGroupError(NodzError):
+class NodzGroupError(NodzError):
     """Base class for group-related errors."""
 
     pass
 
 
-class GroupNotFoundError(NodeGroupError):
+class NodzGroupNotFoundError(NodzGroupError):
     """Raised when a group is not found."""
 
     def __init__(self, group_name: str):
@@ -1235,7 +1235,7 @@ class GroupNotFoundError(NodeGroupError):
         super().__init__(f"Group '{group_name}' not found")
 
 
-class GroupExistsError(NodeGroupError):
+class NodzGroupExistsError(NodzGroupError):
     """Raised when a group with the same name already exists."""
 
     def __init__(self, group_name: str):
@@ -1243,7 +1243,7 @@ class GroupExistsError(NodeGroupError):
         super().__init__(f"Group '{group_name}' already exists")
 
 
-class NodeAlreadyInGroupError(NodeGroupError):
+class NodzNodeAlreadyInGroupError(NodzGroupError):
     """Raised when a node is already in another group."""
 
     def __init__(self, node_name: str, existing_group: str):
@@ -1260,7 +1260,7 @@ def validate_group_exists(func):
     @functools.wraps(func)
     def wrapper(self, group_name, *args, **kwargs):
         if group_name not in self.graph_model.groups:
-            raise GroupNotFoundError(group_name)
+            raise NodzGroupNotFoundError(group_name)
         return func(self, group_name, *args, **kwargs)
 
     return wrapper
@@ -1350,7 +1350,7 @@ class NodeGroupController(BaseController):
         """
         # Validate group name uniqueness
         if name in self.graph_model.groups:
-            raise GroupExistsError(name)
+            raise NodzGroupExistsError(name)
 
         # Convert members to list if None
         member_list = members or []
@@ -1361,7 +1361,7 @@ class NodeGroupController(BaseController):
                 raise NodzNodeNotFoundError(node_name)
             existing_group = self.graph_model.get_group_for_node(node_name)
             if existing_group:
-                raise NodeAlreadyInGroupError(node_name, existing_group)
+                raise NodzNodeAlreadyInGroupError(node_name, existing_group)
 
         # Use color or generate one
         color_tuple = color
@@ -1441,7 +1441,7 @@ class NodeGroupController(BaseController):
             GroupExistsError: If a group with new_name already exists.
         """
         if new_name in self.graph_model.groups:
-            raise GroupExistsError(new_name)
+            raise NodzGroupExistsError(new_name)
 
         group = self.graph_model.groups[group_name]
 
@@ -1570,7 +1570,7 @@ class NodeGroupController(BaseController):
                 raise NodzNodeNotFoundError(node_name)
             existing_group = self.graph_model.get_group_for_node(node_name)
             if existing_group and existing_group != group_name:
-                raise NodeAlreadyInGroupError(node_name, existing_group)
+                raise NodzNodeAlreadyInGroupError(node_name, existing_group)
 
         # Add nodes
         for node_name in node_names:
@@ -1799,13 +1799,13 @@ class NodeGroupController(BaseController):
             # Remove from old group first
             try:
                 self.remove_from_node_group(existing_group, node_name)
-            except NodeGroupError:
+            except NodzGroupError:
                 pass
 
         # Add to new group
         try:
             self.add_to_node_group(group_name, node_name)
-        except NodeGroupError as e:
+        except NodzGroupError as e:
             nlog.warning(f"Could not add node to group: {e}")
 
     def on_node_removed_from_group(
@@ -1821,7 +1821,7 @@ class NodeGroupController(BaseController):
         """
         try:
             self.remove_from_node_group(group_name, node_name)
-        except NodeGroupError as e:
+        except NodzGroupError as e:
             nlog.warning(f"Could not remove node from group: {e}")
 
     def _on_node_moved(
@@ -1854,7 +1854,7 @@ class NodeGroupController(BaseController):
         if group_name:
             try:
                 self.remove_from_node_group(group_name, node_name)
-            except NodeGroupError:
+            except NodzGroupError:
                 pass
 
     # ==================== Helper Methods ====================
