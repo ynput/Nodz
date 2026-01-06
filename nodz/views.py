@@ -21,6 +21,7 @@ from .models import (
 )
 
 from .slot_drawer import SlotDrawer
+from .utils import nlog
 
 NODE_Z = 0.0
 NODE_Z_UP = 0.5
@@ -285,9 +286,9 @@ class SlotView(QtWidgets.QGraphicsItem):
                     self.signals.connection_created.emit(
                         source_node, source_attr, "", ""
                     )
-                except Exception:
+                except Exception as e:
                     # Handle any errors that might occur
-                    pass
+                    nlog.debug(f"Error during connection cleanup: {e}")
 
         SlotView.current_hovered_node = None
         SlotView.source_slot = None
