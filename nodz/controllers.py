@@ -1306,11 +1306,10 @@ class NodeGroupController(BaseController):
             (255, 215, 0, 80),  # Gold
             (139, 69, 19, 80),  # Saddle Brown
         ]
-        self.grp_palette = self.config.get("groups", {}).get("palette")
-        if self.grp_palette:
-            self.grp_palette = [tuple(c) for c in self.grp_palette]
-        else:
-            self.grp_palette = default_palette
+        self.grp_palette = self.config.get("groups", {}).get(
+            "palette", default_palette
+        )
+        self.grp_palette = [tuple(c) for c in self.grp_palette]
 
         # Connect signals
         self._connect_signals()
@@ -1942,9 +1941,11 @@ class NodeGroupController(BaseController):
         n_bins = len(self.grp_palette)
         bins = {x: 0 for x in range(n_bins)}
         for g in self.graph_model.groups.values():
-            i = self.grp_palette.index(g.color)
-            if i >= 0:
-                bins[i] += 1
+            try:
+                i = self.grp_palette.index(g.color)
+            except ValueError:
+                continue
+            bins[i] += 1
         # randomly pick one of the least used colors.
         min_val = min(bins.values())
         lowest_bins = [i for i, count in bins.items() if count == min_val]

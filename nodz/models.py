@@ -451,7 +451,7 @@ class NodeGroupModel(BaseModel):
             **kwargs: Additional custom properties.
         """
         self._name = name
-        self._color = color
+        self._color = tuple(color)
         self._members: List[str] = members or []
         self._rect = rect
         self._label = label
