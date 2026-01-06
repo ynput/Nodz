@@ -48,13 +48,13 @@ class NodzError(Exception):
     pass
 
 
-class NodeError(NodzError):
+class NodzNodeError(NodzError):
     """Base class for node-related errors."""
 
     pass
 
 
-class NodeNotFoundError(NodeError):
+class NodzNodeNotFoundError(NodzNodeError):
     """Raised when a node is not found."""
 
     def __init__(self, node_name: str):
@@ -62,7 +62,7 @@ class NodeNotFoundError(NodeError):
         super().__init__(f"Node '{node_name}' not found")
 
 
-class NodeExistsError(NodeError):
+class NodzNodeExistsError(NodzNodeError):
     """Raised when attempting to create a node that already exists."""
 
     def __init__(self, node_name: str):
@@ -87,13 +87,13 @@ class NodzAttributeNotFoundError(NodzAttributeError):
         )
 
 
-class ConnectionError(NodzError):
+class NodzConnectionError(NodzError):
     """Base class for connection-related errors."""
 
     pass
 
 
-class IncompatibleTypesError(ConnectionError):
+class NodzIncompatibleTypesError(NodzConnectionError):
     """Raised when attempting to connect incompatible attribute types."""
 
     def __init__(self, source_type: Any, target_type: Any):
@@ -104,7 +104,7 @@ class IncompatibleTypesError(ConnectionError):
         )
 
 
-class SelfConnectionError(ConnectionError):
+class NodzSelfConnectionError(NodzConnectionError):
     """Raised when attempting to connect a node to itself."""
 
     def __init__(self, node_name: str):
@@ -112,7 +112,7 @@ class SelfConnectionError(ConnectionError):
         super().__init__(f"Cannot connect node '{node_name}' to itself")
 
 
-class MaxConnectionsExceededError(ConnectionError):
+class NodzMaxConnectionsExceededError(NodzConnectionError):
     """Raised when attempting to exceed maximum connections for an attribute."""
 
     def __init__(self, node_name: str, attr_name: str, max_connections: int):
@@ -125,7 +125,7 @@ class MaxConnectionsExceededError(ConnectionError):
         )
 
 
-class DuplicateConnectionError(ConnectionError):
+class NodzDuplicateConnectionError(NodzConnectionError):
     """Raised when attempting to create a connection that already exists."""
 
     def __init__(
@@ -151,7 +151,7 @@ def validate_node_exists(func):
     @functools.wraps(func)
     def wrapper(self, node_name, *args, **kwargs):
         if node_name not in self.graph_model.nodes:
-            raise NodeNotFoundError(node_name)
+            raise NodzNodeNotFoundError(node_name)
         return func(self, node_name, *args, **kwargs)
 
     return wrapper
@@ -163,7 +163,7 @@ def validate_attribute_exists(func):
     @functools.wraps(func)
     def wrapper(self, node_name, attr_name, *args, **kwargs):
         if node_name not in self.graph_model.nodes:
-            raise NodeNotFoundError(node_name)
+            raise NodzNodeNotFoundError(node_name)
         node = self.graph_model.nodes[node_name]
         if attr_name not in node.attributes:
             raise NodzAttributeNotFoundError(node_name, attr_name)
@@ -220,7 +220,7 @@ class NodeController(BaseController):
         """Create a new node."""
         # Validate
         if name in self.graph_model.nodes:
-            raise NodeExistsError(name)
+            raise NodzNodeExistsError(name)
 
         # Create model
         node_model = NodeModel(name, preset, alternate, position, **kwargs)
@@ -263,7 +263,7 @@ class NodeController(BaseController):
     def rename_node(self, node_name: str, new_name: str) -> str:
         """Rename a node."""
         if new_name in self.graph_model.nodes:
-            raise NodeExistsError(new_name)
+            raise NodzNodeExistsError(new_name)
 
         # Rename in model
         self.graph_model.rename_node(node_name, new_name)
@@ -489,13 +489,13 @@ class ConnectionController(BaseController):
         """Create a connection between two node attributes."""
         # Validate nodes exist
         if source_node not in self.graph_model.nodes:
-            raise NodeNotFoundError(source_node)
+            raise NodzNodeNotFoundError(source_node)
         if target_node not in self.graph_model.nodes:
-            raise NodeNotFoundError(target_node)
+            raise NodzNodeNotFoundError(target_node)
 
         # Validate no self-connection
         if source_node == target_node:
-            raise SelfConnectionError(source_node)
+            raise NodzSelfConnectionError(source_node)
 
         # Validate attributes exist
         source_node_model = self.graph_model.nodes[source_node]
@@ -512,11 +512,11 @@ class ConnectionController(BaseController):
 
         # Validate plug/socket compatibility
         if not source_attr_model.plug:
-            raise ConnectionError(
+            raise NodzConnectionError(
                 f"Attribute '{source_attr}' on node '{source_node}' is not a plug"
             )
         if not target_attr_model.socket:
-            raise ConnectionError(
+            raise NodzConnectionError(
                 f"Attribute '{target_attr}' on node '{target_node}' is not a socket"
             )
 
@@ -524,7 +524,7 @@ class ConnectionController(BaseController):
         if not AttrModel.is_compatible_type(
             source_attr_model.data_type, target_attr_model.data_type
         ):
-            raise IncompatibleTypesError(
+            raise NodzIncompatibleTypesError(
                 source_attr_model.data_type, target_attr_model.data_type
             )
 
@@ -536,7 +536,7 @@ class ConnectionController(BaseController):
                 and existing_conn.socket_node == target_node
                 and existing_conn.socket_attr == target_attr
             ):
-                raise DuplicateConnectionError(
+                raise NodzDuplicateConnectionError(
                     source_node, source_attr, target_node, target_attr
                 )
 
@@ -552,7 +552,7 @@ class ConnectionController(BaseController):
                 existing_plug_connections
                 >= source_attr_model.plug_max_connections
             ):
-                raise MaxConnectionsExceededError(
+                raise NodzMaxConnectionsExceededError(
                     source_node,
                     source_attr,
                     source_attr_model.plug_max_connections,
@@ -570,7 +570,7 @@ class ConnectionController(BaseController):
                 existing_socket_connections
                 >= target_attr_model.socket_max_connections
             ):
-                raise MaxConnectionsExceededError(
+                raise NodzMaxConnectionsExceededError(
                     target_node,
                     target_attr,
                     target_attr_model.socket_max_connections,
@@ -1357,7 +1357,7 @@ class NodeGroupController(BaseController):
         # Validate all members exist and aren't in other groups
         for node_name in member_list:
             if node_name not in self.graph_model.nodes:
-                raise NodeNotFoundError(node_name)
+                raise NodzNodeNotFoundError(node_name)
             existing_group = self.graph_model.get_group_for_node(node_name)
             if existing_group:
                 raise NodeAlreadyInGroupError(node_name, existing_group)
@@ -1566,7 +1566,7 @@ class NodeGroupController(BaseController):
         # Validate all nodes first
         for node_name in node_names:
             if node_name not in self.graph_model.nodes:
-                raise NodeNotFoundError(node_name)
+                raise NodzNodeNotFoundError(node_name)
             existing_group = self.graph_model.get_group_for_node(node_name)
             if existing_group and existing_group != group_name:
                 raise NodeAlreadyInGroupError(node_name, existing_group)
@@ -2104,7 +2104,7 @@ class NodzAPI:
             NodeNotFoundError: If the node doesn't exist
         """
         if node_name not in self.graph_model.nodes:
-            raise NodeNotFoundError(node_name)
+            raise NodzNodeNotFoundError(node_name)
         return self.graph_model.nodes[node_name].position
 
     def set_node_position(
@@ -2121,7 +2121,7 @@ class NodzAPI:
             NodeNotFoundError: If the node doesn't exist
         """
         if node_name not in self.graph_model.nodes:
-            raise NodeNotFoundError(node_name)
+            raise NodzNodeNotFoundError(node_name)
         self.graph_model.nodes[node_name].position = position
 
     def get_node_label(self, node_name: str) -> Optional[str]:
@@ -2256,7 +2256,7 @@ class NodzAPI:
             NodeNotFoundError: If the node doesn't exist
         """
         if node_name not in self.graph_model.nodes:
-            raise NodeNotFoundError(node_name)
+            raise NodzNodeNotFoundError(node_name)
         return list(self.graph_model.nodes[node_name].attributes.keys())
 
     def attribute_exists(self, node_name: str, attr_name: str) -> bool:
