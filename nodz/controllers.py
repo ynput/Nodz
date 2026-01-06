@@ -70,13 +70,13 @@ class NodeExistsError(NodeError):
         super().__init__(f"Node '{node_name}' already exists")
 
 
-class AttributeError(NodzError):
+class NodzAttributeError(NodzError):
     """Base class for attribute-related errors."""
 
     pass
 
 
-class AttributeNotFoundError(AttributeError):
+class NodzAttributeNotFoundError(NodzAttributeError):
     """Raised when an attribute is not found."""
 
     def __init__(self, node_name: str, attr_name: str):
@@ -166,7 +166,7 @@ def validate_attribute_exists(func):
             raise NodeNotFoundError(node_name)
         node = self.graph_model.nodes[node_name]
         if attr_name not in node.attributes:
-            raise AttributeNotFoundError(node_name, attr_name)
+            raise NodzAttributeNotFoundError(node_name, attr_name)
         return func(self, node_name, attr_name, *args, **kwargs)
 
     return wrapper
@@ -502,9 +502,9 @@ class ConnectionController(BaseController):
         target_node_model = self.graph_model.nodes[target_node]
 
         if source_attr not in source_node_model.attributes:
-            raise AttributeNotFoundError(source_node, source_attr)
+            raise NodzAttributeNotFoundError(source_node, source_attr)
         if target_attr not in target_node_model.attributes:
-            raise AttributeNotFoundError(target_node, target_attr)
+            raise NodzAttributeNotFoundError(target_node, target_attr)
 
         # Get attribute models
         source_attr_model = source_node_model.attributes[source_attr]
@@ -871,8 +871,6 @@ class ConnectionController(BaseController):
             # Check if it's not on the same node
             try:
                 parent_node = item.parent_node_view()
-                if not isinstance(parent_node, NodeView):
-                    continue
             except (AttributeError, TypeError):
                 continue
 
@@ -2215,7 +2213,7 @@ class NodzAPI:
 
         Raises:
             NodeNotFoundError: If the node doesn't exist
-            AttributeNotFoundError: If the attribute doesn't exist
+            NodzAttributeNotFoundError: If the attribute doesn't exist
         """
         self.node_controller.delete_attribute(node_name, attr_name)
 
@@ -2237,7 +2235,7 @@ class NodzAPI:
 
         Raises:
             NodeNotFoundError: If the node doesn't exist
-            AttributeNotFoundError: If the attribute doesn't exist
+            NodzAttributeNotFoundError: If the attribute doesn't exist
             ValueError: If the new name already exists
         """
         self.node_controller.edit_attribute(
@@ -2295,7 +2293,7 @@ class NodzAPI:
 
         Raises:
             NodeNotFoundError: If either node doesn't exist
-            AttributeNotFoundError: If either attribute doesn't exist
+            NodzAttributeNotFoundError: If either attribute doesn't exist
             ConnectionError: If the attributes are not compatible for
                              connection
             IncompatibleTypesError: If the data types are not compatible
@@ -2887,7 +2885,9 @@ class NodzAPI:
         """
         return self.group_controller.get_node_group_label(group_name)
 
-    def set_node_group_label(self, group_name: str, label: Optional[str]) -> bool:
+    def set_node_group_label(
+        self, group_name: str, label: Optional[str]
+    ) -> bool:
         """
         Set the label of a node group.
 
