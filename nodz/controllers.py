@@ -39,7 +39,6 @@ from .utils import (
     nlog,
     set_logging_level,
     get_logging_level,
-    block_signals,
 )
 
 
@@ -246,7 +245,7 @@ class NodeController(BaseController):
         return node_model
 
     @validate_node_exists
-    def delete_node(self, node_name: str) -> None:
+    def delete_node(self, node_name: str, emit: bool = False) -> None:
         """Delete a node."""
         # Find the node view
         node_view = self._find_node_view(node_name)
@@ -258,7 +257,8 @@ class NodeController(BaseController):
         self.graph_model.remove_node(node_name)
 
         # Emit node deleted signal
-        self.signals.node_deleted.emit(node_name)
+        if emit:
+            self.signals.node_deleted.emit(node_name)
 
     @validate_node_exists
     def rename_node(self, node_name: str, new_name: str) -> str:
@@ -1330,6 +1330,7 @@ class NodeGroupController(BaseController):
         name: str,
         members: Optional[List[str]] = None,
         color: Optional[Tuple[int, int, int, int]] = None,
+        emit: bool = False,
     ) -> NodeGroupModel:
         """Create a new node group.
 
@@ -1338,6 +1339,7 @@ class NodeGroupController(BaseController):
             members: Optional list of node names to include.
             color: Optional color tuple (R, G, B, A) or None for auto-generated
                    color.
+            emit: Whether to emit the group_created signal.
 
         Returns:
             The created NodeGroupModel.
@@ -1387,23 +1389,25 @@ class NodeGroupController(BaseController):
             self._update_group_rect(name)
 
         # Emit group_created signal
-        group_view = self.get_group_view(name)
-        rect = group_view.rect() if group_view else QtCore.QRect()
-        self.signals.group_created.emit(
-            name,
-            color_tuple,
-            member_list,
-            rect,
-        )
+        if emit:
+            group_view = self.get_group_view(name)
+            rect = group_view.rect() if group_view else QtCore.QRect()
+            self.signals.group_created.emit(
+                name,
+                color_tuple,
+                member_list,
+                rect,
+            )
 
         return group_model
 
     @validate_group_exists
-    def delete_node_group(self, group_name: str) -> bool:
+    def delete_node_group(self, group_name: str, emit: bool = False) -> bool:
         """Delete a node group, leaving member nodes intact.
 
         Args:
             group_name: Name of the group to delete.
+            emit: Whether to emit the group_deleted signal.
 
         Returns:
             True if deletion was successful.
@@ -1420,7 +1424,8 @@ class NodeGroupController(BaseController):
         self.graph_model.remove_group(group_name)
 
         # Emit signal
-        self.signals.group_deleted.emit(group_name)
+        if emit:
+            self.signals.group_deleted.emit(group_name)
 
         return True
 
@@ -2028,17 +2033,18 @@ class NodzAPI:
         )
         return node_model.name
 
-    def delete_node(self, node_name: str) -> None:
+    def delete_node(self, node_name: str, emit: bool = False) -> None:
         """
         Delete a node from the graph.
 
         Args:
             node_name: Name of the node to delete
+            emit: Whether to emit node_deleted after deletion
 
         Raises:
             NodeNotFoundError: If the node doesn't exist
         """
-        self.node_controller.delete_node(node_name)
+        self.node_controller.delete_node(node_name, emit=emit)
 
     def rename_node(self, node_name: str, new_name: str) -> str:
         """
@@ -2768,12 +2774,12 @@ class NodzAPI:
 
     # ==================== Node Group Operations ====================
 
-    @block_signals
     def create_node_group(
         self,
         name: str,
         members: Optional[List[str]] = None,
         color: Optional[Tuple[int, int, int, int]] = None,
+        emit: bool = False,
     ) -> dict:
         """
         Create a new node group containing the specified nodes.
@@ -2783,6 +2789,7 @@ class NodzAPI:
             members: Optional list of node names to include in the group.
             color: Optional color in hex format (e.g., "#FF5500" or
                    "#FF550080" with alpha). If None, auto-generates.
+            emit: Whether to emit the group_created signal.
 
         Returns:
             Dictionary with group information:
@@ -2802,7 +2809,7 @@ class NodzAPI:
             api.create_node_group("Output", ["nodeC"], color=(255, 100, 0, 100))
         """
         group_model = self.group_controller.create_node_group(
-            name, members, color
+            name, members, color, emit=emit
         )
         return {
             "name": group_model.name,
@@ -2810,13 +2817,13 @@ class NodzAPI:
             "color": group_model.color,
         }
 
-    @block_signals
-    def delete_node_group(self, group_name: str) -> bool:
+    def delete_node_group(self, group_name: str, emit: bool = False) -> bool:
         """
         Delete a node group. Member nodes are preserved.
 
         Args:
             group_name: Name of the group to delete.
+            emit: Whether to emit the group_deleted signal.
 
         Returns:
             True if deletion was successful.
@@ -2827,7 +2834,9 @@ class NodzAPI:
         Example:
             api.delete_node_group("Processing")
         """
-        success = self.group_controller.delete_node_group(group_name)
+        success = self.group_controller.delete_node_group(
+            group_name, emit=emit
+        )
         return success
 
     def rename_node_group(self, group_name: str, new_name: str) -> bool:

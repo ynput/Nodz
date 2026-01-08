@@ -836,9 +836,9 @@ class NodzView(QtWidgets.QGraphicsView):
         # Delete each selected node using the API
         for node in selected_nodes:
             if isinstance(node, NodeView):
-                self.api.delete_node(node.model.name)
+                self.api.delete_node(node.model.name, emit=True)
             elif isinstance(node, NodeGroupView):
-                self.api.delete_node_group(node.model.name)
+                self.api.delete_node_group(node.model.name, emit=True)
 
     def create_group_from_selection(self) -> None:
         """Create a node group from currently selected nodes.
@@ -867,9 +867,10 @@ class NodzView(QtWidgets.QGraphicsView):
 
         # Create the group via the API
         try:
-            self.api.create_node_group(group_name, selected_nodes)
+            self.api.create_node_group(group_name, selected_nodes, emit=True)
             nlog.info(
-                f"Created group '{group_name}' with {len(selected_nodes)} node(s)"
+                f"Created group '{group_name}' with {len(selected_nodes)} "
+                "node(s)"
             )
         except Exception as e:
             nlog.error(f"Failed to create group: {e}")
@@ -893,7 +894,7 @@ class NodzView(QtWidgets.QGraphicsView):
         # Delete each selected group using the API
         for group in selected_groups:
             try:
-                self.api.delete_node_group(group.model.name)
+                self.api.delete_node_group(group.model.name, emit=True)
                 nlog.info(f"Removed group '{group.model.name}'")
             except Exception as e:
                 nlog.error(f"Failed to remove group '{group.model.name}': {e}")
