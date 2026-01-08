@@ -1547,12 +1547,14 @@ class NodeGroupController(BaseController):
         self,
         group_name: str,
         node_names: Union[str, List[str]],
+        emit: bool = False,
     ) -> bool:
         """Add one or more nodes to a group.
 
         Args:
             group_name: Name of the target group.
             node_names: Single node name or list of node names to add.
+            emit: Whether to emit the group_membership_changed signal.
 
         Returns:
             True if all nodes were added successfully.
@@ -1586,9 +1588,10 @@ class NodeGroupController(BaseController):
         self._update_group_rect(group_name)
 
         # Emit group_membership_changed signal
-        self.signals.group_membership_changed.emit(
-            group_name, list(group.members)
-        )
+        if emit:
+            self.signals.group_membership_changed.emit(
+                group_name, list(group.members)
+            )
 
         return True
 
@@ -1597,12 +1600,14 @@ class NodeGroupController(BaseController):
         self,
         group_name: str,
         node_names: Union[str, List[str]],
+        emit: bool = False,
     ) -> bool:
         """Remove one or more nodes from a group.
 
         Args:
             group_name: Name of the group.
             node_names: Single node name or list of node names to remove.
+            emit: Whether to emit the group_membership_changed signal.
 
         Returns:
             True if removal was successful.
@@ -1633,9 +1638,10 @@ class NodeGroupController(BaseController):
         self._update_group_rect(group_name)
 
         # Emit group_membership_changed signal
-        self.signals.group_membership_changed.emit(
-            group_name, list(group.members)
-        )
+        if emit:
+            self.signals.group_membership_changed.emit(
+                group_name, list(group.members)
+            )
 
         return True
 
@@ -1802,13 +1808,15 @@ class NodeGroupController(BaseController):
         if existing_group and existing_group != group_name:
             # Remove from old group first
             try:
-                self.remove_from_node_group(existing_group, node_name)
+                self.remove_from_node_group(
+                    existing_group, node_name, emit=True
+                )
             except NodzGroupError:
                 pass
 
         # Add to new group
         try:
-            self.add_to_node_group(group_name, node_name)
+            self.add_to_node_group(group_name, node_name, emit=True)
         except NodzGroupError as e:
             nlog.warning(f"Could not add node to group: {e}")
 
@@ -1824,7 +1832,7 @@ class NodeGroupController(BaseController):
             group_name: Name of the group to remove from.
         """
         try:
-            self.remove_from_node_group(group_name, node_name)
+            self.remove_from_node_group(group_name, node_name, emit=True)
         except NodzGroupError as e:
             nlog.warning(f"Could not remove node from group: {e}")
 
@@ -1857,7 +1865,7 @@ class NodeGroupController(BaseController):
         group_name = self.graph_model.get_group_for_node(node_name)
         if group_name:
             try:
-                self.remove_from_node_group(group_name, node_name)
+                self.remove_from_node_group(group_name, node_name, emit=True)
             except NodzGroupError:
                 pass
 
@@ -2917,6 +2925,7 @@ class NodzAPI:
         self,
         group_name: str,
         node_names: Union[str, List[str]],
+        emit: bool = False,
     ) -> bool:
         """
         Add one or more nodes to an existing group.
@@ -2924,6 +2933,7 @@ class NodzAPI:
         Args:
             group_name: Name of the target group.
             node_names: Single node name or list of node names to add.
+            emit: Whether to emit the group_membership_changed signal.
 
         Returns:
             True if all nodes were added successfully.
@@ -2937,12 +2947,15 @@ class NodzAPI:
             api.add_to_node_group("Processing", "nodeD")
             api.add_to_node_group("Processing", ["nodeE", "nodeF"])
         """
-        return self.group_controller.add_to_node_group(group_name, node_names)
+        return self.group_controller.add_to_node_group(
+            group_name, node_names, emit=emit
+        )
 
     def remove_from_node_group(
         self,
         group_name: str,
         node_names: Union[str, List[str]],
+        emit: bool = False,
     ) -> bool:
         """
         Remove one or more nodes from a group.
@@ -2950,6 +2963,7 @@ class NodzAPI:
         Args:
             group_name: Name of the group.
             node_names: Single node name or list of node names to remove.
+            emit: Whether to emit the group_membership_changed signal.
 
         Returns:
             True if removal was successful.
@@ -2965,7 +2979,7 @@ class NodzAPI:
             api.remove_from_node_group("Processing", ["nodeB", "nodeC"])
         """
         return self.group_controller.remove_from_node_group(
-            group_name, node_names
+            group_name, node_names, emit=emit
         )
 
     def validate_node_group(self, group_name: str) -> List[str]:
