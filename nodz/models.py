@@ -6,8 +6,20 @@ Models are responsible only for data storage and validation,
 with no UI or rendering logic.
 """
 
-from typing import Any, Dict, List, Optional, Union, get_origin, get_args
+from __future__ import annotations
+
 from collections import OrderedDict
+from typing import (
+    Any,
+    Dict,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    get_args,
+    get_origin,
+)
+
 from qtpy import QtCore
 
 
@@ -116,18 +128,30 @@ class AttrModel(BaseModel):
         """
 
         def _get_all_types(type_entry: Any) -> List[Any]:
-            from collections.abc import Iterable
-
-            if isinstance(type_entry, Iterable):
+            # Handle tuple of types (e.g., from get_args())
+            if isinstance(type_entry, tuple):
                 return [
                     orig_type
                     for entry in type_entry
                     for orig_type in _get_all_types(entry)
                 ]
-            if get_origin(type_entry) is Optional:
-                return [None] + _get_all_types(get_args(type_entry))
-            if get_origin(type_entry) is Union:
+
+            origin = get_origin(type_entry)
+
+            # Handle Optional (which is Union[X, None])
+            if origin is Union:
                 return _get_all_types(get_args(type_entry))
+
+            # Handle List types - extract the inner type
+            if origin is list:
+                args = get_args(type_entry)
+                if args:
+                    return _get_all_types(args)
+                return [type_entry]
+
+            # Handle Dict types - we don't flatten these, return as-is
+            if origin is dict:
+                return [type_entry]
 
             return [type_entry]
 
@@ -140,14 +164,18 @@ class AttrModel(BaseModel):
                 return True
 
             # List
-            if get_origin(type1) is list and get_origin(type1) == get_origin(type2):
+            if get_origin(type1) is list and get_origin(type1) == get_origin(
+                type2
+            ):
                 return _is_compatible_types(
                     _get_all_types(get_args(type1)),
                     _get_all_types(get_args(type2)),
                 )
 
             # Dict
-            if get_origin(type1) is dict and get_origin(type1) == get_origin(type2):
+            if get_origin(type1) is dict and get_origin(type1) == get_origin(
+                type2
+            ):
                 keys1, values1 = get_args(type1)
                 keys2, values2 = get_args(type2)
 
@@ -164,7 +192,6 @@ class AttrModel(BaseModel):
                 )
 
                 return compatible_keys and compatible_values
-
 
             if isinstance(type1, type) and isinstance(type2, type):
                 # FIXME: issubclass may yield undesirable results, like:
@@ -195,12 +222,14 @@ class NodeModel(BaseModel):
         preset: str,
         alternate: bool = True,
         position: Optional[QtCore.QPointF] = None,
+        label: Optional[str] = None,
         **kwargs,
     ) -> None:
         self._name = name
         self._preset = preset
         self._alternate = alternate
         self._position = position or QtCore.QPointF(-1.0, -1.0)
+        self._label = label
         self._attributes: OrderedDict[str, AttrModel] = OrderedDict()
         self._kwargs = kwargs or {}
 
@@ -235,6 +264,14 @@ class NodeModel(BaseModel):
     @position.setter
     def position(self, value: QtCore.QPointF) -> None:
         self._position = value
+
+    @property
+    def label(self) -> Optional[str]:
+        return self._label
+
+    @label.setter
+    def label(self, value: Optional[str]) -> None:
+        self._label = value
 
     @property
     def attributes(self) -> OrderedDict[str, AttrModel]:
@@ -297,6 +334,7 @@ class NodeModel(BaseModel):
             "preset": self._preset,
             "alternate": self._alternate,
             "position": self._position,
+            "label": self._label,
             "attributes": {
                 k: v.to_dict() for k, v in self._attributes.items()
             },
@@ -378,20 +416,208 @@ class ConnectionModel(BaseModel):
         )
 
 
+class NodeGroupModel(BaseModel):
+    """Model for a node group.
+
+    A node group is a visual container for organizing related nodes.
+    Groups are stored as metadata separate from the graph structure.
+    A node can only belong to one group at a time.
+
+    Attributes:
+        name: Unique name for the group.
+        color: RGBA color tuple for the group background.
+        members: List of node names in the group.
+        rect: Optional explicit bounding rect, or calculated from members.
+        kwargs: Additional custom properties.
+    """
+
+    def __init__(
+        self,
+        name: str,
+        color: Tuple[int, int, int, int] = (100, 100, 100, 50),
+        members: Optional[List[str]] = None,
+        rect: Optional[QtCore.QRectF] = None,
+        label: Optional[str] = None,
+        **kwargs,
+    ) -> None:
+        """Initialize a node group model.
+
+        Args:
+            name: Unique name for the group.
+            color: RGBA color tuple (default: semi-transparent gray).
+            members: List of node names to include in the group.
+            rect: Optional explicit bounding rect.
+            label: Optional label for the group (cosmetic display name).
+            **kwargs: Additional custom properties.
+        """
+        self._name = name
+        self._color = tuple(color)
+        self._members: List[str] = members or []
+        self._rect = rect
+        self._label = label
+        self._kwargs = kwargs or {}
+
+    @property
+    def name(self) -> str:
+        """Get the group name."""
+        return self._name
+
+    @name.setter
+    def name(self, value: str) -> None:
+        """Set the group name."""
+        self._name = value
+
+    @property
+    def color(self) -> Tuple[int, int, int, int]:
+        """Get the group RGBA color."""
+        return self._color
+
+    @color.setter
+    def color(self, value: Tuple[int, int, int, int]) -> None:
+        """Set the group RGBA color."""
+        self._color = value
+
+    @property
+    def members(self) -> List[str]:
+        """Get the list of member node names."""
+        return self._members
+
+    @property
+    def rect(self) -> Optional[QtCore.QRectF]:
+        """Get the group bounding rect."""
+        return self._rect
+
+    @rect.setter
+    def rect(self, value: QtCore.QRectF) -> None:
+        """Set the group bounding rect."""
+        self._rect = value
+
+    @property
+    def label(self) -> Optional[str]:
+        """Get the group label."""
+        return self._label
+
+    @label.setter
+    def label(self, value: Optional[str]) -> None:
+        """Set the group label."""
+        self._label = value
+
+    @property
+    def kwargs(self) -> Dict[str, Any]:
+        """Get additional custom properties."""
+        return self._kwargs
+
+    def add_member(self, node_name: str) -> None:
+        """Add a node to this group.
+
+        Args:
+            node_name: Name of the node to add.
+        """
+        if node_name not in self._members:
+            self._members.append(node_name)
+
+    def remove_member(self, node_name: str) -> None:
+        """Remove a node from this group.
+
+        Args:
+            node_name: Name of the node to remove.
+        """
+        if node_name in self._members:
+            self._members.remove(node_name)
+
+    def contains_node(self, node_name: str) -> bool:
+        """Check if a node is in this group.
+
+        Args:
+            node_name: Name of the node to check.
+
+        Returns:
+            True if the node is in this group, False otherwise.
+        """
+        return node_name in self._members
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert the group model to a dictionary.
+
+        Returns:
+            Dictionary representation of the group.
+        """
+        rect_data = None
+        if self._rect is not None:
+            rect_data = [
+                self._rect.x(),
+                self._rect.y(),
+                self._rect.width(),
+                self._rect.height(),
+            ]
+        return {
+            "name": self._name,
+            "color": list(self._color),
+            "members": self._members.copy(),
+            "rect": rect_data,
+            "label": self._label,
+            "kwargs": self._kwargs,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> NodeGroupModel:
+        """Create a NodeGroupModel from a dictionary.
+
+        Args:
+            data: Dictionary containing group data.
+
+        Returns:
+            A new NodeGroupModel instance.
+        """
+        rect = None
+        if data.get("rect") is not None:
+            rect_data = data["rect"]
+            rect = QtCore.QRectF(
+                rect_data[0], rect_data[1], rect_data[2], rect_data[3]
+            )
+
+        color_data = data.get("color", [100, 100, 100, 50])
+        color: Tuple[int, int, int, int] = (
+            color_data[0],
+            color_data[1],
+            color_data[2],
+            color_data[3],
+        )
+        kwargs = data.get("kwargs", {})
+
+        return cls(
+            name=data["name"],
+            color=color,
+            members=data.get("members", []),
+            rect=rect,
+            label=data.get("label"),
+            **kwargs,
+        )
+
+
 class GraphModel(BaseModel):
     """Model for a complete node graph."""
 
     def __init__(self) -> None:
         self._nodes: Dict[str, NodeModel] = {}
         self._connections: List[ConnectionModel] = []
+        self._groups: Dict[str, NodeGroupModel] = {}
+        self._node_to_group: Dict[str, str] = {}
 
     @property
     def nodes(self) -> Dict[str, NodeModel]:
+        """Get all nodes in the graph."""
         return self._nodes
 
     @property
     def connections(self) -> List[ConnectionModel]:
+        """Get all connections in the graph."""
         return self._connections
+
+    @property
+    def groups(self) -> Dict[str, NodeGroupModel]:
+        """Get all groups in the graph."""
+        return self._groups
 
     def add_node(self, node: NodeModel) -> None:
         """Add a node to the graph."""
@@ -404,6 +630,12 @@ class GraphModel(BaseModel):
         """Remove a node from the graph."""
         if name not in self._nodes:
             raise ValueError(f"Node '{name}' does not exist")
+
+        # Remove node from any group it belongs to
+        group_name = self._node_to_group.get(name)
+        if group_name and group_name in self._groups:
+            self._groups[group_name].remove_member(name)
+            del self._node_to_group[name]
 
         self._nodes.pop(name)
 
@@ -431,6 +663,15 @@ class GraphModel(BaseModel):
                 conn.plug_node = new_name
             if conn.socket_node == name:
                 conn.socket_node = new_name
+
+        # Update group membership
+        group_name = self._node_to_group.get(name)
+        if group_name and group_name in self._groups:
+            group = self._groups[group_name]
+            group.remove_member(name)
+            group.add_member(new_name)
+            del self._node_to_group[name]
+            self._node_to_group[new_name] = group_name
 
     def add_connection(self, conn: ConnectionModel) -> None:
         """Add a connection to the graph."""
@@ -468,6 +709,82 @@ class GraphModel(BaseModel):
 
         self._connections.remove(conn)
 
+    def add_group(self, group: NodeGroupModel) -> None:
+        """Add a group to the graph.
+
+        Args:
+            group: The group model to add.
+
+        Raises:
+            ValueError: If a group with the same name already exists.
+        """
+        if group.name in self._groups:
+            raise ValueError(f"Group '{group.name}' already exists")
+
+        self._groups[group.name] = group
+
+        # Update reverse lookup for all members
+        for member in group.members:
+            self._node_to_group[member] = group.name
+
+    def remove_group(self, name: str) -> None:
+        """Remove a group from the graph.
+
+        Args:
+            name: Name of the group to remove.
+
+        Raises:
+            ValueError: If the group does not exist.
+        """
+        if name not in self._groups:
+            raise ValueError(f"Group '{name}' does not exist")
+
+        group = self._groups.pop(name)
+
+        # Clean up reverse lookup
+        for member in group.members:
+            if self._node_to_group.get(member) == name:
+                del self._node_to_group[member]
+
+    def get_group(self, name: str) -> Optional[NodeGroupModel]:
+        """Get a group by name.
+
+        Args:
+            name: Name of the group.
+
+        Returns:
+            The group model, or None if not found.
+        """
+        return self._groups.get(name)
+
+    def get_groups(self) -> List[NodeGroupModel]:
+        """Get all groups in the graph.
+
+        Returns:
+            List of all group models.
+        """
+        return list(self._groups.values())
+
+    def get_group_for_node(self, node_name: str) -> Optional[str]:
+        """Get the group name for a node.
+
+        Args:
+            node_name: Name of the node.
+
+        Returns:
+            Name of the group containing the node, or None if not in a group.
+        """
+        return self._node_to_group.get(node_name)
+
+    def clear_groups(self) -> None:
+        """Clear all groups from the graph.
+
+        Removes all groups and their node-to-group mappings.
+        Member nodes are preserved in the graph.
+        """
+        self._groups.clear()
+        self._node_to_group.clear()
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert the graph model to a dictionary."""
         return {
@@ -475,4 +792,39 @@ class GraphModel(BaseModel):
                 name: node.to_dict() for name, node in self._nodes.items()
             },
             "connections": [conn.to_dict() for conn in self._connections],
+            "groups": {
+                name: group.to_dict() for name, group in self._groups.items()
+            },
         }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> GraphModel:
+        """Create a GraphModel from a dictionary.
+
+        This method loads the graph structure including nodes, connections,
+        and groups. Note that node and connection data types are stored as
+        serialized type information and need to be reconstructed by the
+        controller layer.
+
+        Args:
+            data: Dictionary containing graph data with 'nodes',
+                'connections', and optionally 'groups' keys.
+
+        Returns:
+            A new GraphModel instance with groups loaded.
+        """
+        graph = cls()
+
+        # Note: Full node/connection loading is handled by GraphController
+        # This method focuses on loading group data for deserialization
+
+        # Load groups if present (backward compatible)
+        groups_data = data.get("groups", {})
+        for group_name, group_data in groups_data.items():
+            group = NodeGroupModel.from_dict(group_data)
+            graph._groups[group_name] = group
+            # Update reverse lookup
+            for member in group.members:
+                graph._node_to_group[member] = group_name
+
+        return graph

@@ -35,8 +35,7 @@ class RectPrim:
     def __post_init__(self):
         if len(self.points) != 2:
             raise ValueError(
-                "Need 2 points to define a bounding rect ! "
-                f"(got {len(self.points)})"
+                f"Need 2 points to define a bounding rect ! (got {len(self.points)})"
             )
         self.rect = QtCore.QRectF(*self.points[0], *self.points[1])
 

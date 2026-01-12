@@ -1,5 +1,8 @@
 import logging
 import typing
+from contextlib import contextmanager
+from functools import wraps
+
 from qtpy import QtCore
 
 logging.basicConfig(
@@ -65,3 +68,25 @@ def str_to_type(val: typing.Union[str, type]):
         else:
             return eval(val)
     return val
+
+
+@contextmanager
+def signals_blocked(qobject):
+    """Context manager to temporarily block signals on a QObject."""
+    was_blocked = qobject.signalsBlocked()
+    qobject.blockSignals(True)
+    try:
+        yield
+    finally:
+        qobject.blockSignals(was_blocked)
+
+
+def block_signals(func):
+    """Decorator for API methods that should not emit signals."""
+
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        with signals_blocked(self.signals):
+            return func(self, *args, **kwargs)
+
+    return wrapper

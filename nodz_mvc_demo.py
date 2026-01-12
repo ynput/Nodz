@@ -7,14 +7,17 @@ It creates a simple node graph with a few nodes and connections.
 """
 
 import sys
+import json
 from typing import Union
 from qtpy import QtCore, QtWidgets
 
 from nodz.main import create_nodz_view
-from nodz.utils import nlog
+from nodz.utils import nlog, json_encoder
+
 
 class SomeClass:
     pass
+
 
 # Create application
 app = (
@@ -29,11 +32,28 @@ nodz.setWindowTitle("Nodz MVC Demo")
 nodz.resize(800, 600)
 nodz.show()
 
+
+class KeyHandler(QtCore.QObject):
+    def eventFilter(self, watched, event):
+        if (
+            event.type() == QtCore.QEvent.Type.KeyPress
+            and event.key() == QtCore.Qt.Key.Key_P
+        ):
+            graph_dict = nodz.api.graph_model.to_dict()
+            print(json.dumps(graph_dict, indent=4, default=json_encoder))
+            return True
+        return super().eventFilter(watched, event)
+
+
+key_handler = KeyHandler()
+nodz.installEventFilter(key_handler)
+
 # Create nodes
 nodeA = nodz.api.create_node(
     name="nodeA",
     preset="node_preset_1",
     position=QtCore.QPointF(100, 100),
+    label="Node A  (nodeA)",
     help="NodeA has its own special help string!",
 )
 
@@ -205,7 +225,9 @@ nodz.api.create_attribute(
 )
 
 # Node E
-nodeE = nodz.api.create_node(name="nodeE", preset="node_preset_1")
+nodeE = nodz.api.create_node(
+    name="nodeE", preset="node_preset_1", label="Node E (nodeE)"
+)
 
 nodz.api.create_attribute(
     nodeE,
@@ -281,6 +303,7 @@ nodz.layout_graph()
 
 # Print instructions
 nlog.info("Nodz MVC Demo")
+nlog.info("Press P to print the serialized graph.")
 
 # Run application
 if app:
