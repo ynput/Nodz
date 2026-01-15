@@ -11,6 +11,7 @@
 
     "horizontal_node_spacing": 80,
     "vertical_node_spacing": 40,
+    "group_padding": 50,
 
     "node_font": "Arial",
     "node_font_size": 12,
